@@ -27,8 +27,6 @@ PKG_CHECK_MODULES([FUSE_MODULE],
 )
 FUSE_LIBS=`$PKG_CONFIG --libs fuse`
 FUSE_CFLAGS=`$PKG_CONFIG --cflags fuse`
-CFLAGS="${CFLAGS} ${FUSE_CFLAGS}"
-LDFLAGS="${LDFLAGS} ${FUSE_LIBS}"
 
 
 dnl
@@ -136,9 +134,10 @@ AM_CONDITIONAL(USE_CE2110_GST, test "${backend}" = "ce2110-gst")
 
 
 dnl
-dnl Update CFLAGS
+dnl Update flags
 dnl
-CFLAGS="${CFLAGS} -ggdb -O0 -Wall -std=c99"
+CFLAGS="${CFLAGS} ${FUSE_CFLAGS} -ggdb -O0 -Wall -std=c99"
+LDFLAGS="${LDFLAGS} ${FUSE_LIBS}"
 
 
 dnl
