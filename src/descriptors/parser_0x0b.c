@@ -45,7 +45,7 @@ int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, 
 
 	if (len != 2) {
 		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)", 
-			0x0b, 4, len+2);
+			0x0b, 2, len);
 		return -ENODATA;
 	}
 
