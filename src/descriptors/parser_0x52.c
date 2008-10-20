@@ -189,7 +189,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 	CREATE_FILE_STRING(parent, fptr, component_tag, &dfile);
 
 	if (wrong_tag)
-		TS_WARNING("Tag %#x cannot be assigned to stream of type '%s'\n", 
+		TS_WARNING("Tag %#x cannot be assigned to stream of type '%s'", 
 				s.component_tag, resolv_stream_type(stream_type));
 
     return 0;
