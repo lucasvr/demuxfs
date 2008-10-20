@@ -28,11 +28,25 @@
  */
 #include "demuxfs.h"
 
+struct maximum_bitrate_descriptor {
+	uint32_t max_bitrate;
+};
+
 /* MAXIMUM_BITRATE_DESCRIPTOR parser */
 int descriptor_0x0e_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	uint32_t max_bitrate = ((payload[0] << 16) | (payload[1] << 8) | payload[2]) & 0x00ffffff;
-	dprintf("max_bitrate=%d", max_bitrate);
+	if (len != 2) {
+		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)",
+				0x10, 2, len);
+		return -ENODATA;
+	}
+
+	struct maximum_bitrate_descriptor m, *mptr = &m;
+	m.max_bitrate = ((payload[0] << 16) | (payload[1] << 8) | payload[2]) & 0x00ffffff;
+
+	struct dentry *subdir;
+	CREATE_DIRECTORY(parent, "MAXIMUM_BITRATE", &subdir);
+	CREATE_FILE_NUMBER(subdir, mptr, max_bitrate, NULL);
     return 0;
 }
 
