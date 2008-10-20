@@ -28,9 +28,40 @@
  */
 #include "demuxfs.h"
 
+struct system_clock_descriptor {
+	uint8_t external_clock_reference_indicator:1;
+	uint8_t reserved_1:1;
+	uint8_t clock_accuracy_integer:6;
+	uint8_t clock_accuracy_exponent:3;
+	uint8_t reserved_2:5;
+};
+
 /* SYSTEM_CLOCK_DESCRIPTOR parser */
 int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
+	struct dentry *subdir;
+
+	CREATE_DIRECTORY(parent, "SYSTEM_CLOCK", &subdir);
+
+	if (len != 2) {
+		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)", 
+			0x0b, 4, len+2);
+		return -ENODATA;
+	}
+
+	struct system_clock_descriptor s, *sptr = &s;
+	s.external_clock_reference_indicator = (payload[0] >> 7) & 0x01;
+	s.reserved_1 = (payload[0] >> 6) & 0x01;
+	s.clock_accuracy_integer = payload[0] & 0x3f;
+	s.clock_accuracy_exponent = (payload[1] >> 5) & 0x07;
+	s.reserved_2 = payload[1] & 0x1f;
+
+	CREATE_FILE_NUMBER(subdir, sptr, external_clock_reference_indicator, NULL);
+	CREATE_FILE_NUMBER(subdir, sptr, reserved_1, NULL);
+	CREATE_FILE_NUMBER(subdir, sptr, clock_accuracy_integer, NULL);
+	CREATE_FILE_NUMBER(subdir, sptr, clock_accuracy_exponent, NULL);
+	CREATE_FILE_NUMBER(subdir, sptr, reserved_2, NULL);
+
     return 0;
 }
 
