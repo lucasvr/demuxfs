@@ -41,8 +41,9 @@ int descriptor_0x10_parser(const char *payload, int len, struct dentry *parent, 
 	struct dentry *subdir;
 	CREATE_DIRECTORY(parent, "SMOOTHING_BUFFER", &subdir);
 
-	if (len < 6) {
-		TS_WARNING("Tag %#x could not be parsed: descriptor size is too small (%d bytes long)", 0x10, len+2);
+	if (len != 6) {
+		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)",
+				0x10, 6, len);
 		return -ENODATA;
 	}
 
