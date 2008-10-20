@@ -1,6 +1,8 @@
 /* 
  * Copyright (c) 2008, Lucas C. Villa Real <lucasvr@gobolinux.org>
  * All rights reserved.
+ *
+ * Contain stream types identified by Iuri Gomes Diniz.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -179,7 +181,6 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 			break;
 		case 0x90 ... 0xff:
 			s.component_name = "Reserved";
-			/* Reserved */
 			break;
 	}
 	struct dentry *dfile;
