@@ -98,7 +98,8 @@ static void pmt_parse_descriptors(const char *payload, uint8_t *descriptors_len,
 			offset += 2 + descriptor_length;
 			continue;
 		}
-		dprintf("Calling parser for descriptor %s (descriptor %d/%d)", d->name, n+1, num_descriptors);
+		dprintf("Calling parser for descriptor %#4x-%s (descriptor %d/%d)", 
+				descriptor_tag, d->name, n+1, num_descriptors);
 		ret = d->parser(&payload[offset+2], descriptor_length, parent, priv);
 		if (ret < 0)
 			TS_WARNING("error parsing descriptor tag %#x", descriptor_tag);
