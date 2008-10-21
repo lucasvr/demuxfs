@@ -156,9 +156,10 @@ enum {
 		dentry->size = strlen(dentry->contents); \
 		dentry->mode = S_IFREG | 0444; \
 		CREATE_COMMON(parent,dentry,out); \
+		xattr_add(dentry, XATTR_FORMAT, XATTR_FORMAT_NUMBER, strlen(XATTR_FORMAT_NUMBER), false); \
 	} while(0)
 
-#define CREATE_FILE_STRING(parent,header,member,out) \
+#define CREATE_FILE_STRING(parent,header,member,fmt,out) \
 	do { \
 		struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 		dentry->contents = strdup(header->member); \
@@ -166,6 +167,7 @@ enum {
 		dentry->size = strlen(dentry->contents); \
 		dentry->mode = S_IFREG | 0444; \
 		CREATE_COMMON(parent,dentry,out); \
+		xattr_add(dentry, XATTR_FORMAT, fmt, strlen(fmt), false); \
 	} while(0)
 
 #define CREATE_SYMLINK(parent,sname,target,out) \
