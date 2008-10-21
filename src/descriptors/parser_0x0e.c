@@ -35,9 +35,9 @@ struct maximum_bitrate_descriptor {
 /* MAXIMUM_BITRATE_DESCRIPTOR parser */
 int descriptor_0x0e_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	if (len != 2) {
+	if (len != 3) {
 		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)",
-				0x10, 2, len);
+				0x0e, 3, len);
 		return -ENODATA;
 	}
 
