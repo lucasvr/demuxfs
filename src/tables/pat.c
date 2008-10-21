@@ -48,8 +48,7 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 	/* For each program, create a symlink which points to an entry with the same name in the PMT */
 	for (uint16_t i=0; i<pat->num_programs; ++i) {
 		struct dentry *d = (struct dentry *) calloc(1, sizeof(struct dentry));
-		asprintf(&d->contents, "../../%#04x/%#04x", pat->programs[i].pid, 
-				pat->programs[i].program_number);
+		asprintf(&d->contents, "../../%#04x", pat->programs[i].pid);
 		asprintf(&d->name, "%#04x", pat->programs[i].program_number);
 		d->inode = 0;
 		d->mode = S_IFLNK | 0777;
@@ -97,6 +96,7 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 static void pat_update_directory(struct pat_table *current_pat, struct pat_table *pat,
 		struct demuxfs_data *priv)
 {
+	dprintf("TODO: parse new version");
 }
 
 int pat_parse(const struct ts_header *header, const void *vpayload, uint8_t payload_len, 
