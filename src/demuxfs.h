@@ -48,7 +48,7 @@ struct dentry {
 	/* File contents */
 	char *contents;
 	size_t size;
-	/* Private. */
+	/* Private */
 	struct list_head list;
 	/* List of children dentries, if this dentry happens to represent a directory */
 	struct list_head children;
@@ -123,46 +123,48 @@ enum {
 };
 
 /* Macros to ease the creation of files and directories */
+#define CREATE_COMMON(parent,cdentry,out) \
+		(cdentry)->inode = 0; \
+		INIT_LIST_HEAD(&(cdentry)->children); \
+		list_add_tail(&(cdentry)->list, &((parent)->children)); \
+		struct dentry **tmp = out; \
+		if (out) *tmp = (cdentry);
+
 #define CREATE_FILE_NUMBER(parent,header,member,out) \
 	do { \
-		struct dentry **tmp = out; \
 		struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 		asprintf(&dentry->contents, "%#04x", header->member); \
 		dentry->name = strdup(#member); \
 		dentry->size = strlen(dentry->contents); \
-		dentry->inode = 0; \
 		dentry->mode = S_IFREG | 0444; \
-		INIT_LIST_HEAD(&dentry->children); \
-		list_add_tail(&dentry->list, &parent->children); \
-		if (out) *tmp = dentry; \
+		CREATE_COMMON(parent,dentry,out); \
 	} while(0)
 
 #define CREATE_FILE_STRING(parent,header,member,out) \
 	do { \
-		struct dentry **tmp = out; \
 		struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 		dentry->contents = strdup(header->member); \
 		dentry->name = strdup(#member); \
 		dentry->size = strlen(dentry->contents); \
-		dentry->inode = 0; \
 		dentry->mode = S_IFREG | 0444; \
-		INIT_LIST_HEAD(&dentry->children); \
-		list_add_tail(&dentry->list, &parent->children); \
-		if (out) *tmp = dentry; \
+		CREATE_COMMON(parent,dentry,out); \
+	} while(0)
+
+#define CREATE_SYMLINK(parent,sname,target,out) \
+	do { \
+		struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+		dentry->contents = strdup(target); \
+		dentry->name = strdup(sname); \
+		dentry->mode = S_IFLNK | 0777; \
+		CREATE_COMMON(parent,dentry,out); \
 	} while(0)
 
 #define CREATE_DIRECTORY(parent,dname,out) \
 	do { \
-		struct dentry **tmp = out; \
 		struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 		dentry->name = strdup(dname); \
-		dentry->size = 0; \
-		dentry->inode = 0; \
 		dentry->mode = S_IFDIR | 0555; \
-		INIT_LIST_HEAD(&dentry->children); \
-		list_add_tail(&dentry->list, &parent->children); \
-		if (out) *tmp = dentry; \
+		CREATE_COMMON(parent,dentry,out); \
 	} while(0)
-
 
 #endif /* __demuxfs_h */

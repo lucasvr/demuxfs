@@ -38,22 +38,15 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 		struct demuxfs_data *priv)
 {
 	/* "Programs" directory */
-	struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
-	dentry->name = strdup("Programs");
-	dentry->inode = 0;
-	dentry->mode = S_IFDIR | 0555;
-	INIT_LIST_HEAD(&dentry->children);
-	list_add_tail(&dentry->list, &parent->children);
+	struct dentry *dentry = NULL;
+	CREATE_DIRECTORY(parent, "Programs", &dentry);
 
 	/* For each program, create a symlink which points to an entry with the same name in the PMT */
 	for (uint16_t i=0; i<pat->num_programs; ++i) {
-		struct dentry *d = (struct dentry *) calloc(1, sizeof(struct dentry));
-		asprintf(&d->contents, "../../%#04x", pat->programs[i].pid);
-		asprintf(&d->name, "%#04x", pat->programs[i].program_number);
-		d->inode = 0;
-		d->mode = S_IFLNK | 0777;
-		INIT_LIST_HEAD(&d->children);
-		list_add_tail(&d->list, &dentry->children);
+		char name[32], target[32];
+		snprintf(name, sizeof(name), "%#04x", pat->programs[i].program_number);
+		snprintf(target, sizeof(target), "../../%#04x", pat->programs[i].pid);
+		CREATE_SYMLINK(dentry, name, target, NULL);
 	}
 
 	/* Append new parsers to the list of known PIDs */
@@ -68,10 +61,11 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 
 static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *priv)
 {
-	/* Create a directory named "0x0000" and populate it with files */
-	pat->dentry.name = strdup("0x0000");
+	/* Create a directory named "0x0" and populate it with files */
+	pat->dentry.name = strdup("0x0");
 	pat->dentry.mode = S_IFDIR | 0555;
 	INIT_LIST_HEAD(&pat->dentry.children);
+
 	psi_populate((void **) &pat, &pat->dentry);
 	pat_populate(pat, &pat->dentry, priv);
 	pat_dump(pat);
@@ -81,16 +75,8 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 	list_add_tail(&pat->dentry.list, &priv->root->children);
 	write_unlock();
 
-	/* Create a symlink named "PAT" pointing to "0x0000" */
-	struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
-	dentry->name = strdup("PAT");
-	dentry->contents = strdup(pat->dentry.name);
-	dentry->mode = S_IFLNK | 0777;
-	INIT_LIST_HEAD(&dentry->children);
-
-	write_lock();
-	list_add_tail(&dentry->list, &priv->root->children);
-	write_unlock();
+	/* Create a symlink named "PAT" pointing to "0x0" */
+	CREATE_SYMLINK(priv->root, "PAT", pat->dentry.name, NULL);
 }
 
 static void pat_update_directory(struct pat_table *current_pat, struct pat_table *pat,
