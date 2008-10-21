@@ -141,7 +141,6 @@ enum {
 
 /* Macros to ease the creation of files and directories */
 #define CREATE_COMMON(parent,_dentry,out) \
-		(_dentry)->inode = 0; \
 		INIT_LIST_HEAD(&(_dentry)->children); \
 		INIT_LIST_HEAD(&(_dentry)->xattrs); \
 		list_add_tail(&(_dentry)->list, &((parent)->children)); \
