@@ -140,51 +140,51 @@ enum {
 };
 
 /* Macros to ease the creation of files and directories */
-#define CREATE_COMMON(parent,cdentry,out) \
-		(cdentry)->inode = 0; \
-		INIT_LIST_HEAD(&(cdentry)->children); \
-		INIT_LIST_HEAD(&(cdentry)->xattrs); \
-		list_add_tail(&(cdentry)->list, &((parent)->children)); \
+#define CREATE_COMMON(parent,_dentry,out) \
+		(_dentry)->inode = 0; \
+		INIT_LIST_HEAD(&(_dentry)->children); \
+		INIT_LIST_HEAD(&(_dentry)->xattrs); \
+		list_add_tail(&(_dentry)->list, &((parent)->children)); \
 		struct dentry **tmp = out; \
-		if (out) *tmp = (cdentry);
+		if (out) *tmp = (_dentry);
 
 #define CREATE_FILE_NUMBER(parent,header,member,out) \
 	do { \
-		struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-		asprintf(&dentry->contents, "%#04x", header->member); \
-		dentry->name = strdup(#member); \
-		dentry->size = strlen(dentry->contents); \
-		dentry->mode = S_IFREG | 0444; \
-		CREATE_COMMON(parent,dentry,out); \
-		xattr_add(dentry, XATTR_FORMAT, XATTR_FORMAT_NUMBER, strlen(XATTR_FORMAT_NUMBER), false); \
+		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+		asprintf(&_dentry->contents, "%#04x", header->member); \
+		_dentry->name = strdup(#member); \
+		_dentry->size = strlen(_dentry->contents); \
+		_dentry->mode = S_IFREG | 0444; \
+		CREATE_COMMON(parent,_dentry,out); \
+		xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_NUMBER, strlen(XATTR_FORMAT_NUMBER), false); \
 	} while(0)
 
 #define CREATE_FILE_STRING(parent,header,member,fmt,out) \
 	do { \
-		struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-		dentry->contents = strdup(header->member); \
-		dentry->name = strdup(#member); \
-		dentry->size = strlen(dentry->contents); \
-		dentry->mode = S_IFREG | 0444; \
-		CREATE_COMMON(parent,dentry,out); \
-		xattr_add(dentry, XATTR_FORMAT, fmt, strlen(fmt), false); \
+		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+		_dentry->contents = strdup(header->member); \
+		_dentry->name = strdup(#member); \
+		_dentry->size = strlen(_dentry->contents); \
+		_dentry->mode = S_IFREG | 0444; \
+		CREATE_COMMON(parent,_dentry,out); \
+		xattr_add(_dentry, XATTR_FORMAT, fmt, strlen(fmt), false); \
 	} while(0)
 
 #define CREATE_SYMLINK(parent,sname,target,out) \
 	do { \
-		struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-		dentry->contents = strdup(target); \
-		dentry->name = strdup(sname); \
-		dentry->mode = S_IFLNK | 0777; \
-		CREATE_COMMON(parent,dentry,out); \
+		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+		_dentry->contents = strdup(target); \
+		_dentry->name = strdup(sname); \
+		_dentry->mode = S_IFLNK | 0777; \
+		CREATE_COMMON(parent,_dentry,out); \
 	} while(0)
 
 #define CREATE_DIRECTORY(parent,dname,out) \
 	do { \
-		struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-		dentry->name = strdup(dname); \
-		dentry->mode = S_IFDIR | 0555; \
-		CREATE_COMMON(parent,dentry,out); \
+		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+		_dentry->name = strdup(dname); \
+		_dentry->mode = S_IFDIR | 0555; \
+		CREATE_COMMON(parent,_dentry,out); \
 	} while(0)
 
 #endif /* __demuxfs_h */

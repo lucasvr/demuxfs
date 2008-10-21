@@ -38,7 +38,7 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 		struct demuxfs_data *priv)
 {
 	/* "Programs" directory */
-	struct dentry *dentry = NULL;
+	struct dentry *dentry;
 	CREATE_DIRECTORY(parent, "Programs", &dentry);
 
 	/* For each program, create a symlink which points to an entry with the same name in the PMT */
