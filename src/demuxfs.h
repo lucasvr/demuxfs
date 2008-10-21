@@ -38,6 +38,18 @@
 
 struct input_parser;
 
+struct xattr {
+	/* Extended attribute name */
+	char *name;
+	/* Extended attribute value */
+	char *value;
+	size_t size;
+	/* Should name+value be freed, putname is set to true */
+	bool putname;
+	/* Private */
+	struct list_head list;
+};
+
 struct dentry {
 	/* The inode number, which is generated from the transport stream PID and the table_id */
 	ino_t inode;
@@ -48,6 +60,8 @@ struct dentry {
 	/* File contents */
 	char *contents;
 	size_t size;
+	/* Extended attributes */
+	struct list_head xattrs;
 	/* Private */
 	struct list_head list;
 	/* List of children dentries, if this dentry happens to represent a directory */
@@ -91,6 +105,9 @@ struct backend_ops {
     bool (*keep_alive)(struct demuxfs_data *);
 };
 
+/* Extended attributes core */
+#include "xattr.h"
+
 /* Helper functions to traverse the filesystem tree */
 #include "fsutils.h"
 
@@ -126,6 +143,7 @@ enum {
 #define CREATE_COMMON(parent,cdentry,out) \
 		(cdentry)->inode = 0; \
 		INIT_LIST_HEAD(&(cdentry)->children); \
+		INIT_LIST_HEAD(&(cdentry)->xattrs); \
 		list_add_tail(&(cdentry)->list, &((parent)->children)); \
 		struct dentry **tmp = out; \
 		if (out) *tmp = (cdentry);

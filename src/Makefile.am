@@ -1,7 +1,7 @@
 bin_PROGRAMS = demuxfs
 
-demuxfsSources = demuxfs.c ts.c fsutils.c hash.c
-demuxfsHeaders = demuxfs.h ts.h fsutils.h hash.h list.h byteops.h
+demuxfsSources = demuxfs.c ts.c fsutils.c hash.c xattr.c
+demuxfsHeaders = demuxfs.h ts.h fsutils.h hash.h xattr.h list.h byteops.h
 
 demuxfs_SOURCES = $(demuxfsSources) $(demuxfsHeaders)
 demuxfs_DEPENDENCIES = descriptors/libdescriptors.la tables/libtables.la
