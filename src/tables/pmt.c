@@ -65,8 +65,7 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 	/* Create a directory named "<pmt_pid>" and populate it with files */
 	asprintf(&pmt->dentry.name, "%#04x", header->pid);
 	pmt->dentry.mode = S_IFDIR | 0555;
-	INIT_LIST_HEAD(&pmt->dentry.children);
-	INIT_LIST_HEAD(&pmt->dentry.xattrs);
+	CREATE_COMMON(priv->root, &pmt->dentry, NULL);
 
 	psi_populate((void **) &pmt, &pmt->dentry);
 	pmt_populate(pmt, &pmt->dentry, priv);
@@ -80,7 +79,6 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 
 	write_lock();
 	hashtable_add(priv->table, pmt->dentry.inode, pmt);
-	list_add_tail(&pmt->dentry.list, &priv->root->children);
 	write_unlock();
 }
 

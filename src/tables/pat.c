@@ -64,8 +64,7 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 	/* Create a directory named "0x0" and populate it with files */
 	pat->dentry.name = strdup("0x0");
 	pat->dentry.mode = S_IFDIR | 0555;
-	INIT_LIST_HEAD(&pat->dentry.children);
-	INIT_LIST_HEAD(&pat->dentry.xattrs);
+	CREATE_COMMON(priv->root, &pat->dentry, NULL);
 
 	psi_populate((void **) &pat, &pat->dentry);
 	pat_populate(pat, &pat->dentry, priv);
@@ -73,7 +72,6 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 
 	write_lock();
 	hashtable_add(priv->table, pat->dentry.inode, pat);
-	list_add_tail(&pat->dentry.list, &priv->root->children);
 	write_unlock();
 
 	/* Create a symlink named "PAT" pointing to "0x0" */
