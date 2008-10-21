@@ -66,16 +66,17 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 	asprintf(&pmt->dentry.name, "%#04x", header->pid);
 	pmt->dentry.mode = S_IFDIR | 0555;
 	INIT_LIST_HEAD(&pmt->dentry.children);
+	INIT_LIST_HEAD(&pmt->dentry.xattrs);
+
 	psi_populate((void **) &pmt, &pmt->dentry);
 	pmt_populate(pmt, &pmt->dentry, priv);
 	psi_dump_header((struct psi_common_header *) pmt);
 
 	/* Create a sub-directory named "Descriptors" */
-	struct dentry *parent = &pmt->dentry;
-	CREATE_DIRECTORY(parent, "Descriptors", descriptors_dentry);
+	CREATE_DIRECTORY(&pmt->dentry, "Descriptors", descriptors_dentry);
 	
 	/* Create a sub-directory named "Streams" */
-	CREATE_DIRECTORY(parent, "Streams", streams_dentry);
+	CREATE_DIRECTORY(&pmt->dentry, "Streams", streams_dentry);
 
 	write_lock();
 	hashtable_add(priv->table, pmt->dentry.inode, pmt);

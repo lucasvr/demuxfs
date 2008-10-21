@@ -131,7 +131,92 @@ static int demuxfs_readlink(const char *path, char *buf, size_t size)
 
 static int demuxfs_access(const char *path, int mode)
 {
+	struct demuxfs_data *priv = fuse_get_context()->private_data;
+	struct dentry *dentry = fsutils_get_dentry(priv->root, path);
+	if (! dentry)
+		return -ENOENT;
 	return (mode & W_OK) ? -EACCES : 0;
+}
+
+static int demuxfs_setxattr(const char *path, const char *name, const char *value, size_t size, int flags)
+{
+	int ret;
+	struct demuxfs_data *priv = fuse_get_context()->private_data;
+	struct dentry *dentry = fsutils_get_dentry(priv->root, path);
+	if (! dentry)
+		return -ENOENT;
+
+	if (strncmp(name, "user.", 5))
+		return -EPERM;
+	else if ((flags & XATTR_CREATE) && xattr_exists(dentry, name))
+		return -EEXIST;
+	else if ((flags & XATTR_REPLACE) && !xattr_exists(dentry, name))
+		return -ENOATTR;
+
+	write_lock();
+	xattr_remove(dentry, name);
+	ret = xattr_add(dentry, name, value, size, true);
+	write_unlock();
+	return ret;
+}
+
+static int demuxfs_getxattr(const char *path, const char *name, char *value, size_t size)
+{
+	int ret;
+	struct xattr *xattr;
+	struct demuxfs_data *priv = fuse_get_context()->private_data;
+	struct dentry *dentry = fsutils_get_dentry(priv->root, path);
+	if (! dentry)
+		return -ENOENT;
+
+	read_lock();
+	xattr = xattr_get(dentry, name);
+	if (! xattr) {
+		ret = -ENOATTR;
+		goto out;
+	}
+	if (size == 0) {
+		ret = xattr->size;
+		goto out;
+	} else if (size < xattr->size) {
+		ret = -ERANGE;
+		goto out;
+	}
+	memcpy(value, xattr->value, xattr->size);
+	ret = xattr->size;
+out:
+	read_unlock();
+	return ret;
+}
+
+static int demuxfs_listxattr(const char *path, char *list, size_t size)
+{
+	int ret;
+	struct demuxfs_data *priv = fuse_get_context()->private_data;
+	struct dentry *dentry = fsutils_get_dentry(priv->root, path);
+	if (! dentry)
+		return -ENOENT;
+	
+	read_lock();
+	ret = xattr_list(dentry, list, size);
+	read_unlock();
+
+	return ret;
+}
+
+static int demuxfs_removexattr(const char *path, const char *name)
+{
+	int ret;
+	struct demuxfs_data *priv = fuse_get_context()->private_data;
+	struct dentry *dentry = fsutils_get_dentry(priv->root, path);
+	if (! dentry)
+		return -ENOENT;
+
+	write_lock();
+	ret = xattr_remove(dentry, name);
+	write_unlock();
+
+	return ret;
 }
 
 static struct fuse_operations demuxfs_ops = {
@@ -146,12 +231,12 @@ static struct fuse_operations demuxfs_ops = {
 	.readdir     = demuxfs_readdir,
 	.readlink    = demuxfs_readlink,
 	.access      = demuxfs_access,
-#if 0
-	.fgetattr    = demuxfs_fgetattr,
 	.setxattr    = demuxfs_setxattr,
 	.getxattr    = demuxfs_getxattr,
 	.listxattr   = demuxfs_listxattr,
 	.removexattr = demuxfs_removexattr,
+#if 0
+	.fgetattr    = demuxfs_fgetattr,
 	.statfs      = demuxfs_statfs,
 	/* These should not be supported anytime soon */
 	.fsync       = demuxfs_fsync,
@@ -204,10 +289,11 @@ void * ts_parser_thread(void *userdata)
 static struct dentry * create_rootfs(const char *name)
 {
 	struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
-	dentry->inode = 1;
 	dentry->name = strdup(name);
+	dentry->inode = 1;
 	dentry->mode = S_IFDIR | 0555;
 	INIT_LIST_HEAD(&dentry->children);
+	INIT_LIST_HEAD(&dentry->xattrs);
 	return dentry;
 }
 

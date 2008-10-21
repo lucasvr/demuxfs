@@ -65,6 +65,7 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 	pat->dentry.name = strdup("0x0");
 	pat->dentry.mode = S_IFDIR | 0555;
 	INIT_LIST_HEAD(&pat->dentry.children);
+	INIT_LIST_HEAD(&pat->dentry.xattrs);
 
 	psi_populate((void **) &pat, &pat->dentry);
 	pat_populate(pat, &pat->dentry, priv);
