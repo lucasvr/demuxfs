@@ -97,4 +97,4 @@ parsers = \
 libdescriptors_la_SOURCES  = descriptors.c $(parsers)
 libdescriptors_la_SOURCES += descriptors.h
 
-AM_CPPFLAGS = -I. -I..
+AM_CPPFLAGS = -I. -I.. -I../backends

@@ -147,6 +147,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
     Makefile
     src/Makefile
+	src/backends/Makefile
 	src/descriptors/Makefile
 	src/tables/Makefile
 ])
