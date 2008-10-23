@@ -117,8 +117,9 @@ struct backend_ops {
 /* Byte convertion */
 #include "byteops.h"
 
-/* Transport stream descriptors */
+/* Transport stream descriptor related functions */
 #include "descriptors/descriptors.h"
+#include "descriptors/stream_type.h"
 
 /* PSI tables */
 #include "tables/psi.h"

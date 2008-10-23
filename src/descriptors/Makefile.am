@@ -94,7 +94,7 @@ parsers = \
     parser_0xfe.c \
     parser_0xff.c
 
-libdescriptors_la_SOURCES  = descriptors.c $(parsers)
-libdescriptors_la_SOURCES += descriptors.h
+libdescriptors_la_SOURCES  = descriptors.c stream_type.c $(parsers)
+libdescriptors_la_SOURCES += descriptors.h stream_type.h
 
 AM_CPPFLAGS = -I. -I.. -I../backends
