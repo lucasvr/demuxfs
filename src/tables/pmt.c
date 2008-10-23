@@ -50,12 +50,28 @@ static void pmt_populate(struct pmt_table *pmt, struct dentry *parent,
 }
 
 static void pmt_populate_stream_dir(struct pmt_stream *stream, 
-		struct dentry *parent, struct dentry **subdir)
+		struct dentry *parent, struct dentry **subdir, struct demuxfs_data *priv)
 {
-	char dirname[16], stream_type[256];
+	char dirname[16], stream_type[256], es_path[PATH_MAX], *es;
 	sprintf(dirname, "%#4x", stream->elementary_stream_pid);
 	CREATE_DIRECTORY(parent, dirname, subdir);
 	
+	/* Create a symlink in the root filesystem pointing to this new directory */
+	es = fsutils_path_walk((*subdir), es_path, sizeof(es_path));
+	if (! es)
+		dprintf("Not enough room in buffer to resolve dentry's pathname.");
+	else {
+		memmove(es_path, es, strlen(es));
+		strcat(es_path, "/data");
+		CREATE_SYMLINK(priv->root, dirname, es_path+1, NULL);
+	}
+
+	/* Start parsing this ES' PID from now on */
+	hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, es_parse);
+	
+	/* Create a FIFO which will contain this ES' contents */
+	CREATE_FIFO((*subdir), "data", NULL);
+
 	struct formatted_descriptor f, *fptr = &f;
 	snprintf(stream_type, sizeof(stream_type), "%s [%#x]",
 			stream_type_to_string(stream->stream_type_identifier),
@@ -167,7 +183,7 @@ int pmt_parse(const struct ts_header *header, const void *vpayload, uint8_t payl
 		stream.es_information_length = ((payload[offset+3] << 8) | payload[offset+4]) & 0x0fff;
 
 		struct dentry *subdir = NULL;
-		pmt_populate_stream_dir(&stream, streams_dentry, &subdir);
+		pmt_populate_stream_dir(&stream, streams_dentry, &subdir, priv);
 
 		priv->shared_data = (void *) &stream;
 		pmt_parse_descriptors(&payload[offset+5], NULL, 1, subdir, priv);

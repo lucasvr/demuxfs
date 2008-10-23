@@ -62,6 +62,8 @@ struct dentry {
 	size_t size;
 	/* Extended attributes */
 	struct list_head xattrs;
+	/* Backpointer to parent */
+	struct dentry *parent;
 	/* Private */
 	struct list_head list;
 	/* List of children dentries, if this dentry happens to represent a directory */
@@ -126,6 +128,7 @@ struct backend_ops {
 #include "tables/pat.h"
 #include "tables/pmt.h"
 #include "tables/nit.h"
+#include "tables/es.h"
 
 /* Platform headers */
 #ifdef USE_FILESRC
@@ -141,10 +144,11 @@ enum {
 };
 
 /* Macros to ease the creation of files and directories */
-#define CREATE_COMMON(parent,_dentry,out) \
+#define CREATE_COMMON(_parent,_dentry,out) \
 		INIT_LIST_HEAD(&(_dentry)->children); \
 		INIT_LIST_HEAD(&(_dentry)->xattrs); \
-		list_add_tail(&(_dentry)->list, &((parent)->children)); \
+		(_dentry)->parent = _parent; \
+		list_add_tail(&(_dentry)->list, &((_parent)->children)); \
 		struct dentry **tmp = out; \
 		if (out) *tmp = (_dentry);
 
@@ -176,6 +180,14 @@ enum {
 		_dentry->contents = strdup(target); \
 		_dentry->name = strdup(sname); \
 		_dentry->mode = S_IFLNK | 0777; \
+		CREATE_COMMON(parent,_dentry,out); \
+	} while(0)
+
+#define CREATE_FIFO(parent,fname,out) \
+	do { \
+		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+		_dentry->name = strdup(fname); \
+		_dentry->mode = S_IFIFO | 0777; \
 		CREATE_COMMON(parent,_dentry,out); \
 	} while(0)
 
