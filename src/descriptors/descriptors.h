@@ -12,6 +12,10 @@ struct descriptor *descriptors_init(struct demuxfs_data *priv);
 struct descriptor *descriptors_find(uint8_t tag, struct demuxfs_data *priv);
 int descriptors_count(const char *payload, uint16_t program_information_length);
 
+/* Descriptor translators */
+const char *descriptors_resolv_stream_type(uint8_t stream_type);
+
+/* Descriptor parsers */
 int descriptor_0x02_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int descriptor_0x03_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int descriptor_0x04_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
