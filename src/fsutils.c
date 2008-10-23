@@ -28,6 +28,37 @@
  */
 #include "demuxfs.h"
 
+char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size)
+{
+	struct dentry *d = dentry;
+	char *ptr = &buf[size-1];
+	int roomsize = size;
+	bool append_slash = false;
+
+	memset(buf, 0, size);
+	while (d) {
+		int len = strlen(d->name);
+		if (len+1 > roomsize)
+			return NULL;
+		if (! d->parent)
+			append_slash = false;
+		ptr -= len;
+		if (append_slash) {
+			char slash = '/';
+			ptr--;
+			memcpy(ptr, d->name, len);
+			memcpy(ptr+len, &slash, 1);
+			roomsize -= len + 1;
+		} else {
+			memcpy(ptr, d->name, len);
+			roomsize -= len;
+		}
+		append_slash = true;
+		d = d->parent;
+	}
+	return ptr;
+}
+
 void fsutils_dump_tree(struct dentry *dentry, int spaces)
 {
 	int i;
