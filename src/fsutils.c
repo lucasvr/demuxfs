@@ -38,8 +38,10 @@ char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size)
 	memset(buf, 0, size);
 	while (d) {
 		int len = strlen(d->name);
-		if (len+1 > roomsize)
+		if (len+1 > roomsize) {
+			dprintf("Not enough room in buffer to resolve dentry's pathname.");
 			return NULL;
+		}
 		if (! d->parent)
 			append_slash = false;
 		ptr -= len;
@@ -117,11 +119,11 @@ struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 		TRUNCATE_STRING(end);
 		if (strlen(start) == 0) {
 			RESTORE_STRING(end);
-			printf("%s: could not resolve '%s'\n", __FUNCTION__, path);
+			dprintf("could not resolve '%s'", path);
 			return NULL;
 		}
 		if ((cached = fsutils_has_children(prev, start))) {
-		//	printf("--> found '%s' in the tree\n", start);
+			//dprintf("--> found '%s' in the tree", start);
 			RESTORE_STRING(end);
 			prev = cached;
 			continue;
