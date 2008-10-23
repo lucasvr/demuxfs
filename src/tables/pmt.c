@@ -58,13 +58,8 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 	
 	/* Create a symlink in the root filesystem pointing to this new directory */
 	es = fsutils_path_walk((*subdir), es_path, sizeof(es_path));
-	if (! es)
-		dprintf("Not enough room in buffer to resolve dentry's pathname.");
-	else {
-		memmove(es_path, es, strlen(es));
-		strcat(es_path, "/data");
-		CREATE_SYMLINK(priv->root, dirname, es_path+1, NULL);
-	}
+	if (es)
+		CREATE_SYMLINK(priv->root, dirname, es+1, NULL);
 
 	/* Start parsing this ES' PID from now on */
 	hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, es_parse);
