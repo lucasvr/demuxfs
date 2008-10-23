@@ -86,12 +86,14 @@ struct descriptor;
 struct demuxfs_data {
 	/* "table" holds PSI structures (ie: PAT, PMT, NIT..) */
 	struct hash_table *table;
-	/* "pids" holds pointers to parsers of known PSI PIDs */
+	/* "psi_parsers" holds pointers to parsers of known PSI PIDs */
 	struct hash_table *psi_parsers;
 	/* "ts_descriptors" holds descriptor tags and the tables that they're allowed to be in */
 	struct descriptor *ts_descriptors;
 	/* The root dentry ("/") */
 	struct dentry *root;
+	/* This filesystem's instance mountpoint */
+	char *mountpoint;
 	/* Backend specific data */
 	struct input_parser *parser;
 	/* General data shared amongst table parsers and descriptor parsers */
@@ -188,6 +190,7 @@ enum {
 		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 		_dentry->name = strdup(fname); \
 		_dentry->mode = S_IFIFO | 0777; \
+		_dentry->contents = (char *) malloc(TS_PACKET_PAYLOAD_SIZE); \
 		CREATE_COMMON(parent,_dentry,out); \
 	} while(0)
 
