@@ -2,8 +2,6 @@
  * Copyright (c) 2008, Lucas C. Villa Real <lucasvr@gobolinux.org>
  * All rights reserved.
  *
- * Contain stream types identified by Iuri Gomes Diniz.
- * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
