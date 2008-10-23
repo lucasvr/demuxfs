@@ -28,6 +28,10 @@
  */
 #include "demuxfs.h"
 
+struct formatted_descriptor {
+	char *stream_type_identifier;
+};
+
 static void pmt_check_header(struct pmt_table *pmt)
 {
 	if (pmt->section_number != 0)
@@ -48,10 +52,17 @@ static void pmt_populate(struct pmt_table *pmt, struct dentry *parent,
 static void pmt_populate_stream_dir(struct pmt_stream *stream, 
 		struct dentry *parent, struct dentry **subdir)
 {
-	char dirname[16];
+	char dirname[16], stream_type[256];
 	sprintf(dirname, "%#4x", stream->elementary_stream_pid);
 	CREATE_DIRECTORY(parent, dirname, subdir);
-	CREATE_FILE_NUMBER((*subdir), stream, stream_type_identifier, NULL);
+	
+	struct formatted_descriptor f, *fptr = &f;
+	snprintf(stream_type, sizeof(stream_type), "%s [%#x]",
+			descriptors_resolv_stream_type(stream->stream_type_identifier),
+			stream->stream_type_identifier);
+	fptr->stream_type_identifier = stream_type;
+	CREATE_FILE_STRING((*subdir), fptr, stream_type_identifier, XATTR_FORMAT_STRING_AND_NUMBER, NULL);
+
 	CREATE_FILE_NUMBER((*subdir), stream, reserved_1, NULL);
 	CREATE_FILE_NUMBER((*subdir), stream, elementary_stream_pid, NULL);
 	CREATE_FILE_NUMBER((*subdir), stream, reserved_2, NULL);
