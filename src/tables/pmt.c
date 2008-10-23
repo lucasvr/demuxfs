@@ -58,7 +58,7 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 	
 	struct formatted_descriptor f, *fptr = &f;
 	snprintf(stream_type, sizeof(stream_type), "%s [%#x]",
-			descriptors_resolv_stream_type(stream->stream_type_identifier),
+			stream_type_to_string(stream->stream_type_identifier),
 			stream->stream_type_identifier);
 	fptr->stream_type_identifier = stream_type;
 	CREATE_FILE_STRING((*subdir), fptr, stream_type_identifier, XATTR_FORMAT_STRING_AND_NUMBER, NULL);

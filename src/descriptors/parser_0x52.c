@@ -39,28 +39,6 @@ struct formatted_descriptor {
 	char *component_tag; 
 };
 
-static bool stream_type_is_video(uint8_t stream_type)
-{
-	if (stream_type == 0x01 || stream_type == 0x02 || stream_type == 0x1b)
-		return true;
-	return false;
-}
-
-static bool stream_type_is_audio(uint8_t stream_type)
-{
-	switch (stream_type) {
-		case 0x03:
-		case 0x04:
-		case 0x0f:
-		case 0x11:
-		case 0x81:
-			return true;
-		default:
-			return false;
-	}
-}
-
-
 /* STREAM_IDENTIFIER_DESCRIPTOR parser */
 int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
@@ -143,7 +121,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 
 	if (wrong_tag)
 		TS_WARNING("Tag %#x cannot be assigned to stream of type '%s'", 
-				s.component_tag, descriptors_resolv_stream_type(stream_type));
+				s.component_tag, stream_type_to_string(stream_type));
 
     return 0;
 }
