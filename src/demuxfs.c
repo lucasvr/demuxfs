@@ -325,5 +325,10 @@ int main(int argc, char **argv)
 	if (ret < 0)
 		return 1;
 
+	struct fuse_args args_copy = FUSE_ARGS_INIT(argc, argv);
+	ret = fuse_parse_cmdline(&args_copy, &priv->mountpoint, NULL, NULL);
+	if (ret < 0)
+		return 1;
+
 	return fuse_main(args.argc, args.argv, &demuxfs_ops, priv);
 }
