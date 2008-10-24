@@ -60,8 +60,12 @@ struct dentry {
 	/* File contents */
 	char *contents;
 	size_t size;
+	bool has_new_contents;
 	/* Extended attributes */
 	struct list_head xattrs;
+	/* Protection for concurrent access */
+	pthread_mutex_t mutex;
+	pthread_cond_t condition;
 	/* Backpointer to parent */
 	struct dentry *parent;
 	/* Private */
@@ -133,22 +137,15 @@ struct backend_ops {
 #include "tables/es.h"
 
 /* Platform headers */
-#ifdef USE_FILESRC
-#include "filesrc.h"
-#endif
-#ifdef USE_CE2110_GST
-#include "ce2110.h"
-#endif
-
-enum {
-	NUMBER_CONTENTS,
-	STRING_CONTENTS,
-};
+#include "backends/filesrc.h"
+#include "backends/ce2110.h"
 
 /* Macros to ease the creation of files and directories */
 #define CREATE_COMMON(_parent,_dentry,out) \
 		INIT_LIST_HEAD(&(_dentry)->children); \
 		INIT_LIST_HEAD(&(_dentry)->xattrs); \
+		pthread_mutex_init(&(_dentry)->mutex, NULL); \
+		pthread_cond_init(&(_dentry)->condition, NULL); \
 		(_dentry)->parent = _parent; \
 		list_add_tail(&(_dentry)->list, &((_parent)->children)); \
 		struct dentry **tmp = out; \
