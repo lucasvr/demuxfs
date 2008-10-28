@@ -84,7 +84,7 @@ static void pat_update_directory(struct pat_table *current_pat, struct pat_table
 	dprintf("TODO: parse new version");
 }
 
-int pat_parse(const struct ts_header *header, const void *vpayload, uint8_t payload_len, 
+int pat_parse(const struct ts_header *header, const char *payload, uint8_t payload_len, 
 		struct demuxfs_data *priv)
 {
 	//int table_size = TS_PAYLOAD_LENGTH(payload);
@@ -92,7 +92,7 @@ int pat_parse(const struct ts_header *header, const void *vpayload, uint8_t payl
 	assert(pat);
 
 	/* Copy data up to the first loop entry */
-	int ret = psi_parse((struct psi_common_header *) pat, vpayload, payload_len);
+	int ret = psi_parse((struct psi_common_header *) pat, payload, payload_len);
 	if (ret < 0) {
 		free(pat);
 		return ret;
@@ -119,7 +119,6 @@ int pat_parse(const struct ts_header *header, const void *vpayload, uint8_t payl
 	pat->programs = (struct pat_program *) calloc(pat->num_programs, sizeof(struct pat_program));
 	assert(pat->programs);
 
-	char *payload = (char *) vpayload;
 	for (uint16_t i=0; i<pat->num_programs; ++i) {
 		uint16_t offset = 8 + (i * 4);
 		pat->programs[i].program_number = (payload[offset] << 8) | payload[offset+1];
