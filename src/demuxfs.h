@@ -24,10 +24,11 @@
 #include "hash.h"
 #include "list.h"
 
-#define dprintf(x...) \
+#define dprintf(x...) do { \
         fprintf(stderr, "%s:%s:%d ", __FILE__, __FUNCTION__, __LINE__); \
         fprintf(stderr, x); \
-        fprintf(stderr, "\n");
+        fprintf(stderr, "\n"); \
+	} while(0)
 
 #define DEMUXFS_SUPER_MAGIC 0xaa55
 
