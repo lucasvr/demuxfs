@@ -80,9 +80,8 @@ static bool psi_check_header(struct psi_common_header *header)
 	return ret;
 }
 
-int psi_parse(struct psi_common_header *header, const void *_payload, uint8_t payload_len)
+int psi_parse(struct psi_common_header *header, const char * payload, uint8_t payload_len)
 {
-	const char *payload = (const char *) _payload;
 	if (payload_len < 8) {
 		TS_WARNING("cannot parse PSI header: contents is smaller than 8 bytes (%d)", payload_len);
 		return -1;

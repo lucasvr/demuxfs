@@ -45,7 +45,7 @@ static gboolean ce2110_bus_callback(GstBus *bus, GstMessage *msg, gpointer user_
     const GValue *info_value = NULL;
     const GstStructure *info_struct = NULL;
     const struct ts_header *header = NULL;
-    const void *payload = NULL;
+    const char *payload = NULL;
 
     switch (GST_MESSAGE_TYPE(msg)) {
         case GST_MESSAGE_WARNING:
@@ -68,7 +68,7 @@ static gboolean ce2110_bus_callback(GstBus *bus, GstMessage *msg, gpointer user_
             info_value = (GValue *) gst_structure_get_value(info_struct, "psi-packet");
             buf = (GstBuffer *) g_value_get_int(info_value);
             header = (struct ts_header *) GST_BUFFER_DATA(buf);
-            payload = (void *) GST_BUFFER_DATA(buf) + sizeof(struct ts_header);
+            payload = (char *) GST_BUFFER_DATA(buf) + sizeof(struct ts_header);
             ts_parse_packet(header, payload);
             gst_buffer_unref(buf);
             break;

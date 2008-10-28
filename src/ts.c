@@ -70,7 +70,7 @@ static bool ts_is_psi_packet(uint16_t pid, struct demuxfs_data *priv)
 	}
 }
 
-int ts_parse_packet(const struct ts_header *header, const void *payload, struct demuxfs_data *priv)
+int ts_parse_packet(const struct ts_header *header, const char *payload, struct demuxfs_data *priv)
 {
 	if (header->sync_byte != TS_SYNC_BYTE) {
 		TS_WARNING("sync_byte=%#x", header->sync_byte);

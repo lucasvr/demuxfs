@@ -61,10 +61,10 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 	if (es)
 		CREATE_SYMLINK(priv->root, dirname, es+1, NULL);
 
-	/* Start parsing this ES' PID from now on */
-	hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, es_parse);
+	/* Start parsing this PES PID from now on */
+	hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, pes_parse);
 	
-	/* Create a FIFO which will contain this ES' contents */
+	/* Create a FIFO which will contain this PES contents */
 	CREATE_FIFO((*subdir), "data", NULL);
 
 	struct formatted_descriptor f, *fptr = &f;
@@ -130,14 +130,14 @@ static void pmt_parse_descriptors(const char *payload, uint8_t *descriptors_len,
 		*descriptors_len = offset;
 }
 
-int pmt_parse(const struct ts_header *header, const void *vpayload, uint8_t payload_len,
+int pmt_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
 		struct demuxfs_data *priv)
 {
 	struct pmt_table *pmt = (struct pmt_table *) calloc(1, sizeof(struct pmt_table));
 	assert(pmt);
 
 	/* Copy data up to the first loop entry */
-	int ret = psi_parse((struct psi_common_header *) pmt, vpayload, payload_len);
+	int ret = psi_parse((struct psi_common_header *) pmt, payload, payload_len);
 	if (ret < 0) {
 		free(pmt);
 		return ret;
@@ -156,7 +156,6 @@ int pmt_parse(const struct ts_header *header, const void *vpayload, uint8_t payl
 	
 	/* Parse PMT specific bits */
 	struct dentry *descriptors_dentry, *streams_dentry;
-	const char *payload = (const char *) vpayload;
 	pmt->reserved_4 = payload[8] >> 5;
 	pmt->pcr_pid = ((payload[8] << 8) | payload[9]) & 0x1fff;
 	pmt->reserved_5 = payload[10] >> 4;

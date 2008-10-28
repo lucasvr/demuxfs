@@ -1,8 +1,8 @@
 #ifndef __ts_h
 #define __ts_h
 
-#define TS_WARNING(x...) do { dprintf(x) } while(0)
-#define TS_ERROR(x...) do { dprintf(x) } while(0)
+#define TS_WARNING(x...) dprintf(x)
+#define TS_ERROR(x...)   dprintf(x)
 
 #define TS_SYNC_BYTE             0x47
 #define TS_PACKET_SIZE           188
@@ -66,13 +66,13 @@ struct adaptation_field {
 /* Forward declaration */
 struct psi_common_header;
 
-typedef int (*parse_function_t)(const struct ts_header *header, const void *vpayload, uint8_t payload_len, 
+typedef int (*parse_function_t)(const struct ts_header *header, const char *payload, uint8_t payload_len, 
 		struct demuxfs_data *priv);
 
 /**
  * Function prototypes
  */
-int ts_parse_packet(const struct ts_header *header, const void *payload, struct demuxfs_data *priv);
+int ts_parse_packet(const struct ts_header *header, const char *payload, struct demuxfs_data *priv);
 
 /* Debug only */
 void ts_dump_header(const struct ts_header *header);

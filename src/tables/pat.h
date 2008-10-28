@@ -21,7 +21,7 @@ typedef struct pat_table {
 	uint32_t crc;
 } __attribute__((__packed__)) pat_table;
 
-int pat_parse(const struct ts_header *header, const void *payload, uint8_t payload_len, 
+int pat_parse(const struct ts_header *header, const char *payload, uint8_t payload_len, 
 		struct demuxfs_data *priv);
 
 #endif /* __pat_h */

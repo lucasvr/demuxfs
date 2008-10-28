@@ -27,7 +27,7 @@ struct psi_common_header {
 
 /* Function prototypes */
 void psi_populate(void **table, struct dentry *parent);
-int psi_parse(struct psi_common_header *header, const void *_payload, uint8_t payload_len);
+int psi_parse(struct psi_common_header *header, const char *payload, uint8_t payload_len);
 void psi_dump_header(struct psi_common_header *header);
 
 #endif /* __psi_h */

@@ -38,7 +38,7 @@ struct pmt_table {
 	uint32_t crc;
 } __attribute__((__packed__));
 
-int pmt_parse(const struct ts_header *header, const void *payload, uint8_t payload_len,
+int pmt_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
 		struct demuxfs_data *priv);
 
 #endif /* __pmt_h */

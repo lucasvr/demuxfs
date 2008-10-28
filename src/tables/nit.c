@@ -28,7 +28,7 @@
  */
 #include "demuxfs.h"
 
-int nit_parse(const struct ts_header *header, const void *payload, uint8_t payload_len,
+int nit_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
 		struct demuxfs_data *priv)
 {
 	return 0;
