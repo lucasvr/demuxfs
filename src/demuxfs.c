@@ -74,6 +74,7 @@ static int demuxfs_release(const char *path, struct fuse_file_info *fi)
 static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset, 
 		struct fuse_file_info *fi)
 {
+	size_t read_size;
 	struct dentry *dentry = FILEHANDLE_TO_DENTRY(fi->fh);
 	if (! dentry)
 		return -ENOENT;
@@ -81,8 +82,21 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 		fprintf(stderr, "Error: dentry for '%s' doesn't have any contents set\n", path);
 		return -ENOTSUP;
 	}
-	size_t read_size = (dentry->size > size) ? size : dentry->size;
-	memcpy(buf, dentry->contents, read_size);
+	if (S_ISFIFO(dentry->mode)) {
+		/* Ensures that we never deliver the same PES data twice */
+		pthread_mutex_lock(&dentry->mutex);
+		while (! dentry->has_new_contents)
+			pthread_cond_wait(&dentry->condition, &dentry->mutex);
+		dentry->has_new_contents = false;
+
+		read_size = (dentry->size > size) ? size : dentry->size;
+		memcpy(buf, dentry->contents, read_size);
+		pthread_mutex_unlock(&dentry->mutex);
+	} else {
+		/* Lockless access */
+		read_size = (dentry->size > size) ? size : dentry->size;
+		memcpy(buf, dentry->contents, read_size);
+	}
 	return read_size;
 }
 
