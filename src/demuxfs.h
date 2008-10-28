@@ -135,7 +135,7 @@ struct backend_ops {
 #include "tables/pat.h"
 #include "tables/pmt.h"
 #include "tables/nit.h"
-#include "tables/es.h"
+#include "tables/pes.h"
 
 /* Platform headers */
 #include "backends/filesrc.h"
