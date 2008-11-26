@@ -28,6 +28,26 @@
  */
 #include "demuxfs.h"
 
+#if 0
+struct program_stream_pack_header { /* mpeg2.pdf, table 2-33, pg 73 */
+	uint32_t pack_start_code;
+	uint8_t  _0_1:2;
+	uint8_t  system_clock_reference_base_32_30:3;
+	uint8_t  marker_bit_1:3;
+	uint16_t system_clock_reference_base_29_15:15;
+	uint16_t marker_bit_2:1;
+	uint16_t system_clock_reference_base_14_0:15;
+	uint16_t marker_bit_3:1;
+	uint16_t system_clock_reference_extension:9;
+	uint16_t marker_bit_4:7;
+	uint32_t program_mux_rate:22;
+	uint32_t marker_bit_5:1;
+	uint32_t marker_bit_6:1;
+	uint32_t reserved:5;
+	uint32_t pack_stuffing_length:3;
+};
+#endif
+
 #define TRICK_MODE_FAST_FORWARD 0x00
 #define TRICK_MODE_SLOW_MOTION  0x01
 #define TRICK_MODE_FREEZE_FRAME 0x02
@@ -109,7 +129,7 @@ struct pes_other {
 
 /**
  * We do not present PES data in the filesystem tree. We do, however, parse them to some extent.
- * This function returns the new offset within @payload from which the parsing should continue.
+ * This function returns the new offset within @payload from where the parsing should continue.
  *
  * TODO: verify offset against @payload_len so that we never go out of bounds in @payload.
  */
@@ -317,14 +337,14 @@ static int pes_parse_other(const char *payload, uint8_t payload_len, struct demu
 			uint8_t marker_1 = (payload[offset] >> 7) & 0x01;
 			uint8_t pes_extension_field_length = payload[offset] & 0x7f;
 			uint8_t stream_id_extension_flag = (payload[offset+1] >> 7) & 0x01;
-			offset++;
 			if (stream_id_extension_flag == 0x00) {
-				uint8_t stream_id_extension = payload[offset] & 0x7f;
+				uint8_t stream_id_extension = payload[offset+1] & 0x7f;
 				for (uint8_t i=0; i<pes_extension_field_length; ++i) {
 					/* reserved */
-					offset++;
 				}
+				offset += pes_extension_field_length;
 			}
+			offset += 2;
 		}
 		for (uint8_t i=0; i<original_stuff_length; ++i) { 
 			/* stuffing byte */ 
@@ -353,10 +373,12 @@ static int pes_parse_packet(const struct ts_header *header, const char *payload,
 	pes.stream_id = payload[3];
 	pes.pes_packet_length = CONVERT_TO_16(payload[4],payload[5]);
 
-	if (pes.packet_start_code_prefix != PACKET_START_CODE_PREFIX) {
+	if (pes.packet_start_code_prefix != PES_PACKET_START_CODE_PREFIX) {
 		TS_WARNING("packet_start_code_prefix != %#x (%#x)", 
-				PACKET_START_CODE_PREFIX, pes.packet_start_code_prefix);
+				PES_PACKET_START_CODE_PREFIX, pes.packet_start_code_prefix);
 	}
+
+	/* XXX: check header->payload_unit_start_indicator */
 
 	int index = 0;
 	int stream_id = pes_identify_stream_id(pes.stream_id);
@@ -389,49 +411,56 @@ static int pes_parse_packet(const struct ts_header *header, const char *payload,
 	} else {
 		dprintf("Unknown stream_id %#x", pes.stream_id);
 	}
+	dprintf(">>> payload_len=%d, pes.pes_packet_length=%d, index=%d", payload_len, pes.pes_packet_length, index);
 
 	return 0;
 }
 
-/* Packetized Elementary Stream parser */
-int pes_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
-		struct demuxfs_data *priv)
+static struct dentry *pes_get_dentry(const struct ts_header *header, struct demuxfs_data *priv)
 {
 	struct dentry *slink, *dentry;
 	char pathname[PATH_MAX];
 
-	if (payload_len < 6) {
-		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
-		return -1;
-	}
-/*	if (payload[0] == 0) {
-		dprintf("%#x %#x %#x %#x %#x %#x", 
-			payload[0]&0xff,payload[1]&0xff,payload[2]&0xff,payload[3]&0xff,payload[4]&0xff,payload[5]&0xff);
-	}*/
-	
-	if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
-		return pes_parse_packet(header, payload, payload_len, priv);
-
-#if 0
 	/* TODO: create a dedicated hash table for quick access to the dentries */
 	sprintf(pathname, "/%#x", header->pid);
 	slink = fsutils_get_dentry(priv->root, pathname);
 	if (! slink) {
 		dprintf("couldn't get a dentry for '%s'", pathname);
-		return -ENOENT;
+		return NULL;
 	}
 
 	sprintf(pathname, "/%s/data", slink->contents);
 	dentry = fsutils_get_dentry(priv->root, pathname);
 	if (! dentry) {
 		dprintf("couldn't get a dentry for '%s'", pathname);
-		return -ENOENT;
+		return NULL;
 	}
+	return dentry;
+}
+
+/* Packetized Elementary Stream parser */
+int pes_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
+		struct demuxfs_data *priv)
+{
+	struct dentry *dentry;
+	int ret;
+
+	if (payload_len < 6) {
+		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
+		return -1;
+	}
+	
+	if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
+		pes_parse_packet(header, payload, payload_len, priv);
+
+	dentry = pes_get_dentry(header, priv);
+	if (! dentry)
+		return -ENOENT;
 
 	pthread_mutex_lock(&dentry->mutex);
-	dentry->has_new_contents = true;
+	ret = fifo_append(dentry->fifo, payload, payload_len);
 	pthread_cond_broadcast(&dentry->condition);
 	pthread_mutex_unlock(&dentry->mutex);
-#endif
-	return 0;
+
+	return ret;
 }
