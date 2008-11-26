@@ -30,15 +30,8 @@
 
 static void * demuxfs_init(struct fuse_conn_info *conn);
 
-static int demuxfs_getattr(const char *path, struct stat *stbuf)
+static int do_getattr(struct dentry *dentry, struct stat *stbuf)
 {
-	struct demuxfs_data *priv = fuse_get_context()->private_data;
-	struct dentry *dentry;
-
-	dentry = fsutils_get_dentry(priv->root, path);
-	if (! dentry)
-		return -ENOENT;
-
 	memset(stbuf, 0, sizeof(struct stat));
 	stbuf->st_ino = dentry->inode;
 	stbuf->st_mode = dentry->mode;
@@ -47,8 +40,25 @@ static int demuxfs_getattr(const char *path, struct stat *stbuf)
     stbuf->st_blksize = 128;
     stbuf->st_dev = DEMUXFS_SUPER_MAGIC;
     stbuf->st_rdev = 0;
-
 	return 0;
+}
+
+static int demuxfs_getattr(const char *path, struct stat *stbuf)
+{
+	struct demuxfs_data *priv = fuse_get_context()->private_data;
+	struct dentry *dentry;
+
+	dentry = fsutils_get_dentry(priv->root, path);
+	if (! dentry)
+		return -ENOENT;
+	return do_getattr(dentry, stbuf);
+}
+
+static int demuxfs_fgetattr(const char *path, struct stat *stbuf,
+		struct fuse_file_info *fi)
+{
+	struct dentry *dentry = FILEHANDLE_TO_DENTRY(fi->fh);
+	return do_getattr(dentry, stbuf);
 }
 
 static int demuxfs_open(const char *path, struct fuse_file_info *fi)
@@ -57,6 +67,20 @@ static int demuxfs_open(const char *path, struct fuse_file_info *fi)
 	struct dentry *dentry = fsutils_get_dentry(priv->root, path);
 	if (! dentry)
 		return -ENOENT;
+	if (dentry->fifo) {
+		/* 
+		 * Mimic a FIFO. This is a special file which gets filled up periodically
+		 * by the PES parsers and consumed on read. Tell FUSE as such. Also, we
+		 * only support one reader at a time.
+		 */
+		if (dentry->refcount > 0)
+			return -EBUSY;
+		fi->direct_io = 1;
+#if FUSE_USE_VERSION >= 29
+		fi->nonseekable = 1;
+#endif
+	}
+	dentry->refcount++;
 	fi->fh = DENTRY_TO_FILEHANDLE(dentry);
 	return 0;
 }
@@ -68,35 +92,38 @@ static int demuxfs_flush(const char *path, struct fuse_file_info *fi)
 
 static int demuxfs_release(const char *path, struct fuse_file_info *fi)
 {
+	struct dentry *dentry = FILEHANDLE_TO_DENTRY(fi->fh);
+	dentry->refcount--;
 	return 0;
 }
 
 static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset, 
 		struct fuse_file_info *fi)
 {
-	size_t read_size;
+	size_t read_size = 0;
 	struct dentry *dentry = FILEHANDLE_TO_DENTRY(fi->fh);
 	if (! dentry)
 		return -ENOENT;
-	if (! dentry->contents) {
-		fprintf(stderr, "Error: dentry for '%s' doesn't have any contents set\n", path);
-		return -ENOTSUP;
-	}
-	if (S_ISFIFO(dentry->mode)) {
-		/* Ensures that we never deliver the same PES data twice */
-		pthread_mutex_lock(&dentry->mutex);
-		while (! dentry->has_new_contents)
-			pthread_cond_wait(&dentry->condition, &dentry->mutex);
-		dentry->has_new_contents = false;
 
-		read_size = (dentry->size > size) ? size : dentry->size;
-		memcpy(buf, dentry->contents, read_size);
-		pthread_mutex_unlock(&dentry->mutex);
-	} else {
+	if (dentry->fifo) {
+		size_t n;
+		while (read_size < size) {
+			pthread_mutex_lock(&dentry->mutex);
+			while (fifo_empty(dentry->fifo))
+				pthread_cond_wait(&dentry->condition, &dentry->mutex);
+			pthread_mutex_unlock(&dentry->mutex);
+			n = fifo_read(dentry->fifo, buf+read_size, size-read_size);
+			read_size += n;
+		}
+	} else if (dentry->contents) {
 		/* Lockless access */
 		read_size = (dentry->size > size) ? size : dentry->size;
 		memcpy(buf, dentry->contents, read_size);
+	} else {
+		fprintf(stderr, "Error: dentry for '%s' doesn't have any contents set\n", path);
+		return -ENOTSUP;
 	}
+
 	return read_size;
 }
 
@@ -236,6 +263,7 @@ static int demuxfs_removexattr(const char *path, const char *name)
 static struct fuse_operations demuxfs_ops = {
 	.init        = demuxfs_init,
 	.getattr     = demuxfs_getattr,
+	.fgetattr    = demuxfs_fgetattr,
 	.open        = demuxfs_open,
 	.flush       = demuxfs_flush,
 	.release     = demuxfs_release,
@@ -250,7 +278,6 @@ static struct fuse_operations demuxfs_ops = {
 	.listxattr   = demuxfs_listxattr,
 	.removexattr = demuxfs_removexattr,
 #if 0
-	.fgetattr    = demuxfs_fgetattr,
 	.statfs      = demuxfs_statfs,
 	/* These should not be supported anytime soon */
 	.fsync       = demuxfs_fsync,
@@ -291,8 +318,11 @@ void * ts_parser_thread(void *userdata)
     
 	while (backend->keep_alive(priv)) {
         ret = backend->read(priv);
-		if (ret == 0)
-			backend->process(priv);
+		if (ret < 0)
+			continue;
+		ret = backend->process(priv);
+		if (ret < 0 && ret != -ENOBUFS)
+			dprintf("Error processing packet: %s", strerror(-ret));
     }
 
 	printf("destroying backend.\n");
@@ -317,6 +347,7 @@ static void * demuxfs_init(struct fuse_conn_info *conn)
 
 	priv->table = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->psi_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
+	priv->pes_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->ts_descriptors = descriptors_init(priv);
 	priv->root = create_rootfs("/");
 
