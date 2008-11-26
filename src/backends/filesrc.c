@@ -33,6 +33,7 @@ struct input_parser {
 	FILE *fp;
 	char packet[TS_PACKET_SIZE];
 	bool packet_valid;
+	bool fileloop;
     struct ts_status ts_status;
 };
 
@@ -42,7 +43,8 @@ struct input_parser {
 static void filesrc_usage(void)
 {
 	fprintf(stderr, "FILESRC options:\n"
-			"    -o filesrc=FILE        transport stream input file\n\n");
+			"    -o filesrc=FILE        transport stream input file\n"
+			"    -o fileloop=1|0        loop back on EOF\n\n");
 }
 
 #define FILESRC_OPT(templ,offset,value) { templ, offsetof(struct input_parser, offset), value }
@@ -51,6 +53,7 @@ enum { KEY_HELP };
 
 static struct fuse_opt filesrc_opts[] = {
 	FILESRC_OPT("filesrc=%s",   filesrc, 0),
+	FILESRC_OPT("fileloop=%d",  fileloop, 0),
 	FUSE_OPT_KEY("-h",          KEY_HELP),
 	FUSE_OPT_KEY("--help",      KEY_HELP),
 	FUSE_OPT_END
@@ -139,11 +142,13 @@ int filesrc_read_packet(struct demuxfs_data *priv)
 {
 	struct input_parser *p = priv->parser;
 	size_t n = fread(p->packet, sizeof(p->packet), 1, p->fp);
-	if (n < 1 && feof(p->fp)) {
+	if (n <= 0 && feof(p->fp)) {
 		p->packet_valid = false;
-		rewind(p->fp);
-		pause();
-		return 0;
+		if (p->fileloop) {
+			rewind(p->fp);
+			return 0;
+		}
+		return -1;
 	} else if (n < 1) {
 		p->packet_valid = false;
 		perror("fread");
@@ -180,8 +185,7 @@ int filesrc_process_packet(struct demuxfs_data *priv)
  */
 bool filesrc_keep_alive(struct demuxfs_data *priv)
 {
-	return true;
-//	return !feof(priv->parser->fp);
+	return !feof(priv->parser->fp);
 }
 
 struct backend_ops filesrc_backend_ops = {
