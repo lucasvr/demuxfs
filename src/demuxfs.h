@@ -21,14 +21,15 @@
 #include <fuse/fuse_lowlevel.h>
 #include <fuse.h>
 
-#include "hash.h"
-#include "list.h"
-
 #define dprintf(x...) do { \
         fprintf(stderr, "%s:%s:%d ", __FILE__, __FUNCTION__, __LINE__); \
         fprintf(stderr, x); \
         fprintf(stderr, "\n"); \
 	} while(0)
+
+#include "hash.h"
+#include "list.h"
+#include "fifo.h"
 
 #define DEMUXFS_SUPER_MAGIC 0xaa55
 
@@ -56,12 +57,15 @@ struct dentry {
 	ino_t inode;
 	/* File name */
 	char *name;
-	/* Mode (file, symlink, directory */
+	/* Mode (file, symlink, directory) */
 	mode_t mode;
+	/* Reference count to this dentry (used to mimic FIFO behavior in special files) */
+	uint32_t refcount;
+	/* Contents from FIFO files */
+	struct fifo *fifo;
 	/* File contents */
 	char *contents;
 	size_t size;
-	bool has_new_contents;
 	/* Extended attributes */
 	struct list_head xattrs;
 	/* Protection for concurrent access */
@@ -69,10 +73,10 @@ struct dentry {
 	pthread_cond_t condition;
 	/* Backpointer to parent */
 	struct dentry *parent;
-	/* Private */
-	struct list_head list;
 	/* List of children dentries, if this dentry happens to represent a directory */
 	struct list_head children;
+	/* Private */
+	struct list_head list;
 };
 
 #if (__WORDSIZE == 64)
@@ -86,6 +90,9 @@ struct dentry {
 /* This definition imposes the maximum size of the hash tables */
 #define DEMUXFS_MAX_PIDS 256
 
+/* Maximum number of TS packets to keep in a FIFO (1MB) */
+#define MAX_TS_PACKETS_IN_A_FIFO 5698
+
 struct descriptor;
 
 struct demuxfs_data {
@@ -93,6 +100,8 @@ struct demuxfs_data {
 	struct hash_table *table;
 	/* "psi_parsers" holds pointers to parsers of known PSI PIDs */
 	struct hash_table *psi_parsers;
+	/* "pes_parsers" holds pointers to parsers of known PES PIDs */
+	struct hash_table *pes_parsers;
 	/* "ts_descriptors" holds descriptor tags and the tables that they're allowed to be in */
 	struct descriptor *ts_descriptors;
 	/* The root dentry ("/") */
@@ -187,8 +196,8 @@ struct backend_ops {
 	do { \
 		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 		_dentry->name = strdup(fname); \
-		_dentry->mode = S_IFIFO | 0777; \
-		_dentry->contents = (char *) malloc(TS_PACKET_PAYLOAD_SIZE); \
+		_dentry->mode = S_IFREG | 0777; \
+		_dentry->fifo = fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
 		CREATE_COMMON(parent,_dentry,out); \
 	} while(0)
 
