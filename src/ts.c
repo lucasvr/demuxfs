@@ -70,6 +70,13 @@ static bool ts_is_psi_packet(uint16_t pid, struct demuxfs_data *priv)
 	}
 }
 
+static bool ts_is_pes_packet(uint16_t pid, struct demuxfs_data *priv)
+{
+	parse_function_t parse_function;
+	parse_function = (parse_function_t) hashtable_get(priv->pes_parsers, pid);
+	return parse_function ? true : false;
+}
+
 int ts_parse_packet(const struct ts_header *header, const char *payload, struct demuxfs_data *priv)
 {
 	if (header->sync_byte != TS_SYNC_BYTE) {
@@ -96,11 +103,13 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 	/* XXX: parse adaptation field */
 
 	uint8_t pointer_field = 0;
-	if (ts_is_psi_packet(header->pid, priv)) {
-		if (header->payload_unit_start_indicator == 1) {
+	if (header->payload_unit_start_indicator == 1) {
+		if (ts_is_psi_packet(header->pid, priv)) {
 			/* The first byte of the payload carries the pointer_field */
 			pointer_field = ((char *) payload_start)[0];
 			payload_start += 1 + pointer_field;
+		} else if (ts_is_pes_packet(header->pid, priv)) {
+			/* The payload carries the first byte of a PES packet */
 		}
 	}
 
@@ -117,6 +126,8 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 	else if ((header->pid == TS_NULL_PID) && (header->payload_unit_start_indicator != 0))
 		TS_WARNING("NULL packet has payload_unit_start_indicator != 0");
 	else if ((parse_function = (parse_function_t) hashtable_get(priv->psi_parsers, header->pid)))
+		return parse_function(header, payload_start, payload_len, priv);
+	else if ((parse_function = (parse_function_t) hashtable_get(priv->pes_parsers, header->pid)))
 		return parse_function(header, payload_start, payload_len, priv);
     return 0;
 }
