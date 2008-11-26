@@ -62,7 +62,7 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 		CREATE_SYMLINK(priv->root, dirname, es+1, NULL);
 
 	/* Start parsing this PES PID from now on */
-	hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, pes_parse);
+	hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse);
 	
 	/* Create a FIFO which will contain this PES contents */
 	CREATE_FIFO((*subdir), "data", NULL);
