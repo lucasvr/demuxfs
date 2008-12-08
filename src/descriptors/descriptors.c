@@ -28,6 +28,31 @@
  */
 #include "demuxfs.h"
 
+uint8_t descriptors_parse(const char *payload, uint8_t num_descriptors, 
+		struct dentry *parent, struct demuxfs_data *priv)
+{
+	int ret;
+	uint8_t n;
+	uint8_t offset = 0;
+	for (n=0; n<num_descriptors; ++n) {
+		uint8_t descriptor_tag = payload[offset];
+		uint8_t descriptor_length = payload[offset+1];
+		struct descriptor *d = descriptors_find(descriptor_tag, priv);
+		if (! d) {
+			TS_WARNING("invalid descriptor tag %#x", descriptor_tag);
+			offset += 2 + descriptor_length;
+			continue;
+		}
+		dprintf("Calling parser for descriptor %#4x-%s (descriptor %d/%d)", 
+				descriptor_tag, d->name, n+1, num_descriptors);
+		ret = d->parser(&payload[offset+2], descriptor_length, parent, priv);
+		if (ret < 0)
+			TS_WARNING("error parsing descriptor tag %#x", descriptor_tag);
+		offset += 2 + descriptor_length;
+	}
+	return offset;
+}
+
 int descriptors_count(const char *payload, uint16_t info_length)
 {
 	int num = 0;
