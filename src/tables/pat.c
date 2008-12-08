@@ -41,28 +41,31 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 	struct dentry *dentry;
 	CREATE_DIRECTORY(parent, "Programs", &dentry);
 
-	/* For each program, create a symlink which points to an entry with the same name in the PMT */
-	for (uint16_t i=0; i<pat->num_programs; ++i) {
-		char name[32], target[32];
-		snprintf(name, sizeof(name), "%#04x", pat->programs[i].program_number);
-		snprintf(target, sizeof(target), "../../%#04x", pat->programs[i].pid);
-		CREATE_SYMLINK(dentry, name, target, NULL);
-	}
-
 	/* Append new parsers to the list of known PIDs */
 	write_lock();
 	for (uint16_t i=0; i<pat->num_programs; ++i) {
+		char name[32], target[32];
 		uint16_t pid = pat->programs[i].pid;
 		uint16_t program_number = pat->programs[i].program_number;
-		hashtable_add(priv->psi_parsers, pid, program_number == 0 ? nit_parse : pmt_parse);
+
+		/* Create a symlink which points to this dentry in the PMT */
+		snprintf(name, sizeof(name), "%#04x", pat->programs[i].program_number);
+		if (program_number == 0) {
+			snprintf(target, sizeof(target), "../../%s", FS_NIT_NAME);
+			hashtable_add(priv->psi_parsers, pid, nit_parse);
+		} else {
+			snprintf(target, sizeof(target), "../../%s/%#04x", FS_PMT_NAME, pat->programs[i].pid);
+			hashtable_add(priv->psi_parsers, pid, pmt_parse);
+		}
+		CREATE_SYMLINK(dentry, name, target, NULL);
 	}
 	write_unlock();
 }
 
 static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *priv)
 {
-	/* Create a directory named "0x0" and populate it with files */
-	pat->dentry.name = strdup("0x0");
+	/* Create a directory named "PAT" and populate it with files */
+	pat->dentry.name = strdup(FS_PAT_NAME);
 	pat->dentry.mode = S_IFDIR | 0555;
 	CREATE_COMMON(priv->root, &pat->dentry, NULL);
 
@@ -73,9 +76,6 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 	write_lock();
 	hashtable_add(priv->table, pat->dentry.inode, pat);
 	write_unlock();
-
-	/* Create a symlink named "PAT" pointing to "0x0" */
-	CREATE_SYMLINK(priv->root, "PAT", pat->dentry.name, NULL);
 }
 
 static void pat_update_directory(struct pat_table *current_pat, struct pat_table *pat,
