@@ -41,11 +41,11 @@ int descriptor_0x0e_parser(const char *payload, int len, struct dentry *parent, 
 		return -ENODATA;
 	}
 
-	struct maximum_bitrate_descriptor m, *mptr = &m;
+	struct maximum_bitrate_descriptor m;
 	m.max_bitrate = ((payload[0] << 16) | (payload[1] << 8) | payload[2]) & 0x00ffffff;
 
 	struct dentry *subdir = CREATE_DIRECTORY(parent, "MAXIMUM_BITRATE");
-	CREATE_FILE_NUMBER(subdir, mptr, max_bitrate);
+	CREATE_FILE_NUMBER(subdir, &m, max_bitrate);
     return 0;
 }
 

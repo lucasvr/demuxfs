@@ -41,7 +41,7 @@ struct formatted_descriptor {
 int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
 	struct pmt_stream *stream = NULL;
-	struct formatted_descriptor f, *fptr = &f;
+	struct formatted_descriptor f;
 	struct stream_identifier_descriptor s;
 	uint8_t stream_type = 0;
 	bool wrong_tag = false;
@@ -114,8 +114,8 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 	struct dentry *dfile;
 	char contents[strlen(s.component_name) + 16];
 	sprintf(contents, "%s [%#x]", s.component_name, s.component_tag);
-	fptr->component_tag = contents;
-	dfile = CREATE_FILE_STRING(parent, fptr, component_tag, XATTR_FORMAT_STRING_AND_NUMBER);
+	f.component_tag = contents;
+	dfile = CREATE_FILE_STRING(parent, &f, component_tag, XATTR_FORMAT_STRING_AND_NUMBER);
 
 	if (wrong_tag)
 		TS_WARNING("Tag %#x cannot be assigned to stream of type '%s'", 
