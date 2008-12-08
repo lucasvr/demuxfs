@@ -27,11 +27,11 @@ struct dentry *fsutils_create_dentry(const char *path, mode_t mode);
 #define CREATE_FILE_NUMBER(parent,header,member) \
 	({ \
 		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-		asprintf(&_dentry->contents, "%#04x", header->member); \
+		asprintf(&_dentry->contents, "%#04x", (header)->member); \
 		_dentry->name = strdup(#member); \
 		_dentry->size = strlen(_dentry->contents); \
 		_dentry->mode = S_IFREG | 0444; \
-		CREATE_COMMON(parent,_dentry); \
+		CREATE_COMMON((parent),_dentry); \
 		xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_NUMBER, strlen(XATTR_FORMAT_NUMBER), false); \
 	 	_dentry; \
 	})
@@ -39,11 +39,11 @@ struct dentry *fsutils_create_dentry(const char *path, mode_t mode);
 #define CREATE_FILE_STRING(parent,header,member,fmt) \
 	({ \
 		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-		_dentry->contents = strdup(header->member); \
+		_dentry->contents = strdup((header)->member); \
 		_dentry->name = strdup(#member); \
 		_dentry->size = strlen(_dentry->contents); \
 		_dentry->mode = S_IFREG | 0444; \
-		CREATE_COMMON(parent,_dentry); \
+		CREATE_COMMON((parent),_dentry); \
 		xattr_add(_dentry, XATTR_FORMAT, fmt, strlen(fmt), false); \
 	 	_dentry; \
 	})
@@ -54,7 +54,7 @@ struct dentry *fsutils_create_dentry(const char *path, mode_t mode);
 		_dentry->contents = strdup(target); \
 		_dentry->name = strdup(sname); \
 		_dentry->mode = S_IFLNK | 0777; \
-		CREATE_COMMON(parent,_dentry); \
+		CREATE_COMMON((parent),_dentry); \
 	 	_dentry; \
 	})
 
@@ -64,7 +64,7 @@ struct dentry *fsutils_create_dentry(const char *path, mode_t mode);
 		_dentry->name = strdup(fname); \
 		_dentry->mode = S_IFREG | 0777; \
 		_dentry->fifo = fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
-		CREATE_COMMON(parent,_dentry); \
+		CREATE_COMMON((parent),_dentry); \
 	 	_dentry; \
 	})
 
@@ -73,7 +73,7 @@ struct dentry *fsutils_create_dentry(const char *path, mode_t mode);
 		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 		_dentry->name = strdup(dname); \
 		_dentry->mode = S_IFDIR | 0555; \
-		CREATE_COMMON(parent,_dentry); \
+		CREATE_COMMON((parent),_dentry); \
 	 	_dentry; \
 	})
 
