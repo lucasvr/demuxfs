@@ -32,6 +32,7 @@ struct formatted_descriptor {
 	char broadcasting_flag[64];
 	char broadcasting_identifier[64];
 	uint8_t additional_broadcasting_identification;
+	char additional_identification_information[256];
 };
 
 /* SYSTEM_MANAGEMENT_DESCRIPTOR parser */
@@ -82,18 +83,17 @@ int descriptor_0xfe_parser(const char *payload, int len, struct dentry *parent,
 		else
 			sprintf(f.broadcasting_identifier, "Unknown [%#x]", bid);
 	}
-
 	f.additional_broadcasting_identification = payload[1];
+
+	len -= 2;
+	for (i=0; i<len; ++i)
+		f.additional_identification_information[i] = payload[2+i];
+	f.additional_identification_information[i] = '\0';
 
 	CREATE_FILE_STRING(dentry, &f, broadcasting_flag, XATTR_FORMAT_STRING_AND_NUMBER);
 	CREATE_FILE_STRING(dentry, &f, broadcasting_identifier, XATTR_FORMAT_STRING_AND_NUMBER);
 	CREATE_FILE_NUMBER(dentry, &f, additional_broadcasting_identification);
-
-	len -= 2;
-	dprintf("Additional identification info: %d bytes", len);
-	for (i=0; i<len; ++i) {
-		/* TODO: Additional identification info */
-	}
+	CREATE_FILE_STRING(dentry, &f, additional_identification_information, XATTR_FORMAT_STRING);
 
     return 0;
 }
