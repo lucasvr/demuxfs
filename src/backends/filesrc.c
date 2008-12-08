@@ -34,6 +34,8 @@ struct input_parser {
 	char packet[TS_PACKET_SIZE];
 	bool packet_valid;
 	bool fileloop;
+	bool parse_pes;
+	char *standard;
     struct ts_status ts_status;
 };
 
@@ -44,7 +46,9 @@ static void filesrc_usage(void)
 {
 	fprintf(stderr, "FILESRC options:\n"
 			"    -o filesrc=FILE        transport stream input file\n"
-			"    -o fileloop=1|0        loop back on EOF\n\n");
+			"    -o fileloop=1|0        loop back on EOF [0]\n"
+			"    -o parse_pes=1|0       parse PES packets [0]\n"
+			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC [SBTVD]\n\n");
 }
 
 #define FILESRC_OPT(templ,offset,value) { templ, offsetof(struct input_parser, offset), value }
@@ -54,6 +58,8 @@ enum { KEY_HELP };
 static struct fuse_opt filesrc_opts[] = {
 	FILESRC_OPT("filesrc=%s",   filesrc, 0),
 	FILESRC_OPT("fileloop=%d",  fileloop, 0),
+	FILESRC_OPT("parse_pes=%d", parse_pes, 0),
+	FILESRC_OPT("standard=%s",  standard, 0),
 	FUSE_OPT_KEY("-h",          KEY_HELP),
 	FUSE_OPT_KEY("--help",      KEY_HELP),
 	FUSE_OPT_END
@@ -121,6 +127,24 @@ int filesrc_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		free(p);
 		return -1;
 	}
+
+	/* Propagate user-defined options back to priv->options */
+	if (! p->standard || ! strcasecmp(p->standard, "SBTVD"))
+		priv->options.standard = SBTVD_STANDARD;
+	else if (! strcasecmp(p->standard, "ISDB"))
+		priv->options.standard = ISDB_STANDARD;
+	else if (! strcasecmp(p->standard, "DVB"))
+		priv->options.standard = DVB_STANDARD;
+	else if (! strcasecmp(p->standard, "ATSC"))
+		priv->options.standard = ATSC_STANDARD;
+	else {
+		fprintf(stderr, "Error: %s is not a valid standard option.\n", p->standard);
+		fclose(p->fp);
+		free(p);
+		return -1;
+	}
+	priv->options.parse_pes = p->parse_pes;
+
 	priv->parser = p;
 	return 0;
 }
@@ -166,7 +190,7 @@ int filesrc_process_packet(struct demuxfs_data *priv)
 	struct input_parser *p = priv->parser;
 	void *payload = (void *) &p->packet[4];
 	if (! p->packet_valid)
-		return -1;
+		return 0;
 
     struct ts_header header;
 	header.sync_byte                    =  p->packet[0];
