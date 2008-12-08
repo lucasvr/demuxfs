@@ -72,19 +72,18 @@ int nit_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	nit->num_descriptors = descriptors_count(&payload[10], nit->network_descriptors_length);
 	nit_create_directory(nit, priv);
 
-	struct dentry *descriptors_dentry = CREATE_DIRECTORY(&nit->dentry, FS_DESCRIPTORS_NAME);
-	descriptors_parse(&payload[10], nit->num_descriptors, descriptors_dentry, priv);
+	descriptors_parse(&payload[10], nit->num_descriptors, &nit->dentry, priv);
 
 	uint8_t offset = 10 + nit->network_descriptors_length;
 	nit->reserved_5 = payload[offset] >> 4;
 	nit->transport_stream_loop_length = ((payload[offset] << 8) | payload[offset+1]) & 0x0fff;
 	offset += 2;
 
-	struct dentry *ts_dentry = CREATE_DIRECTORY(&nit->dentry, "TS_Information");
+	struct dentry *ts_dentry = CREATE_DIRECTORY(&nit->dentry, "TS_INFORMATION");
 	uint16_t i = 0, info_index = 0;
 	while (i < nit->transport_stream_loop_length) {
 		char subdir[PATH_MAX];
-		snprintf(subdir, sizeof(subdir), "info-%02d", info_index++);
+		snprintf(subdir, sizeof(subdir), "%02d", info_index++);
 		struct dentry *info_dentry = CREATE_DIRECTORY(ts_dentry, subdir);
 
 		struct nit_ts_data ts_data;
