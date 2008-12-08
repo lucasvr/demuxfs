@@ -46,9 +46,9 @@ void psi_populate(void **table, struct dentry *parent)
 
 void psi_dump_header(struct psi_common_header *header)
 {
-	fprintf(stderr, "table_id=%#x\nsection_syntax_indicator=%d\nsection_length=%d\n"
+	dprintf("table_id=%#x\nsection_syntax_indicator=%d\nsection_length=%d\n"
 			"identifier=%d\nversion_number=%d\ncurrent_next_indicator=%d\nsection_number=%d\n"
-			"last_section_number=%d\n__inode=%#llx\n__name=%s\n",
+			"last_section_number=%d\n__inode=%#llx\n__name=%s",
 			header->table_id, header->section_syntax_indicator, header->section_length,
 			header->identifier, header->version_number, header->current_next_indicator, 
 			header->section_number,	header->last_section_number, 
@@ -63,10 +63,6 @@ static bool psi_check_header(struct psi_common_header *header)
 		TS_WARNING("section_syntax_indicator != 1");
 		ret = false;
 	}
-	if (header->reserved_1 != 0) {
-		TS_WARNING("first bit following section_syntax_indicator != 0");
-		ret = false;
-	}
 	if (header->section_length > TS_MAX_SECTION_LENGTH) {
 		TS_WARNING("section_length is greater than %#x bytes", TS_MAX_SECTION_LENGTH);
 		ret = false;
@@ -76,7 +72,7 @@ static bool psi_check_header(struct psi_common_header *header)
 		ret = false;
 	}
 	if (header->_remaining_packets > 0)
-		fprintf(stderr, "_remaining_packets = %d\n", header->_remaining_packets);
+		dprintf("_remaining_packets = %d", header->_remaining_packets);
 	return ret;
 }
 
