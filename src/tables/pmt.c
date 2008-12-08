@@ -64,12 +64,12 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 	/* Create a FIFO which will contain this PES contents */
 	CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
 
-	struct formatted_descriptor f, *fptr = &f;
+	struct formatted_descriptor f;
 	snprintf(stream_type, sizeof(stream_type), "%s [%#x]",
 			stream_type_to_string(stream->stream_type_identifier),
 			stream->stream_type_identifier);
-	fptr->stream_type_identifier = stream_type;
-	CREATE_FILE_STRING((*subdir), fptr, stream_type_identifier, XATTR_FORMAT_STRING_AND_NUMBER);
+	f.stream_type_identifier = stream_type;
+	CREATE_FILE_STRING((*subdir), &f, stream_type_identifier, XATTR_FORMAT_STRING_AND_NUMBER);
 
 	CREATE_FILE_NUMBER((*subdir), stream, reserved_1);
 	CREATE_FILE_NUMBER((*subdir), stream, elementary_stream_pid);

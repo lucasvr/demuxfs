@@ -43,14 +43,14 @@ int descriptor_0x55_parser(const char *payload, int len, struct dentry *parent, 
 		sprintf(dirname, "PARENTAL_RATING_%d", i);
 		subdir = CREATE_DIRECTORY(parent, dirname);
 
-		struct parental_rating_descriptor p, *pptr = &p;
+		struct parental_rating_descriptor p;
 		memset(&p, 0, sizeof(p));
 		sprintf(p.country_code, "%c%c%c (0x%x%x%x)", 
 				payload[i], payload[i+1], payload[i+2],
 				payload[i], payload[i+1], payload[i+2]);
 		p.rating = payload[i+3];
-		CREATE_FILE_STRING(subdir, pptr, country_code, XATTR_FORMAT_STRING_AND_NUMBER);
-		CREATE_FILE_NUMBER(subdir, pptr, rating);
+		CREATE_FILE_STRING(subdir, &p, country_code, XATTR_FORMAT_STRING_AND_NUMBER);
+		CREATE_FILE_NUMBER(subdir, &p, rating);
 		i += 4;
 	}
     return 0;

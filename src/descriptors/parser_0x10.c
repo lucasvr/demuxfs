@@ -46,16 +46,16 @@ int descriptor_0x10_parser(const char *payload, int len, struct dentry *parent, 
 		return -ENODATA;
 	}
 
-	struct smoothing_buffer_descriptor s, *sptr = &s;
+	struct smoothing_buffer_descriptor s;
 	s.reserved_1 = (payload[0] >> 6) & 0x03;
 	s.sb_leak_rate = CONVERT_TO_24(payload[0], payload[1], payload[2]) & 0x003fffff;
 	s.reserved_2 = (payload[3] >> 6) & 0x03;
 	s.sb_size = CONVERT_TO_24(payload[3], payload[4], payload[5]) & 0x003fffff;
 
-	CREATE_FILE_NUMBER(subdir, sptr, reserved_1);
-	CREATE_FILE_NUMBER(subdir, sptr, sb_leak_rate);
-	CREATE_FILE_NUMBER(subdir, sptr, reserved_2);
-	CREATE_FILE_NUMBER(subdir, sptr, sb_size);
+	CREATE_FILE_NUMBER(subdir, &s, reserved_1);
+	CREATE_FILE_NUMBER(subdir, &s, sb_leak_rate);
+	CREATE_FILE_NUMBER(subdir, &s, reserved_2);
+	CREATE_FILE_NUMBER(subdir, &s, sb_size);
 
     return 0;
 }

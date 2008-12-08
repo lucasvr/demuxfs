@@ -367,7 +367,7 @@ struct pes_header {
 static int pes_parse_packet(const struct ts_header *header, const char *payload, 
 		uint8_t payload_len, struct demuxfs_data *priv)
 {
-	struct pes_header pes, *ppes = &pes;
+	struct pes_header pes;
 	
 	pes.packet_start_code_prefix = CONVERT_TO_24(payload[0],payload[1],payload[2]);
 	pes.stream_id = payload[3];

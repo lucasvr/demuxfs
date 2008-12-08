@@ -47,18 +47,18 @@ int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, 
 		return -ENODATA;
 	}
 
-	struct system_clock_descriptor s, *sptr = &s;
+	struct system_clock_descriptor s;
 	s.external_clock_reference_indicator = (payload[0] >> 7) & 0x01;
 	s.reserved_1 = (payload[0] >> 6) & 0x01;
 	s.clock_accuracy_integer = payload[0] & 0x3f;
 	s.clock_accuracy_exponent = (payload[1] >> 5) & 0x07;
 	s.reserved_2 = payload[1] & 0x1f;
 
-	CREATE_FILE_NUMBER(subdir, sptr, external_clock_reference_indicator);
-	CREATE_FILE_NUMBER(subdir, sptr, reserved_1);
-	CREATE_FILE_NUMBER(subdir, sptr, clock_accuracy_integer);
-	CREATE_FILE_NUMBER(subdir, sptr, clock_accuracy_exponent);
-	CREATE_FILE_NUMBER(subdir, sptr, reserved_2);
+	CREATE_FILE_NUMBER(subdir, &s, external_clock_reference_indicator);
+	CREATE_FILE_NUMBER(subdir, &s, reserved_1);
+	CREATE_FILE_NUMBER(subdir, &s, clock_accuracy_integer);
+	CREATE_FILE_NUMBER(subdir, &s, clock_accuracy_exponent);
+	CREATE_FILE_NUMBER(subdir, &s, reserved_2);
 
     return 0;
 }
