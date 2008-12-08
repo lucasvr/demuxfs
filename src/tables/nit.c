@@ -28,8 +28,34 @@
  */
 #include "demuxfs.h"
 
+static void nit_create_directory(struct nit_table *nit, struct demuxfs_data *priv)
+{
+	/* Create a directory named "NIT" and populate it with files */
+	nit->dentry.name = strdup(FS_NIT_NAME);
+	nit->dentry.mode = S_IFDIR | 0555;
+	CREATE_COMMON(priv->root, &nit->dentry);
+
+	psi_populate((void **) &nit, &nit->dentry);
+}
+
 int nit_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
 		struct demuxfs_data *priv)
 {
+	struct nit_table *current_nit = NULL;
+	struct nit_table *nit = (struct nit_table *) calloc(1, sizeof(struct nit_table));
+	assert(nit);
+
+	/* Copy data up to the first loop entry */
+	int ret = psi_parse((struct psi_common_header *) nit, payload, payload_len);
+	if (ret < 0) {
+		free(nit);
+		return ret;
+	}
+
+	/* Set hash key and check if there's already one version of this table in the hash */
+	nit->dentry.inode = TS_PACKET_HASH_KEY(header, nit);
+	current_nit = hashtable_get(priv->table, nit->dentry.inode);
+	hashtable_add(priv->table, nit->dentry.inode, nit);
+
 	return 0;
 }
