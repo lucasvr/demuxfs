@@ -38,8 +38,7 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 		struct demuxfs_data *priv)
 {
 	/* "Programs" directory */
-	struct dentry *dentry;
-	CREATE_DIRECTORY(parent, "Programs", &dentry);
+	struct dentry *dentry = CREATE_DIRECTORY(parent, FS_PROGRAMS_NAME);
 
 	/* Append new parsers to the list of known PIDs */
 	write_lock();
@@ -57,7 +56,7 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 			snprintf(target, sizeof(target), "../../%s/%#04x", FS_PMT_NAME, pat->programs[i].pid);
 			hashtable_add(priv->psi_parsers, pid, pmt_parse);
 		}
-		CREATE_SYMLINK(dentry, name, target, NULL);
+		CREATE_SYMLINK(dentry, name, target);
 	}
 	write_unlock();
 }
@@ -67,7 +66,7 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 	/* Create a directory named "PAT" and populate it with files */
 	pat->dentry.name = strdup(FS_PAT_NAME);
 	pat->dentry.mode = S_IFDIR | 0555;
-	CREATE_COMMON(priv->root, &pat->dentry, NULL);
+	CREATE_COMMON(priv->root, &pat->dentry);
 
 	psi_populate((void **) &pat, &pat->dentry);
 	pat_populate(pat, &pat->dentry, priv);

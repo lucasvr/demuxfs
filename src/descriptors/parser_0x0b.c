@@ -39,9 +39,7 @@ struct system_clock_descriptor {
 /* SYSTEM_CLOCK_DESCRIPTOR parser */
 int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *subdir;
-
-	CREATE_DIRECTORY(parent, "SYSTEM_CLOCK", &subdir);
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "SYSTEM_CLOCK");
 
 	if (len != 2) {
 		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)", 
@@ -56,11 +54,11 @@ int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, 
 	s.clock_accuracy_exponent = (payload[1] >> 5) & 0x07;
 	s.reserved_2 = payload[1] & 0x1f;
 
-	CREATE_FILE_NUMBER(subdir, sptr, external_clock_reference_indicator, NULL);
-	CREATE_FILE_NUMBER(subdir, sptr, reserved_1, NULL);
-	CREATE_FILE_NUMBER(subdir, sptr, clock_accuracy_integer, NULL);
-	CREATE_FILE_NUMBER(subdir, sptr, clock_accuracy_exponent, NULL);
-	CREATE_FILE_NUMBER(subdir, sptr, reserved_2, NULL);
+	CREATE_FILE_NUMBER(subdir, sptr, external_clock_reference_indicator);
+	CREATE_FILE_NUMBER(subdir, sptr, reserved_1);
+	CREATE_FILE_NUMBER(subdir, sptr, clock_accuracy_integer);
+	CREATE_FILE_NUMBER(subdir, sptr, clock_accuracy_exponent);
+	CREATE_FILE_NUMBER(subdir, sptr, reserved_2);
 
     return 0;
 }

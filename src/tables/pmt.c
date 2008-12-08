@@ -43,10 +43,10 @@ static void pmt_check_header(struct pmt_table *pmt)
 static void pmt_populate(struct pmt_table *pmt, struct dentry *parent, 
 		struct demuxfs_data *priv)
 {
-	CREATE_FILE_NUMBER(parent, pmt, reserved_4, NULL);
-	CREATE_FILE_NUMBER(parent, pmt, pcr_pid, NULL);
-	CREATE_FILE_NUMBER(parent, pmt, reserved_5, NULL);
-	CREATE_FILE_NUMBER(parent, pmt, program_information_length, NULL);
+	CREATE_FILE_NUMBER(parent, pmt, reserved_4);
+	CREATE_FILE_NUMBER(parent, pmt, pcr_pid);
+	CREATE_FILE_NUMBER(parent, pmt, reserved_5);
+	CREATE_FILE_NUMBER(parent, pmt, program_information_length);
 }
 
 static void pmt_populate_stream_dir(struct pmt_stream *stream, 
@@ -54,30 +54,30 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 {
 	char dirname[16], stream_type[256], es_path[PATH_MAX], *es;
 	sprintf(dirname, "%#4x", stream->elementary_stream_pid);
-	CREATE_DIRECTORY(parent, dirname, subdir);
+	*subdir = CREATE_DIRECTORY(parent, dirname);
 	
 	/* Create a symlink in the root filesystem pointing to this new directory */
 	es = fsutils_path_walk((*subdir), es_path, sizeof(es_path));
 	if (es)
-		CREATE_SYMLINK(priv->root, dirname, es+1, NULL);
+		CREATE_SYMLINK(priv->root, dirname, es+1);
 
 	/* Start parsing this PES PID from now on */
 	hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse);
 	
 	/* Create a FIFO which will contain this PES contents */
-	CREATE_FIFO((*subdir), FS_PES_FIFO_NAME, NULL);
+	CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
 
 	struct formatted_descriptor f, *fptr = &f;
 	snprintf(stream_type, sizeof(stream_type), "%s [%#x]",
 			stream_type_to_string(stream->stream_type_identifier),
 			stream->stream_type_identifier);
 	fptr->stream_type_identifier = stream_type;
-	CREATE_FILE_STRING((*subdir), fptr, stream_type_identifier, XATTR_FORMAT_STRING_AND_NUMBER, NULL);
+	CREATE_FILE_STRING((*subdir), fptr, stream_type_identifier, XATTR_FORMAT_STRING_AND_NUMBER);
 
-	CREATE_FILE_NUMBER((*subdir), stream, reserved_1, NULL);
-	CREATE_FILE_NUMBER((*subdir), stream, elementary_stream_pid, NULL);
-	CREATE_FILE_NUMBER((*subdir), stream, reserved_2, NULL);
-	CREATE_FILE_NUMBER((*subdir), stream, es_information_length, NULL);
+	CREATE_FILE_NUMBER((*subdir), stream, reserved_1);
+	CREATE_FILE_NUMBER((*subdir), stream, elementary_stream_pid);
+	CREATE_FILE_NUMBER((*subdir), stream, reserved_2);
+	CREATE_FILE_NUMBER((*subdir), stream, es_information_length);
 }
 
 static void pmt_create_directory(const struct ts_header *header, struct pmt_table *pmt, 
@@ -90,22 +90,22 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 	sprintf(pathname, "/%s", FS_PMT_NAME);
 	struct dentry *pmt_dir = fsutils_get_dentry(priv->root, pathname);
 	if (! pmt_dir)
-		CREATE_DIRECTORY(priv->root, FS_PMT_NAME, &pmt_dir);
+		pmt_dir = CREATE_DIRECTORY(priv->root, FS_PMT_NAME);
 
 	/* Create a directory named "<pmt_pid>" and populate it with files */
 	asprintf(&pmt->dentry.name, "%#04x", header->pid);
 	pmt->dentry.mode = S_IFDIR | 0555;
-	CREATE_COMMON(pmt_dir, &pmt->dentry, NULL);
+	CREATE_COMMON(pmt_dir, &pmt->dentry);
 
 	psi_populate((void **) &pmt, &pmt->dentry);
 	pmt_populate(pmt, &pmt->dentry, priv);
 	psi_dump_header((struct psi_common_header *) pmt);
 
 	/* Create a sub-directory named "Descriptors" */
-	CREATE_DIRECTORY(&pmt->dentry, FS_DESCRIPTORS_NAME, descriptors_dentry);
+	*descriptors_dentry = CREATE_DIRECTORY(&pmt->dentry, FS_DESCRIPTORS_NAME);
 	
 	/* Create a sub-directory named "Streams" */
-	CREATE_DIRECTORY(&pmt->dentry, FS_STREAMS_NAME, streams_dentry);
+	*streams_dentry = CREATE_DIRECTORY(&pmt->dentry, FS_STREAMS_NAME);
 
 	write_lock();
 	hashtable_add(priv->table, pmt->dentry.inode, pmt);

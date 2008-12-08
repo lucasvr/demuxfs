@@ -42,7 +42,7 @@ int descriptor_0x40_parser(const char *payload, int len, struct dentry *parent, 
 	for (i=0; i<len; ++i)
 		fd.network_name[i] = payload[i];
 
-	CREATE_FILE_STRING(parent, fdptr, network_name, XATTR_FORMAT_STRING, NULL);
+	CREATE_FILE_STRING(parent, fdptr, network_name, XATTR_FORMAT_STRING);
     return 0;
 }
 
