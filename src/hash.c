@@ -28,6 +28,16 @@
  */
 #include "demuxfs.h"
 
+void hashtable_lock(struct hash_table *hash)
+{
+	pthread_mutex_lock(&hash->mutex);
+}
+
+void hashtable_unlock(struct hash_table *hash)
+{
+	pthread_mutex_unlock(&hash->mutex);
+}
+
 struct hash_table *hashtable_new(int size)
 {
 	struct hash_table *table = (struct hash_table *) calloc(1, sizeof(struct hash_table));
@@ -35,12 +45,14 @@ struct hash_table *hashtable_new(int size)
 	table->size = size;
 	table->items = (struct hash_item **) calloc(size, sizeof(struct hash_item *));
 	assert(table->items);
+	pthread_mutex_init(&table->mutex, NULL);
 	return table;
 }
 
 void hashtable_destroy(struct hash_table *table)
 {
 	int i;
+	pthread_mutex_destroy(&table->mutex);
 	for (i=0; i<table->size; ++i)
 		if (table->items[i])
 			free(table->items[i]);
