@@ -81,8 +81,7 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 }
 
 static void pmt_create_directory(const struct ts_header *header, struct pmt_table *pmt, 
-		struct dentry **descriptors_dentry, struct dentry **streams_dentry,
-		struct demuxfs_data *priv)
+		struct dentry **streams_dentry, struct demuxfs_data *priv)
 {
 	char pathname[PATH_MAX];
 
@@ -101,9 +100,6 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 	pmt_populate(pmt, &pmt->dentry, priv);
 	psi_dump_header((struct psi_common_header *) pmt);
 
-	/* Create a sub-directory named "Descriptors" */
-	*descriptors_dentry = CREATE_DIRECTORY(&pmt->dentry, FS_DESCRIPTORS_NAME);
-	
 	/* Create a sub-directory named "Streams" */
 	*streams_dentry = CREATE_DIRECTORY(&pmt->dentry, FS_STREAMS_NAME);
 }
@@ -136,16 +132,16 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	/* TODO: increment the directory number somehow to indicate that this is a new version */
 	
 	/* Parse PMT specific bits */
-	struct dentry *descriptors_dentry, *streams_dentry;
+	struct dentry *streams_dentry;
 	pmt->reserved_4 = payload[8] >> 5;
 	pmt->pcr_pid = ((payload[8] << 8) | payload[9]) & 0x1fff;
 	pmt->reserved_5 = payload[10] >> 4;
 	pmt->program_information_length = ((payload[10] << 8) | payload[11]) & 0x0fff;
 	pmt->num_descriptors = descriptors_count(&payload[12], pmt->program_information_length);
-	pmt_create_directory(header, pmt, &descriptors_dentry, &streams_dentry, priv);
+	pmt_create_directory(header, pmt, &streams_dentry, priv);
 
 	uint8_t descriptors_len = descriptors_parse(&payload[12], pmt->num_descriptors, 
-			descriptors_dentry, priv);
+			&pmt->dentry, priv);
 
 	uint8_t offset = 12 + descriptors_len;
 	pmt->num_programs = 0;
