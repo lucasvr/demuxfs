@@ -450,14 +450,15 @@ int pes_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 		return -1;
 	}
 
-#ifdef PARSE_PES_PACKETS
-	if (header->payload_unit_start_indicator == 1) {
-		if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
-			pes_parse_packet(header, payload, payload_len, priv);
-		else
-			dprintf("payload = { %#x, %#x, %#x }", payload[0], payload[1], payload[2]);
+	if (priv->options.parse_pes) {
+		if (header->payload_unit_start_indicator == 1) {
+			if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
+				pes_parse_packet(header, payload, payload_len, priv);
+			else
+				dprintf("payload = { %#x, %#x, %#x }", payload[0], payload[1], payload[2]);
+		}
 	}
-#endif
+
 	dentry = pes_get_dentry(header, priv);
 	if (! dentry) {
 		dprintf("dentry = NULL");

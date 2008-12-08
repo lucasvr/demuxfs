@@ -93,7 +93,19 @@ struct dentry {
 /* Maximum number of TS packets to keep in a FIFO (1MB) */
 #define MAX_TS_PACKETS_IN_A_FIFO 5698
 
+enum transmission_type {
+	SBTVD_STANDARD,
+	ATSC_STANDARD,
+	ISDB_STANDARD,
+	DVB_STANDARD,
+};
+
 struct descriptor;
+
+struct user_options {
+	bool parse_pes;
+	enum transmission_type standard;
+};
 
 struct demuxfs_data {
 	/* "table" holds PSI structures (ie: PAT, PMT, NIT..) */
@@ -112,6 +124,8 @@ struct demuxfs_data {
 	struct input_parser *parser;
 	/* General data shared amongst table parsers and descriptor parsers */
 	void *shared_data;
+	/* User-defined options */
+	struct user_options options;
 };
 
 /* Backend operations */
