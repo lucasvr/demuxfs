@@ -35,6 +35,7 @@ struct formatted_descriptor {
 /* NETWORK_NAME_DESCRIPTOR parser */
 int descriptor_0x40_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
+	struct dentry *dentry;
 	struct formatted_descriptor fd;
 	uint16_t i;
 
@@ -42,7 +43,8 @@ int descriptor_0x40_parser(const char *payload, int len, struct dentry *parent, 
 	for (i=0; i<len; ++i)
 		fd.network_name[i] = payload[i];
 
-	CREATE_FILE_STRING(parent, &fd, network_name, XATTR_FORMAT_STRING);
+	dentry = CREATE_DIRECTORY(parent, "NETWORK_NAME");
+	CREATE_FILE_STRING(dentry, &fd, network_name, XATTR_FORMAT_STRING);
     return 0;
 }
 

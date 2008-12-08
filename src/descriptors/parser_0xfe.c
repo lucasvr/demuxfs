@@ -48,7 +48,7 @@ int descriptor_0xfe_parser(const char *payload, int len, struct dentry *parent,
 		return -1;
 	}
 
-	dentry = CREATE_DIRECTORY(parent, "SYSTEM_MANAGEMENT_DESCRIPTOR");
+	dentry = CREATE_DIRECTORY(parent, "SYSTEM_MANAGEMENT");
 
 	bflag = (payload[0] >> 6);
 	if (bflag == 0)
