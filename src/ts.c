@@ -77,14 +77,17 @@ static bool ts_is_pes_packet(uint16_t pid, struct demuxfs_data *priv)
 	return parse_function ? true : false;
 }
 
+/**
+ * ts_parse_packet - Parse a transport stream packet. Called by the backend's process() function.
+ */
 int ts_parse_packet(const struct ts_header *header, const char *payload, struct demuxfs_data *priv)
 {
+	void *payload_start = (void *) payload;
+
 	if (header->sync_byte != TS_SYNC_BYTE) {
 		TS_WARNING("sync_byte=%#x", header->sync_byte);
-		return -1;
+		return -EBADMSG;
 	}
-	
-	void *payload_start = (void *) payload;
 
 	if (header->adaptation_field == 0x00) {
 		/* ITU-T Rec. H.222.0 decoders shall discard this packet */
@@ -116,7 +119,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 	long diff = (long *) payload_start - (long *) payload;
 	if (diff < 0 || diff > TS_PACKET_SIZE) {
 		TS_WARNING("invalid pointer_field value '%d'", pointer_field);
-		return -1;
+		return -ENOBUFS;
 	}
 	uint8_t payload_len = TS_PACKET_SIZE - (uint8_t) diff;
 	parse_function_t parse_function;
