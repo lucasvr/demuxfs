@@ -28,9 +28,48 @@
  */
 #include "demuxfs.h"
 
+struct formatted_descriptor {
+	uint16_t area_code;
+	uint8_t _guard_interval;
+	uint8_t _transmission_mode;
+	char guard_interval[16];
+	char transmission_mode[32];
+	uint8_t _frequency;
+	char frequency[256];
+};
+
 /* TERRESTRIAL_DELIVERY_SYSTEM_DESCRIPTOR parser */
 int descriptor_0xfa_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
+	int i;
+	struct dentry *dentry;
+	struct formatted_descriptor f;
+	const char *guard_interval[] = { "1/32", "1/16", "1/8", "1/4" };
+
+	f.area_code = ((payload[0] << 8) | payload[1]) >> 4;
+	f._guard_interval = (payload[1] >> 2) & 0x03;
+	sprintf(f.guard_interval, "%s [%#x]", guard_interval[f._guard_interval], f._guard_interval);
+	
+	f._transmission_mode = payload[1] & 0x03;
+	if (f._transmission_mode == 0 || f._transmission_mode == 1 || f._transmission_mode == 2)
+		sprintf(f.transmission_mode, "Mode %d [%#x]", f._transmission_mode+1, f._transmission_mode);
+	else
+		sprintf(f.transmission_mode, "Undefined [%#x]", f._transmission_mode);
+	
+	dentry = CREATE_DIRECTORY(parent, "TERRESTRIAL_DELIVERY_SYSTEM");
+	CREATE_FILE_NUMBER(dentry, &f, area_code);
+	CREATE_FILE_STRING(dentry, &f, guard_interval, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_STRING(dentry, &f, transmission_mode, XATTR_FORMAT_STRING_AND_NUMBER);
+	
+	memset(f.frequency, 0, sizeof(f.frequency));
+	for (i=0; i<len-2; i+=2) {
+		char buf[16];
+		f._frequency = (payload[2+i] << 8) | payload[2+i+1];
+		sprintf(buf, "%s%d", i == 0 ? "" : "\n", f._frequency);
+		strcat(f.frequency, buf);
+	}
+	CREATE_FILE_STRING(dentry, &f, frequency, XATTR_FORMAT_NUMBER_ARRAY);
+
     return 0;
 }
 
