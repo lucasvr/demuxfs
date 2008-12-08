@@ -120,7 +120,7 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 		read_size = (dentry->size > size) ? size : dentry->size;
 		memcpy(buf, dentry->contents, read_size);
 	} else {
-		fprintf(stderr, "Error: dentry for '%s' doesn't have any contents set\n", path);
+		dprintf("Error: dentry for '%s' doesn't have any contents set", path);
 		return -ENOTSUP;
 	}
 
@@ -318,14 +318,18 @@ void * ts_parser_thread(void *userdata)
     
 	while (backend->keep_alive(priv)) {
         ret = backend->read(priv);
-		if (ret < 0)
-			continue;
+		if (ret < 0) {
+			dprintf("read error");
+			break;
+		}
 		ret = backend->process(priv);
-		if (ret < 0 && ret != -ENOBUFS)
+		if (ret < 0 && ret != -ENOBUFS) {
 			dprintf("Error processing packet: %s", strerror(-ret));
+			break;
+		}
     }
-
-	printf("destroying backend.\n");
+	dprintf("Backend is no more active. Press enter to destroy it.");
+	getchar();
     backend->destroy(priv);
 	pthread_exit(NULL);
 }
