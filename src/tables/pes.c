@@ -429,7 +429,7 @@ static struct dentry *pes_get_dentry(const struct ts_header *header, struct demu
 		return NULL;
 	}
 
-	sprintf(pathname, "/%s/data", slink->contents);
+	sprintf(pathname, "/%s/%s", slink->contents, FS_PES_FIFO_NAME);
 	dentry = fsutils_get_dentry(priv->root, pathname);
 	if (! dentry) {
 		dprintf("couldn't get a dentry for '%s'", pathname);
@@ -449,13 +449,20 @@ int pes_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
 		return -1;
 	}
-	
-	if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
-		pes_parse_packet(header, payload, payload_len, priv);
 
+#ifdef PARSE_PES_PACKETS
+	if (header->payload_unit_start_indicator == 1) {
+		if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
+			pes_parse_packet(header, payload, payload_len, priv);
+		else
+			dprintf("payload = { %#x, %#x, %#x }", payload[0], payload[1], payload[2]);
+	}
+#endif
 	dentry = pes_get_dentry(header, priv);
-	if (! dentry)
+	if (! dentry) {
+		dprintf("dentry = NULL");
 		return -ENOENT;
+	}
 
 	pthread_mutex_lock(&dentry->mutex);
 	ret = fifo_append(dentry->fifo, payload, payload_len);
