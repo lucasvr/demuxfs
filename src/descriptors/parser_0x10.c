@@ -38,8 +38,7 @@ struct smoothing_buffer_descriptor {
 /* SMOOTHING_BUFFER_DESCRIPTOR parser */
 int descriptor_0x10_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *subdir;
-	CREATE_DIRECTORY(parent, "SMOOTHING_BUFFER", &subdir);
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "SMOOTHING_BUFFER");
 
 	if (len != 6) {
 		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)",
@@ -53,10 +52,10 @@ int descriptor_0x10_parser(const char *payload, int len, struct dentry *parent, 
 	s.reserved_2 = (payload[3] >> 6) & 0x03;
 	s.sb_size = CONVERT_TO_24(payload[3], payload[4], payload[5]) & 0x003fffff;
 
-	CREATE_FILE_NUMBER(subdir, sptr, reserved_1, NULL);
-	CREATE_FILE_NUMBER(subdir, sptr, sb_leak_rate, NULL);
-	CREATE_FILE_NUMBER(subdir, sptr, reserved_2, NULL);
-	CREATE_FILE_NUMBER(subdir, sptr, sb_size, NULL);
+	CREATE_FILE_NUMBER(subdir, sptr, reserved_1);
+	CREATE_FILE_NUMBER(subdir, sptr, sb_leak_rate);
+	CREATE_FILE_NUMBER(subdir, sptr, reserved_2);
+	CREATE_FILE_NUMBER(subdir, sptr, sb_size);
 
     return 0;
 }

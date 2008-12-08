@@ -31,17 +31,17 @@
 void psi_populate(void **table, struct dentry *parent)
 {
 	struct psi_common_header *header = *(struct psi_common_header **) table;
-	CREATE_FILE_NUMBER(parent, header, table_id, NULL);
-	CREATE_FILE_NUMBER(parent, header, section_syntax_indicator, NULL);
-	CREATE_FILE_NUMBER(parent, header, reserved_1, NULL);
-	CREATE_FILE_NUMBER(parent, header, reserved_2, NULL);
-	CREATE_FILE_NUMBER(parent, header, section_length, NULL);
-	CREATE_FILE_NUMBER(parent, header, identifier, NULL);
-	CREATE_FILE_NUMBER(parent, header, reserved_3, NULL);
-	CREATE_FILE_NUMBER(parent, header, version_number, NULL);
-	CREATE_FILE_NUMBER(parent, header, current_next_indicator, NULL);
-	CREATE_FILE_NUMBER(parent, header, section_number, NULL);
-	CREATE_FILE_NUMBER(parent, header, last_section_number, NULL);
+	CREATE_FILE_NUMBER(parent, header, table_id);
+	CREATE_FILE_NUMBER(parent, header, section_syntax_indicator);
+	CREATE_FILE_NUMBER(parent, header, reserved_1);
+	CREATE_FILE_NUMBER(parent, header, reserved_2);
+	CREATE_FILE_NUMBER(parent, header, section_length);
+	CREATE_FILE_NUMBER(parent, header, identifier);
+	CREATE_FILE_NUMBER(parent, header, reserved_3);
+	CREATE_FILE_NUMBER(parent, header, version_number);
+	CREATE_FILE_NUMBER(parent, header, current_next_indicator);
+	CREATE_FILE_NUMBER(parent, header, section_number);
+	CREATE_FILE_NUMBER(parent, header, last_section_number);
 }
 
 void psi_dump_header(struct psi_common_header *header)

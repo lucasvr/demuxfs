@@ -44,9 +44,8 @@ int descriptor_0x0e_parser(const char *payload, int len, struct dentry *parent, 
 	struct maximum_bitrate_descriptor m, *mptr = &m;
 	m.max_bitrate = ((payload[0] << 16) | (payload[1] << 8) | payload[2]) & 0x00ffffff;
 
-	struct dentry *subdir;
-	CREATE_DIRECTORY(parent, "MAXIMUM_BITRATE", &subdir);
-	CREATE_FILE_NUMBER(subdir, mptr, max_bitrate, NULL);
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "MAXIMUM_BITRATE");
+	CREATE_FILE_NUMBER(subdir, mptr, max_bitrate);
     return 0;
 }
 
