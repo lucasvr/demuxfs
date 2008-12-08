@@ -5,7 +5,7 @@
 #define FS_PAT_NAME         "PAT"
 #define FS_PMT_NAME         "PMT"
 #define FS_NIT_NAME         "NIT"
-#define FS_DESCRIPTORS_NAME "Descriptors"
+#define FS_EIT_NAME         "EIT"
 #define FS_PROGRAMS_NAME    "Programs"
 #define FS_STREAMS_NAME     "Streams"
 
