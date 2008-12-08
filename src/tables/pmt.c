@@ -65,7 +65,7 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 	hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse);
 	
 	/* Create a FIFO which will contain this PES contents */
-	CREATE_FIFO((*subdir), "data", NULL);
+	CREATE_FIFO((*subdir), FS_PES_FIFO_NAME, NULL);
 
 	struct formatted_descriptor f, *fptr = &f;
 	snprintf(stream_type, sizeof(stream_type), "%s [%#x]",
@@ -84,50 +84,32 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 		struct dentry **descriptors_dentry, struct dentry **streams_dentry,
 		struct demuxfs_data *priv)
 {
+	char pathname[PATH_MAX];
+
+	/* Create a directory named "PMT" at the root filesystem if it doesn't exist yet */
+	sprintf(pathname, "/%s", FS_PMT_NAME);
+	struct dentry *pmt_dir = fsutils_get_dentry(priv->root, pathname);
+	if (! pmt_dir)
+		CREATE_DIRECTORY(priv->root, FS_PMT_NAME, &pmt_dir);
+
 	/* Create a directory named "<pmt_pid>" and populate it with files */
 	asprintf(&pmt->dentry.name, "%#04x", header->pid);
 	pmt->dentry.mode = S_IFDIR | 0555;
-	CREATE_COMMON(priv->root, &pmt->dentry, NULL);
+	CREATE_COMMON(pmt_dir, &pmt->dentry, NULL);
 
 	psi_populate((void **) &pmt, &pmt->dentry);
 	pmt_populate(pmt, &pmt->dentry, priv);
 	psi_dump_header((struct psi_common_header *) pmt);
 
 	/* Create a sub-directory named "Descriptors" */
-	CREATE_DIRECTORY(&pmt->dentry, "Descriptors", descriptors_dentry);
+	CREATE_DIRECTORY(&pmt->dentry, FS_DESCRIPTORS_NAME, descriptors_dentry);
 	
 	/* Create a sub-directory named "Streams" */
-	CREATE_DIRECTORY(&pmt->dentry, "Streams", streams_dentry);
+	CREATE_DIRECTORY(&pmt->dentry, FS_STREAMS_NAME, streams_dentry);
 
 	write_lock();
 	hashtable_add(priv->table, pmt->dentry.inode, pmt);
 	write_unlock();
-}
-
-static void pmt_parse_descriptors(const char *payload, uint8_t *descriptors_len,
-		uint8_t num_descriptors, struct dentry *parent, struct demuxfs_data *priv)
-{
-	int ret;
-	uint8_t n;
-	uint8_t offset = 0;
-	for (n=0; n<num_descriptors; ++n) {
-		uint8_t descriptor_tag = payload[offset];
-		uint8_t descriptor_length = payload[offset+1];
-		struct descriptor *d = descriptors_find(descriptor_tag, priv);
-		if (! d) {
-			TS_WARNING("invalid descriptor tag %#x", descriptor_tag);
-			offset += 2 + descriptor_length;
-			continue;
-		}
-		dprintf("Calling parser for descriptor %#4x-%s (descriptor %d/%d)", 
-				descriptor_tag, d->name, n+1, num_descriptors);
-		ret = d->parser(&payload[offset+2], descriptor_length, parent, priv);
-		if (ret < 0)
-			TS_WARNING("error parsing descriptor tag %#x", descriptor_tag);
-		offset += 2 + descriptor_length;
-	}
-	if (descriptors_len)
-		*descriptors_len = offset;
 }
 
 int pmt_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
@@ -153,6 +135,8 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 		free(pmt);
 		return 0;
 	}
+
+	/* TODO: increment the directory number somehow to indicate that this is a new version */
 	
 	/* Parse PMT specific bits */
 	struct dentry *descriptors_dentry, *streams_dentry;
@@ -163,8 +147,8 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	pmt->num_descriptors = descriptors_count(&payload[12], pmt->program_information_length);
 	pmt_create_directory(header, pmt, &descriptors_dentry, &streams_dentry, priv);
 
-	uint8_t descriptors_len = 0;
-	pmt_parse_descriptors(&payload[12], &descriptors_len, pmt->num_descriptors, descriptors_dentry, priv);
+	uint8_t descriptors_len = descriptors_parse(&payload[12], pmt->num_descriptors, 
+			descriptors_dentry, priv);
 
 	uint8_t offset = 12 + descriptors_len;
 	pmt->num_programs = 0;
@@ -180,7 +164,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 		pmt_populate_stream_dir(&stream, streams_dentry, &subdir, priv);
 
 		priv->shared_data = (void *) &stream;
-		pmt_parse_descriptors(&payload[offset+5], NULL, 1, subdir, priv);
+		descriptors_parse(&payload[offset+5], 1, subdir, priv);
 		priv->shared_data = NULL;
 
 		offset += 5 + stream.es_information_length;
