@@ -41,7 +41,6 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 	struct dentry *dentry = CREATE_DIRECTORY(parent, FS_PROGRAMS_NAME);
 
 	/* Append new parsers to the list of known PIDs */
-	write_lock();
 	for (uint16_t i=0; i<pat->num_programs; ++i) {
 		char name[32], target[32];
 		uint16_t pid = pat->programs[i].pid;
@@ -58,7 +57,6 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 		}
 		CREATE_SYMLINK(dentry, name, target);
 	}
-	write_unlock();
 }
 
 static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *priv)
@@ -72,9 +70,7 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 	pat_populate(pat, &pat->dentry, priv);
 	pat_dump(pat);
 
-	write_lock();
 	hashtable_add(priv->table, pat->dentry.inode, pat);
-	write_unlock();
 }
 
 static void pat_update_directory(struct pat_table *current_pat, struct pat_table *pat,
@@ -86,7 +82,7 @@ static void pat_update_directory(struct pat_table *current_pat, struct pat_table
 int pat_parse(const struct ts_header *header, const char *payload, uint8_t payload_len, 
 		struct demuxfs_data *priv)
 {
-	//int table_size = TS_PAYLOAD_LENGTH(payload);
+	struct pat_table *current_pat = NULL;
 	struct pat_table *pat = (struct pat_table *) calloc(1, sizeof(struct pat_table));
 	assert(pat);
 
@@ -99,7 +95,7 @@ int pat_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 
 	/* Set hash key and check if there's already one version of this table in the hash */
 	pat->dentry.inode = TS_PACKET_HASH_KEY(header, pat);
-	struct pat_table *current_pat = hashtable_get(priv->table, pat->dentry.inode);
+	current_pat = hashtable_get(priv->table, pat->dentry.inode);
 
 	/* Check whether we should keep processing this packet or not */
 	if (! pat->current_next_indicator || (current_pat && current_pat->version_number == pat->version_number)) {

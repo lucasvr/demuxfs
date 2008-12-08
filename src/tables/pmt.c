@@ -61,9 +61,6 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 	if (es)
 		CREATE_SYMLINK(priv->root, dirname, es+1);
 
-	/* Start parsing this PES PID from now on */
-	hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse);
-	
 	/* Create a FIFO which will contain this PES contents */
 	CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
 
@@ -78,6 +75,9 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 	CREATE_FILE_NUMBER((*subdir), stream, elementary_stream_pid);
 	CREATE_FILE_NUMBER((*subdir), stream, reserved_2);
 	CREATE_FILE_NUMBER((*subdir), stream, es_information_length);
+	
+	/* Start parsing this PES PID from now on */
+	hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse);
 }
 
 static void pmt_create_directory(const struct ts_header *header, struct pmt_table *pmt, 
@@ -106,15 +106,12 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 	
 	/* Create a sub-directory named "Streams" */
 	*streams_dentry = CREATE_DIRECTORY(&pmt->dentry, FS_STREAMS_NAME);
-
-	write_lock();
-	hashtable_add(priv->table, pmt->dentry.inode, pmt);
-	write_unlock();
 }
 
 int pmt_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
 		struct demuxfs_data *priv)
 {
+	struct pmt_table *current_pmt = NULL;
 	struct pmt_table *pmt = (struct pmt_table *) calloc(1, sizeof(struct pmt_table));
 	assert(pmt);
 
@@ -128,7 +125,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	
 	/* Set hash key and check if there's already one version of this table in the hash */
 	pmt->dentry.inode = TS_PACKET_HASH_KEY(header, pmt);
-	struct pmt_table *current_pmt = hashtable_get(priv->table, pmt->dentry.inode);
+	current_pmt = hashtable_get(priv->table, pmt->dentry.inode);
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! pmt->current_next_indicator || (current_pmt && current_pmt->version_number == pmt->version_number)) {
@@ -172,6 +169,8 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	}
 	
 	offset = 12 + pmt->program_information_length;
+
+	hashtable_add(priv->table, pmt->dentry.inode, pmt);
 
 	return 0;
 }
