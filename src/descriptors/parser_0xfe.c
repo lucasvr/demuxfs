@@ -28,9 +28,73 @@
  */
 #include "demuxfs.h"
 
+struct formatted_descriptor {
+	char broadcasting_flag[64];
+	char broadcasting_identifier[64];
+	uint8_t additional_broadcasting_identification;
+};
+
 /* SYSTEM_MANAGEMENT_DESCRIPTOR parser */
-int descriptor_0xfe_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
+int descriptor_0xfe_parser(const char *payload, int len, struct dentry *parent, 
+		struct demuxfs_data *priv)
 {
+	struct dentry *dentry;
+	struct formatted_descriptor f;
+	uint16_t bflag, bid;
+	int i;
+	
+	if (len < 2) {
+		TS_WARNING("cannot parse descriptor %#x: contents smaller than 2 bytes (%d)", 0xfe, len);
+		return -1;
+	}
+
+	dentry = CREATE_DIRECTORY(parent, "SYSTEM_MANAGEMENT_DESCRIPTOR");
+
+	bflag = (payload[0] >> 6);
+	if (bflag == 0)
+		sprintf(f.broadcasting_flag, "Broadcasting [%#x]", bflag);
+	else if (bflag == 1 || bflag == 2)
+		sprintf(f.broadcasting_flag, "Non-broadcasting [%#x]", bflag);
+	else
+		sprintf(f.broadcasting_flag, "Reserved [%#x]", bflag);
+
+	bid = payload[0] & 0x3f;
+	if (priv->options.standard == SBTVD_STANDARD) {
+		if (bid == 0 || bid >= 7)
+			sprintf(f.broadcasting_identifier, "Undefined [%#x]", bid);
+		else if (bid == 3)
+			sprintf(f.broadcasting_identifier, "ISDB [%#x]", bid);
+		else
+			sprintf(f.broadcasting_identifier, "Not used [%#x]", bid);
+	} else if (priv->options.standard == ISDB_STANDARD) {
+		if (bid == 0 || bid >= 6)
+			sprintf(f.broadcasting_identifier, "Reserved [%#x]", bid);
+		else if (bid == 1)
+			sprintf(f.broadcasting_identifier, "CS digital broadcasting [%#x]", bid);
+		else if (bid == 2)
+			sprintf(f.broadcasting_identifier, "BS digital broadcasting [%#x]", bid);
+		else if (bid == 3)
+			sprintf(f.broadcasting_identifier, "Terrestrial digital television broadcasting [%#x]", bid);
+		else if (bid == 4)
+			sprintf(f.broadcasting_identifier, "Broadband CS digital broadcasting [%#x]", bid);
+		else if (bid == 5)
+			sprintf(f.broadcasting_identifier, "Terrestrial digital audio broadcasting [%#x]", bid);
+		else
+			sprintf(f.broadcasting_identifier, "Unknown [%#x]", bid);
+	}
+
+	f.additional_broadcasting_identification = payload[1];
+
+	CREATE_FILE_STRING(dentry, &f, broadcasting_flag, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_STRING(dentry, &f, broadcasting_identifier, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_NUMBER(dentry, &f, additional_broadcasting_identification);
+
+	len -= 2;
+	dprintf("Additional identification info: %d bytes", len);
+	for (i=0; i<len; ++i) {
+		/* TODO: Additional identification info */
+	}
+
     return 0;
 }
 
