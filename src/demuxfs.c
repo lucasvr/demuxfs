@@ -328,7 +328,7 @@ void * ts_parser_thread(void *userdata)
 			break;
 		}
     }
-	dprintf("Backend is no more active. Press enter to destroy it.");
+	dprintf("Backend is no more active. Press CTRL+C to destroy it.");
 	getchar();
     backend->destroy(priv);
 	pthread_exit(NULL);
