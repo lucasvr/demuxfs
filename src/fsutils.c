@@ -28,6 +28,17 @@
  */
 #include "demuxfs.h"
 
+static void _fsutils_dump_tree(struct dentry *dentry, int spaces);
+
+/**
+ * Resolve the full pathname for a given dentry.
+ * @dentry: dentry to resolve.
+ * @buf: input work buffer.
+ * @size: input work buffer size.
+ *
+ * Returns a pointer to the start of the string in the input buffer on
+ * success or NULL if the dentry could not be resolved to a path.
+ */
 char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size)
 {
 	struct dentry *d = dentry;
@@ -61,14 +72,21 @@ char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size)
 	return ptr;
 }
 
-void fsutils_dump_tree(struct dentry *dentry, int spaces)
+/**
+ * Dump the filesystem tree starting at a given dentry.
+ * @dentry: starting point.
+ */
+void fsutils_dump_tree(struct dentry *dentry)
+{
+	return _fsutils_dump_tree(dentry, 0);
+}
+
+static void _fsutils_dump_tree(struct dentry *dentry, int spaces)
 {
 	int i;
 	if (! dentry)
 		return;
 	if (spaces == 0) {
-		for (i=0; i<spaces; ++i)
-			printf(" ");
 		printf("%s [%s]\n", dentry->name, 
 				dentry->mode & S_IFDIR ? "dir" : 
 				dentry->mode & S_IFREG ? "file" : "symlink");
@@ -82,14 +100,21 @@ void fsutils_dump_tree(struct dentry *dentry, int spaces)
 				ptr->mode & S_IFDIR ? "dir" : 
 				ptr->mode & S_IFREG ? "file" : "symlink");
 		if (ptr->mode & S_IFDIR)
-			fsutils_dump_tree(ptr, spaces+2);
+			_fsutils_dump_tree(ptr, spaces+2);
 	}
 }
 
 #define TRUNCATE_STRING(end) do { if ((end)) *(end) = '\0'; } while(0)
 #define RESTORE_STRING(end)  do { if ((end)) *(end) =  '/'; } while(0)
 
-struct dentry * fsutils_has_children(struct dentry *dentry, char *name)
+/**
+ * Given a parent and a child name, return a pointer to the child dentry.
+ * @dentry: parent
+ * @name: child name
+ *
+ * Returns the child dentry on success or NULL if no such child exist.
+ */
+struct dentry * fsutils_get_child(struct dentry *dentry, char *name)
 {
 	struct dentry *ptr;
 	list_for_each_entry(ptr, &dentry->children, list)
@@ -98,6 +123,13 @@ struct dentry * fsutils_has_children(struct dentry *dentry, char *name)
 	return NULL;
 }
 
+/**
+ * Converts a path to a dentry.
+ * @root: search starting point
+ * @cpath: complete pathname. Must point to a real variable.
+ *
+ * Returns the resolved dentry on success or NULL on failure.
+ */
 struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 {
 	char *end, *ptr;
@@ -122,7 +154,7 @@ struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 			dprintf("could not resolve '%s'", path);
 			return NULL;
 		}
-		if ((cached = fsutils_has_children(prev, start))) {
+		if ((cached = fsutils_get_child(prev, start))) {
 			//dprintf("--> found '%s' in the tree", start);
 			RESTORE_STRING(end);
 			prev = cached;
