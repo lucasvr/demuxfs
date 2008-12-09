@@ -118,7 +118,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 	f.component_tag = contents;
 	
 	dentry = CREATE_DIRECTORY(parent, "STREAM_IDENTIFIER");
-	dfile = CREATE_FILE_STRING(parent, &f, component_tag, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_STRING(dentry, &f, component_tag, XATTR_FORMAT_STRING_AND_NUMBER);
 
 	if (wrong_tag)
 		TS_WARNING("Tag %#x cannot be assigned to stream of type '%s'", 
