@@ -351,9 +351,7 @@ static struct dentry * create_rootfs(const char *name)
 static void demuxfs_destroy(void *data)
 {
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
-	dprintf("disposing tree...");
 	fsutils_dispose_tree(priv->root);
-	dprintf("disposal finished.");
 }
 
 static void * demuxfs_init(struct fuse_conn_info *conn)
