@@ -3,12 +3,13 @@
 
 struct descriptor {
 	uint8_t tag;
-	const char *name;
+	char *name;
 	int (*parser)(const char *, int, struct dentry *, struct demuxfs_data *);
 };
 
 /* Function prototypes */
 struct descriptor *descriptors_init(struct demuxfs_data *priv);
+void descriptors_destroy(struct descriptor *descriptor_list);
 struct descriptor *descriptors_find(uint8_t tag, struct demuxfs_data *priv);
 int descriptors_count(const char *payload, uint16_t program_information_length);
 uint8_t descriptors_parse(const char *payload, uint8_t num_descriptors, 
