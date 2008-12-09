@@ -33,11 +33,11 @@ void psi_populate(void **table, struct dentry *parent)
 	struct psi_common_header *header = *(struct psi_common_header **) table;
 	CREATE_FILE_NUMBER(parent, header, table_id);
 	CREATE_FILE_NUMBER(parent, header, section_syntax_indicator);
-	CREATE_FILE_NUMBER(parent, header, reserved_1);
-	CREATE_FILE_NUMBER(parent, header, reserved_2);
+	//CREATE_FILE_NUMBER(parent, header, reserved_1);
+	//CREATE_FILE_NUMBER(parent, header, reserved_2);
 	CREATE_FILE_NUMBER(parent, header, section_length);
 	CREATE_FILE_NUMBER(parent, header, identifier);
-	CREATE_FILE_NUMBER(parent, header, reserved_3);
+	//CREATE_FILE_NUMBER(parent, header, reserved_3);
 	CREATE_FILE_NUMBER(parent, header, version_number);
 	CREATE_FILE_NUMBER(parent, header, current_next_indicator);
 	CREATE_FILE_NUMBER(parent, header, section_number);

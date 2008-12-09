@@ -112,7 +112,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 			break;
 	}
 
-	struct dentry *dentry, *dfile;
+	struct dentry *dentry;
 	char contents[strlen(s.component_name) + 16];
 	sprintf(contents, "%s [%#x]", s.component_name, s.component_tag);
 	f.component_tag = contents;

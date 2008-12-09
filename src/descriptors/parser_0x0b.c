@@ -55,10 +55,10 @@ int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, 
 	s.reserved_2 = payload[1] & 0x1f;
 
 	CREATE_FILE_NUMBER(subdir, &s, external_clock_reference_indicator);
-	CREATE_FILE_NUMBER(subdir, &s, reserved_1);
+	//CREATE_FILE_NUMBER(subdir, &s, reserved_1);
 	CREATE_FILE_NUMBER(subdir, &s, clock_accuracy_integer);
 	CREATE_FILE_NUMBER(subdir, &s, clock_accuracy_exponent);
-	CREATE_FILE_NUMBER(subdir, &s, reserved_2);
+	//CREATE_FILE_NUMBER(subdir, &s, reserved_2);
 
     return 0;
 }

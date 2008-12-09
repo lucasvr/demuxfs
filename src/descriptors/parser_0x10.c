@@ -52,9 +52,9 @@ int descriptor_0x10_parser(const char *payload, int len, struct dentry *parent, 
 	s.reserved_2 = (payload[3] >> 6) & 0x03;
 	s.sb_size = CONVERT_TO_24(payload[3], payload[4], payload[5]) & 0x003fffff;
 
-	CREATE_FILE_NUMBER(subdir, &s, reserved_1);
+	//CREATE_FILE_NUMBER(subdir, &s, reserved_1);
 	CREATE_FILE_NUMBER(subdir, &s, sb_leak_rate);
-	CREATE_FILE_NUMBER(subdir, &s, reserved_2);
+	//CREATE_FILE_NUMBER(subdir, &s, reserved_2);
 	CREATE_FILE_NUMBER(subdir, &s, sb_size);
 
     return 0;
