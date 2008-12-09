@@ -15,7 +15,7 @@ struct nit_ts_data {
 
 typedef struct nit_table {
 	/* struct dentry always comes first */
-	struct dentry dentry;
+	struct dentry *dentry;
 	/* common PSI header */
 	PSI_HEADER();
 	/* NIT specific bits */

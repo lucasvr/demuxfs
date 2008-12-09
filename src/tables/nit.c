@@ -31,11 +31,11 @@
 static void nit_create_directory(struct nit_table *nit, struct demuxfs_data *priv)
 {
 	/* Create a directory named "NIT" and populate it with files */
-	nit->dentry.name = strdup(FS_NIT_NAME);
-	nit->dentry.mode = S_IFDIR | 0555;
-	CREATE_COMMON(priv->root, &nit->dentry);
+	nit->dentry->name = strdup(FS_NIT_NAME);
+	nit->dentry->mode = S_IFDIR | 0555;
+	CREATE_COMMON(priv->root, nit->dentry);
 
-	psi_populate((void **) &nit, &nit->dentry);
+	psi_populate((void **) &nit, nit->dentry);
 }
 
 int nit_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
@@ -45,19 +45,24 @@ int nit_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	struct nit_table *nit = (struct nit_table *) calloc(1, sizeof(struct nit_table));
 	assert(nit);
 
+	nit->dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
+	assert(nit->dentry);
+
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) nit, payload, payload_len);
 	if (ret < 0) {
+		free(nit->dentry);
 		free(nit);
 		return ret;
 	}
 
 	/* Set hash key and check if there's already one version of this table in the hash */
-	nit->dentry.inode = TS_PACKET_HASH_KEY(header, nit);
-	current_nit = hashtable_get(priv->table, nit->dentry.inode);
+	nit->dentry->inode = TS_PACKET_HASH_KEY(header, nit);
+	current_nit = hashtable_get(priv->table, nit->dentry->inode);
 
 	/* Check whether we should keep processing this packet or not */
 	if (! nit->current_next_indicator || (current_nit && current_nit->version_number == nit->version_number)) {
+		free(nit->dentry);
 		free(nit);
 		return 0;
 	}
@@ -72,14 +77,14 @@ int nit_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	nit->num_descriptors = descriptors_count(&payload[10], nit->network_descriptors_length);
 	nit_create_directory(nit, priv);
 
-	descriptors_parse(&payload[10], nit->num_descriptors, &nit->dentry, priv);
+	descriptors_parse(&payload[10], nit->num_descriptors, nit->dentry, priv);
 
 	uint8_t offset = 10 + nit->network_descriptors_length;
 	nit->reserved_5 = payload[offset] >> 4;
 	nit->transport_stream_loop_length = ((payload[offset] << 8) | payload[offset+1]) & 0x0fff;
 	offset += 2;
 
-	struct dentry *ts_dentry = CREATE_DIRECTORY(&nit->dentry, "TS_INFORMATION");
+	struct dentry *ts_dentry = CREATE_DIRECTORY(nit->dentry, "TS_INFORMATION");
 	uint16_t i = 0, info_index = 0;
 	while (i < nit->transport_stream_loop_length) {
 		char subdir[PATH_MAX];
@@ -105,6 +110,6 @@ int nit_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 		offset += 6 + ts_data.transport_descriptors_length;
 	}
 
-	hashtable_add(priv->table, nit->dentry.inode, nit);
+	hashtable_add(priv->table, nit->dentry->inode, nit);
 	return 0;
 }

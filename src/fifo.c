@@ -54,6 +54,7 @@ void fifo_destroy(struct fifo *fifo)
 	}
 	pthread_mutex_unlock(&fifo->head_mutex);
 	pthread_mutex_destroy(&fifo->head_mutex);
+	free(fifo);
 }
 
 bool fifo_empty(struct fifo *fifo)

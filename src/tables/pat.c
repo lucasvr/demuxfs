@@ -57,14 +57,14 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *priv)
 {
 	/* Create a directory named "PAT" and populate it with files */
-	pat->dentry.name = strdup(FS_PAT_NAME);
-	pat->dentry.mode = S_IFDIR | 0555;
-	CREATE_COMMON(priv->root, &pat->dentry);
+	pat->dentry->name = strdup(FS_PAT_NAME);
+	pat->dentry->mode = S_IFDIR | 0555;
+	CREATE_COMMON(priv->root, pat->dentry);
 
-	psi_populate((void **) &pat, &pat->dentry);
-	pat_populate(pat, &pat->dentry, priv);
+	psi_populate((void **) &pat, pat->dentry);
+	pat_populate(pat, pat->dentry, priv);
 
-	hashtable_add(priv->table, pat->dentry.inode, pat);
+	hashtable_add(priv->table, pat->dentry->inode, pat);
 }
 
 static void pat_update_directory(struct pat_table *current_pat, struct pat_table *pat,
@@ -80,19 +80,24 @@ int pat_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	struct pat_table *pat = (struct pat_table *) calloc(1, sizeof(struct pat_table));
 	assert(pat);
 
+	pat->dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
+	assert(pat->dentry);
+
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) pat, payload, payload_len);
 	if (ret < 0) {
+		free(pat->dentry);
 		free(pat);
 		return ret;
 	}
 
 	/* Set hash key and check if there's already one version of this table in the hash */
-	pat->dentry.inode = TS_PACKET_HASH_KEY(header, pat);
-	current_pat = hashtable_get(priv->table, pat->dentry.inode);
+	pat->dentry->inode = TS_PACKET_HASH_KEY(header, pat);
+	current_pat = hashtable_get(priv->table, pat->dentry->inode);
 
 	/* Check whether we should keep processing this packet or not */
 	if (! pat->current_next_indicator || (current_pat && current_pat->version_number == pat->version_number)) {
+		free(pat->dentry);
 		free(pat);
 		return 0;
 	}

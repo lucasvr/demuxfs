@@ -29,6 +29,7 @@
 #include "demuxfs.h"
 
 static void * demuxfs_init(struct fuse_conn_info *conn);
+static void demuxfs_destroy(void *data);
 
 static int do_getattr(struct dentry *dentry, struct stat *stbuf)
 {
@@ -262,6 +263,7 @@ static int demuxfs_removexattr(const char *path, const char *name)
 
 static struct fuse_operations demuxfs_ops = {
 	.init        = demuxfs_init,
+	.destroy     = demuxfs_destroy,
 	.getattr     = demuxfs_getattr,
 	.fgetattr    = demuxfs_fgetattr,
 	.open        = demuxfs_open,
@@ -342,7 +344,16 @@ static struct dentry * create_rootfs(const char *name)
 	dentry->mode = S_IFDIR | 0555;
 	INIT_LIST_HEAD(&dentry->children);
 	INIT_LIST_HEAD(&dentry->xattrs);
+	INIT_LIST_HEAD(&dentry->list);
 	return dentry;
+}
+
+static void demuxfs_destroy(void *data)
+{
+	struct demuxfs_data *priv = fuse_get_context()->private_data;
+	dprintf("disposing tree...");
+	fsutils_dispose_tree(priv->root);
+	dprintf("disposal finished.");
 }
 
 static void * demuxfs_init(struct fuse_conn_info *conn)

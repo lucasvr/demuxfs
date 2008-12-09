@@ -104,6 +104,53 @@ static void _fsutils_dump_tree(struct dentry *dentry, int spaces)
 	}
 }
 
+/**
+ * Dispose a dentry and its allocated memory.
+ * @dentry: dentry to deallocate.
+ */
+void fsutils_dispose_node(struct dentry *dentry)
+{
+	struct xattr *xattr, *aux;
+	if (dentry->fifo)
+		fifo_destroy(dentry->fifo);
+	if (dentry->contents)
+		free(dentry->contents);
+	list_for_each_entry_safe(xattr, aux, &dentry->xattrs, list) {
+		if (xattr->putname) {
+			free(xattr->name);
+			free(xattr->value);
+		}
+		list_del(&xattr->list);
+	}
+	pthread_mutex_destroy(&dentry->mutex);
+	pthread_cond_destroy(&dentry->condition);
+	list_del(&dentry->list);
+	free(dentry);
+}
+
+/**
+ * Dispose all nodes and their memory starting at a given dentry.
+ * @dentry: starting point
+ */
+void fsutils_dispose_tree(struct dentry *dentry)
+{
+	struct dentry *ptr, *aux;
+	
+	if (! dentry)
+		return;
+	
+	list_for_each_entry_safe(ptr, aux, &dentry->children, list) {
+		printf("%s [%s]\n", ptr->name, 
+				ptr->mode & S_IFDIR ? "dir" : 
+				ptr->mode & S_IFREG ? "file" : "symlink");
+		if (ptr->mode & S_IFDIR)
+			fsutils_dispose_tree(ptr);
+		else
+			fsutils_dispose_node(ptr);
+	}
+	fsutils_dispose_node(dentry);
+}
+
 #define TRUNCATE_STRING(end) do { if ((end)) *(end) = '\0'; } while(0)
 #define RESTORE_STRING(end)  do { if ((end)) *(end) =  '/'; } while(0)
 

@@ -92,15 +92,15 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 		pmt_dir = CREATE_DIRECTORY(priv->root, FS_PMT_NAME);
 
 	/* Create a directory named "<pmt_pid>" and populate it with files */
-	asprintf(&pmt->dentry.name, "%#04x", header->pid);
-	pmt->dentry.mode = S_IFDIR | 0555;
-	CREATE_COMMON(pmt_dir, &pmt->dentry);
+	asprintf(&pmt->dentry->name, "%#04x", header->pid);
+	pmt->dentry->mode = S_IFDIR | 0555;
+	CREATE_COMMON(pmt_dir, pmt->dentry);
 
-	psi_populate((void **) &pmt, &pmt->dentry);
-	pmt_populate(pmt, &pmt->dentry, priv);
+	psi_populate((void **) &pmt, pmt->dentry);
+	pmt_populate(pmt, pmt->dentry, priv);
 
 	/* Create a sub-directory named "Streams" */
-	*streams_dentry = CREATE_DIRECTORY(&pmt->dentry, FS_STREAMS_NAME);
+	*streams_dentry = CREATE_DIRECTORY(pmt->dentry, FS_STREAMS_NAME);
 }
 
 int pmt_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
@@ -109,21 +109,26 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	struct pmt_table *current_pmt = NULL;
 	struct pmt_table *pmt = (struct pmt_table *) calloc(1, sizeof(struct pmt_table));
 	assert(pmt);
+	
+	pmt->dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
+	assert(pmt->dentry);
 
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) pmt, payload, payload_len);
 	if (ret < 0) {
+		free(pmt->dentry);
 		free(pmt);
 		return ret;
 	}
 	pmt_check_header(pmt);
 	
 	/* Set hash key and check if there's already one version of this table in the hash */
-	pmt->dentry.inode = TS_PACKET_HASH_KEY(header, pmt);
-	current_pmt = hashtable_get(priv->table, pmt->dentry.inode);
+	pmt->dentry->inode = TS_PACKET_HASH_KEY(header, pmt);
+	current_pmt = hashtable_get(priv->table, pmt->dentry->inode);
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! pmt->current_next_indicator || (current_pmt && current_pmt->version_number == pmt->version_number)) {
+		free(pmt->dentry);
 		free(pmt);
 		return 0;
 	}
@@ -140,7 +145,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	pmt_create_directory(header, pmt, &streams_dentry, priv);
 
 	uint8_t descriptors_len = descriptors_parse(&payload[12], pmt->num_descriptors, 
-			&pmt->dentry, priv);
+			pmt->dentry, priv);
 
 	uint8_t offset = 12 + descriptors_len;
 	pmt->num_programs = 0;
@@ -165,7 +170,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 	
 	offset = 12 + pmt->program_information_length;
 
-	hashtable_add(priv->table, pmt->dentry.inode, pmt);
+	hashtable_add(priv->table, pmt->dentry->inode, pmt);
 
 	return 0;
 }

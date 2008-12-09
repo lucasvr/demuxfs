@@ -24,7 +24,7 @@ struct pmt_stream {
 
 struct pmt_table {
 	/* struct dentry always comes first */
-	struct dentry dentry;
+	struct dentry *dentry;
 	/* common PSI header */
 	PSI_HEADER();
 	/* PMT specific bits */
