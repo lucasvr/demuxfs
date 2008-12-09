@@ -29,11 +29,6 @@
 #include "demuxfs.h"
 
 /* PAT stuff */
-static void pat_dump(struct pat_table *pat)
-{
-	psi_dump_header((struct psi_common_header *) pat);
-}
-
 static void pat_populate(struct pat_table *pat, struct dentry *parent, 
 		struct demuxfs_data *priv)
 {
@@ -68,7 +63,6 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 
 	psi_populate((void **) &pat, &pat->dentry);
 	pat_populate(pat, &pat->dentry, priv);
-	pat_dump(pat);
 
 	hashtable_add(priv->table, pat->dentry.inode, pat);
 }
