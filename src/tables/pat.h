@@ -12,7 +12,7 @@ struct pat_program {
 
 typedef struct pat_table {
 	/* struct dentry always comes first */
-	struct dentry dentry;
+	struct dentry *dentry;
 	/* common PSI header */
 	PSI_HEADER();
 	/* PAT specific bits */

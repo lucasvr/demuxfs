@@ -52,7 +52,7 @@ void psi_dump_header(struct psi_common_header *header)
 			header->table_id, header->section_syntax_indicator, header->section_length,
 			header->identifier, header->version_number, header->current_next_indicator, 
 			header->section_number,	header->last_section_number, 
-			header->dentry.inode, header->dentry.name);
+			header->dentry->inode, header->dentry->name);
 }
 
 static bool psi_check_header(struct psi_common_header *header)

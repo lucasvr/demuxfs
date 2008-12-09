@@ -91,7 +91,8 @@ struct dentry {
 #define DEMUXFS_MAX_PIDS 256
 
 /* Maximum number of TS packets to keep in a FIFO (1MB) */
-#define MAX_TS_PACKETS_IN_A_FIFO 5698
+//#define MAX_TS_PACKETS_IN_A_FIFO 5698
+#define MAX_TS_PACKETS_IN_A_FIFO 682663 /* 128mb */
 
 enum transmission_type {
 	SBTVD_STANDARD,

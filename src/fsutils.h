@@ -14,6 +14,8 @@ void fsutils_dump_tree(struct dentry *dentry);
 struct dentry *fsutils_get_child(struct dentry *dentry, char *name);
 struct dentry *fsutils_get_dentry(struct dentry *root, const char *path);
 struct dentry *fsutils_create_dentry(const char *path, mode_t mode);
+void fsutils_dispose_tree(struct dentry *dentry);
+void fsutils_dispose_node(struct dentry *dentry);
 
 /* Macros to ease the creation of files and directories */
 #define CREATE_COMMON(_parent,_dentry) \
