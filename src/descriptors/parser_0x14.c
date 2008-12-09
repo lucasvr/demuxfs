@@ -28,9 +28,72 @@
  */
 #include "demuxfs.h"
 
+struct formatted_descriptor {
+	uint16_t association_tag;
+	uint16_t use;
+	uint8_t selector_length;
+	uint32_t transaction_id;
+	uint32_t timeout;
+	char selector_byte[256];
+	char private_data_byte[256];
+};
+
 /* ASSOCIATION_TAG_DESCRIPTOR parser */
 int descriptor_0x14_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
+	uint8_t i, offset;
+	struct dentry *dentry;
+	struct formatted_descriptor f;
+
+	if (len < 5) {
+		TS_WARNING("cannot parse descriptor %#x: contents smaller than 2 bytes (%d)", 0x14, len);
+		return -1;
+	}
+
+	dentry = CREATE_DIRECTORY(parent, "ASSOCIATION_TAG");
+
+	f.association_tag = (payload[0] << 8) | payload[1];
+	f.use = (payload[2] << 8) | payload[3];
+	CREATE_FILE_NUMBER(dentry, &f, association_tag);
+	CREATE_FILE_NUMBER(dentry, &f, use);
+
+	if (f.use == 0x0000) {
+		if (len < 13) {
+			TS_WARNING("cannot parse descriptor %#x: contents smaller than 13 bytes (%d)", 0x14, len);
+			return -1;
+		}
+		f.selector_length = payload[4];
+		f.transaction_id = CONVERT_TO_32(payload[5], payload[6], payload[7], payload[8]);
+		f.timeout = CONVERT_TO_32(payload[9], payload[10], payload[11], payload[12]);
+		CREATE_FILE_NUMBER(dentry, &f, selector_length);
+		CREATE_FILE_NUMBER(dentry, &f, transaction_id);
+		CREATE_FILE_NUMBER(dentry, &f, timeout);
+		offset = 13;
+	} else if (f.use == 0x0001) {
+		f.selector_length = payload[4];
+		CREATE_FILE_NUMBER(dentry, &f, selector_length);
+		offset = 5;
+	} else {
+		f.selector_length = payload[4];
+		if (len < 5 + f.selector_length) {
+			TS_WARNING("cannot parse descriptor %#x: contents smaller than %d bytes (%d)",
+					0x14, 5 + f.selector_length, len);
+			return -1;
+		}
+		for (i=0; i<f.selector_length; ++i)
+			f.selector_byte[i] = payload[5+i];
+		f.selector_byte[i] = '\0';
+		CREATE_FILE_NUMBER(dentry, &f, selector_length);
+		CREATE_FILE_STRING(dentry, &f, selector_byte, XATTR_FORMAT_STRING);
+		offset = 4 + i;
+	}
+
+	memset(f.private_data_byte, 0, sizeof(f.private_data_byte));
+	for (i=offset; i<len; ++i)
+		f.private_data_byte[i-offset] = payload[i];
+	f.private_data_byte[i-offset] = '\0';
+	CREATE_FILE_STRING(dentry, &f, private_data_byte, XATTR_FORMAT_STRING);
+
     return 0;
 }
 
