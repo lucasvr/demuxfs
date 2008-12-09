@@ -98,7 +98,6 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 
 	psi_populate((void **) &pmt, &pmt->dentry);
 	pmt_populate(pmt, &pmt->dentry, priv);
-	psi_dump_header((struct psi_common_header *) pmt);
 
 	/* Create a sub-directory named "Streams" */
 	*streams_dentry = CREATE_DIRECTORY(&pmt->dentry, FS_STREAMS_NAME);
