@@ -31,6 +31,6 @@
 /* CA_IDENTIFIER_DESCRIPTOR parser */
 int descriptor_0x53_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return 0;
+    return -ENOSYS;
 }
 

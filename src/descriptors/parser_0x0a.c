@@ -31,6 +31,6 @@
 /* ISO_639_LANGUAGE_DESCRIPTOR parser */
 int descriptor_0x0a_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return 0;
+    return -ENOSYS;
 }
 

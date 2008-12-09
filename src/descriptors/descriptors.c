@@ -47,7 +47,8 @@ uint8_t descriptors_parse(const char *payload, uint8_t num_descriptors,
 				descriptor_tag, d->name, n+1, num_descriptors);
 		ret = d->parser(&payload[offset+2], descriptor_length, parent, priv);
 		if (ret < 0)
-			TS_WARNING("error parsing descriptor tag %#x", descriptor_tag);
+			TS_WARNING("error parsing descriptor tag %#x: %s", descriptor_tag, 
+					strerror(-ret));
 		offset += 2 + descriptor_length;
 	}
 	return offset;
