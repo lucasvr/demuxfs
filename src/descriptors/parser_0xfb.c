@@ -39,11 +39,6 @@ int descriptor_0xfb_parser(const char *payload, int len, struct dentry *parent, 
 	char buf[32];
 	struct dentry *dentry, *subdir, *pat_programs;
 
-	if (! priv->shared_data) {
-		TS_WARNING("No shared_data has been set");
-		return -1;
-	}
-
 	sprintf(buf, "/PAT/Programs");
 	pat_programs = fsutils_get_dentry(priv->root, buf);
 	if (! pat_programs) {
