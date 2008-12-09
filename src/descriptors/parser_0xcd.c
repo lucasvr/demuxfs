@@ -31,7 +31,7 @@
 struct transmission_type_data {
 	uint8_t transmission_type_info;
 	uint8_t num_of_service;
-	uint16_t service_id;
+	char service_id[256];
 };
 
 struct formatted_descriptor {
@@ -80,16 +80,16 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 		CREATE_FILE_NUMBER(subdir, &t, transmission_type_info);
 		CREATE_FILE_NUMBER(subdir, &t, num_of_service);
 
+		memset(t.service_id, 0, sizeof(t.service_id));
 		for (j=0; j<t.num_of_service; ++j) {
-			char service_name[32];
-			struct dentry *service_dir;
-			
-			sprintf(service_name, "SERVICE_ID_%02d", j);
-			service_dir = CREATE_DIRECTORY(subdir, service_name);
+			char buf[32];
+			uint16_t service_id;
 
-			t.service_id = (payload[offset+j+2] << 8) | payload[offset+j+3];
-			CREATE_FILE_NUMBER(service_dir, &t, service_id);
+			service_id = (payload[offset+j+2] << 8) | payload[offset+j+3];
+			sprintf(buf, "%s%#x", j == 0 ? "" : "\n", service_id);
+			strcat(t.service_id, buf);
 		}
+		CREATE_FILE_STRING(subdir, &t, service_id, XATTR_FORMAT_NUMBER_ARRAY);
 		offset += 2 + j + (t.num_of_service ? 2 : 0);
 	}
 
