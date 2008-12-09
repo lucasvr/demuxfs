@@ -140,9 +140,6 @@ void fsutils_dispose_tree(struct dentry *dentry)
 		return;
 	
 	list_for_each_entry_safe(ptr, aux, &dentry->children, list) {
-		printf("%s [%s]\n", ptr->name, 
-				ptr->mode & S_IFDIR ? "dir" : 
-				ptr->mode & S_IFREG ? "file" : "symlink");
 		if (ptr->mode & S_IFDIR)
 			fsutils_dispose_tree(ptr);
 		else
