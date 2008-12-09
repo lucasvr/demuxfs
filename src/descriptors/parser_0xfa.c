@@ -65,7 +65,7 @@ int descriptor_0xfa_parser(const char *payload, int len, struct dentry *parent, 
 	for (i=0; i<len-2; i+=2) {
 		char buf[16];
 		f._frequency = (payload[2+i] << 8) | payload[2+i+1];
-		sprintf(buf, "%s%d", i == 0 ? "" : "\n", f._frequency);
+		sprintf(buf, "%s%#x", i == 0 ? "" : "\n", f._frequency);
 		strcat(f.frequency, buf);
 	}
 	CREATE_FILE_STRING(dentry, &f, frequency, XATTR_FORMAT_NUMBER_ARRAY);
