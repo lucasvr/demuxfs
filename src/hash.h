@@ -13,7 +13,7 @@ struct hash_table {
 };
 
 struct hash_table *hashtable_new(int size);
-void hashtable_destroy(struct hash_table *table);
+void hashtable_destroy(struct hash_table *table, bool free_data);
 void *hashtable_get(struct hash_table *table, ino_t key);
 bool hashtable_add(struct hash_table *table, ino_t key, void *data);
 bool hashtable_del(struct hash_table *table, ino_t key);

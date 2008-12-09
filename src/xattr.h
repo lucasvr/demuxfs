@@ -16,5 +16,6 @@ bool xattr_exists(struct dentry *dentry, const char *name);
 int xattr_add(struct dentry *dentry, const char *name, const char *value, size_t size, bool putname);
 int xattr_list(struct dentry *dentry, char *buf, size_t size);
 int xattr_remove(struct dentry *dentry, const char *name);
+void xattr_free(struct xattr *xattr);
 
 #endif /* __xattr_h */

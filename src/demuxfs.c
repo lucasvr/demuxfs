@@ -330,8 +330,6 @@ void * ts_parser_thread(void *userdata)
 			break;
 		}
     }
-	dprintf("Backend is no more active. Press CTRL+C to destroy it.");
-	getchar();
     backend->destroy(priv);
 	pthread_exit(NULL);
 }
@@ -351,6 +349,10 @@ static struct dentry * create_rootfs(const char *name)
 static void demuxfs_destroy(void *data)
 {
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
+	descriptors_destroy(priv->ts_descriptors);
+	hashtable_destroy(priv->psi_parsers, false);
+	hashtable_destroy(priv->pes_parsers, false);
+	hashtable_destroy(priv->table, true);
 	fsutils_dispose_tree(priv->root);
 }
 

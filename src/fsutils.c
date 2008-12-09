@@ -115,13 +115,9 @@ void fsutils_dispose_node(struct dentry *dentry)
 		fifo_destroy(dentry->fifo);
 	if (dentry->contents)
 		free(dentry->contents);
-	list_for_each_entry_safe(xattr, aux, &dentry->xattrs, list) {
-		if (xattr->putname) {
-			free(xattr->name);
-			free(xattr->value);
-		}
-		list_del(&xattr->list);
-	}
+	list_for_each_entry_safe(xattr, aux, &dentry->xattrs, list)
+		xattr_free(xattr);
+	free(dentry->name);
 	pthread_mutex_destroy(&dentry->mutex);
 	pthread_cond_destroy(&dentry->condition);
 	list_del(&dentry->list);

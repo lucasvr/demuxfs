@@ -49,13 +49,19 @@ struct hash_table *hashtable_new(int size)
 	return table;
 }
 
-void hashtable_destroy(struct hash_table *table)
+void hashtable_destroy(struct hash_table *table, bool free_data)
 {
 	int i;
 	pthread_mutex_destroy(&table->mutex);
-	for (i=0; i<table->size; ++i)
-		if (table->items[i])
-			free(table->items[i]);
+	for (i=0; i<table->size; ++i) {
+		struct hash_item *item = table->items[i];
+		if (item) {
+			if (free_data && item->data)
+				free(item->data);
+			free(item);
+			table->items[i] = NULL;
+		}
+	}
 	free(table->items);
 	free(table);
 }

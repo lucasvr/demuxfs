@@ -28,7 +28,7 @@
  */
 #include "demuxfs.h"
 
-static void xattr_free(struct xattr *xattr)
+void xattr_free(struct xattr *xattr)
 {
 	if (! xattr)
 		return;
