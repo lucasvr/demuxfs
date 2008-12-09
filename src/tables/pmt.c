@@ -43,9 +43,9 @@ static void pmt_check_header(struct pmt_table *pmt)
 static void pmt_populate(struct pmt_table *pmt, struct dentry *parent, 
 		struct demuxfs_data *priv)
 {
-	CREATE_FILE_NUMBER(parent, pmt, reserved_4);
+	//CREATE_FILE_NUMBER(parent, pmt, reserved_4);
 	CREATE_FILE_NUMBER(parent, pmt, pcr_pid);
-	CREATE_FILE_NUMBER(parent, pmt, reserved_5);
+	//CREATE_FILE_NUMBER(parent, pmt, reserved_5);
 	CREATE_FILE_NUMBER(parent, pmt, program_information_length);
 }
 
@@ -71,9 +71,9 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 	f.stream_type_identifier = stream_type;
 	CREATE_FILE_STRING((*subdir), &f, stream_type_identifier, XATTR_FORMAT_STRING_AND_NUMBER);
 
-	CREATE_FILE_NUMBER((*subdir), stream, reserved_1);
+	//CREATE_FILE_NUMBER((*subdir), stream, reserved_1);
 	CREATE_FILE_NUMBER((*subdir), stream, elementary_stream_pid);
-	CREATE_FILE_NUMBER((*subdir), stream, reserved_2);
+	//CREATE_FILE_NUMBER((*subdir), stream, reserved_2);
 	CREATE_FILE_NUMBER((*subdir), stream, es_information_length);
 	
 	/* Start parsing this PES PID from now on */
