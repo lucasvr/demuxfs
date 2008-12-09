@@ -83,9 +83,17 @@ static const char *translate_service(uint8_t service_type)
 int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
 	uint8_t i;
-	struct dentry *dentry, *subdir;
+	char buf[32];
+	struct dentry *dentry, *subdir, *pat_programs;
 	struct formatted_descriptor f;
 	
+	sprintf(buf, "/PAT/Programs");
+	pat_programs = fsutils_get_dentry(priv->root, buf);
+	if (! pat_programs) {
+		TS_WARNING("/PAT/Programs doesn't exit");
+		return -1;
+	}
+
 	dentry = CREATE_DIRECTORY(parent, "SERVICE_LIST");
 
 	for (i=0; i<len; i+=3) {
@@ -94,11 +102,14 @@ int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, 
 		service_type = payload[i+2];
 		sprintf(f.service_type, "%s [%#x]", translate_service(service_type), service_type);
 		
-		char buf[32];
 		sprintf(buf, "SERVICE_%02d", (i/3)+1);
 		subdir = CREATE_DIRECTORY(dentry, buf);
 		CREATE_FILE_NUMBER(subdir, &f, service_id);
 		CREATE_FILE_STRING(subdir, &f, service_type, XATTR_FORMAT_STRING_AND_NUMBER);
+		
+		sprintf(buf, "%#04x", f.service_id);
+		if (! fsutils_get_child(pat_programs, buf))
+			TS_WARNING("service_id %#x not declared by the PAT", f.service_id);
 	}
     return 0;
 }
