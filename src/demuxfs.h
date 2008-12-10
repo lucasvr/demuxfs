@@ -30,6 +30,7 @@
 #include "hash.h"
 #include "list.h"
 #include "fifo.h"
+#include "buffer.h"
 
 #define DEMUXFS_SUPER_MAGIC 0xaa55
 
