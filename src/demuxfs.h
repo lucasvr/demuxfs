@@ -113,6 +113,8 @@ struct demuxfs_data {
 	struct hash_table *psi_parsers;
 	/* "pes_parsers" holds pointers to parsers of known PES PIDs */
 	struct hash_table *pes_parsers;
+	/* "packet_buffer" holds incomplete TS packets, which cannot be parsed yet */
+	struct hash_table *packet_buffer;
 	/* "ts_descriptors" holds descriptor tags and the tables that they're allowed to be in */
 	struct descriptor *ts_descriptors;
 	/* The root dentry ("/") */

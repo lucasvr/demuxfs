@@ -113,7 +113,7 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 	*streams_dentry = CREATE_DIRECTORY(pmt->dentry, FS_STREAMS_NAME);
 }
 
-int pmt_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
+int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
 	struct pmt_table *current_pmt = NULL;
@@ -142,6 +142,9 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 		free(pmt);
 		return 0;
 	}
+	
+	dprintf("*** PMT parser: pid=%#x, table_id=%#x, current_pmt=%p, pmt->version_number=%#x, len=%d ***", 
+			header->pid, pmt->table_id, current_pmt, pmt->version_number, payload_len);
 
 	/* TODO: increment the directory number somehow to indicate that this is a new version */
 	

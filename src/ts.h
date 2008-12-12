@@ -33,6 +33,16 @@
 #define TS_CDT_PID    0x29
 #define TS_NULL_PID   0x1FFF
 
+/* Known table IDs */
+#define TS_PAT_TABLE_ID       0x00
+#define TS_PMT_TABLE_ID       0x02
+#define TS_NIT_TABLE_ID       0x40
+#define TS_SDT_TABLE_ID       0x42
+#define TS_TOT_TABLE_ID       0x70
+#define TS_TDT_TABLE_ID       0x73
+#define TS_EIT_FIRST_TABLE_ID 0x4e
+#define TS_EIT_LAST_TABLE_ID  0x6f
+
 /* The hash key generator to the private hash table */
 #define TS_PACKET_HASH_KEY(ts_header,packet_header) \
 	(((ts_header)->pid << 8) | ((struct psi_common_header*)(packet_header))->table_id)
@@ -66,7 +76,7 @@ struct adaptation_field {
 /* Forward declaration */
 struct psi_common_header;
 
-typedef int (*parse_function_t)(const struct ts_header *header, const char *payload, uint8_t payload_len, 
+typedef int (*parse_function_t)(const struct ts_header *header, const char *payload, uint32_t payload_len, 
 		struct demuxfs_data *priv);
 
 /**

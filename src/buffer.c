@@ -1,5 +1,6 @@
 /* 
  * Copyright (c) 2008, Lucas C. Villa Real <lucasvr@gobolinux.org>
+ * Copyright (c) 2008, Iuri Gomes Diniz <iuridiniz@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -30,18 +31,26 @@
 #include "byteops.h"
 #include "buffer.h"
 
-struct buffer *buffer_create(size_t max_size)
+struct buffer *buffer_create(size_t size)
 {
-	struct buffer *buffer = (struct buffer *) malloc(sizeof(struct buffer));
+	struct buffer *buffer;
+	
+	if (size > BUFFER_MAX_SIZE) {
+		dprintf("*** size (%d) > hard limit (%d)", size, BUFFER_MAX_SIZE);
+		return NULL;
+	}
+
+	buffer = (struct buffer *) malloc(sizeof(struct buffer));
 	if (! buffer)
 		return NULL;
 
-	buffer->data = (char *) malloc(sizeof(char) * max_size);
+	buffer->data = (char *) malloc(sizeof(char) * BUFFER_MAX_SIZE);
 	if (! buffer->data) {
 		free(buffer);
 		return NULL;
 	}
-	buffer->max_size = max_size;
+
+	buffer->max_size = BUFFER_MAX_SIZE;
 	buffer->current_size = 0;
 	return buffer;
 }
@@ -55,17 +64,77 @@ void buffer_destroy(struct buffer *buffer)
 	}
 }
 
-int buffer_append(struct buffer *buffer, const char *buf, size_t size)
+int buffer_append(struct buffer *buffer, const char *buf, size_t size, bool pes)
 {
-	size_t to_write;
-	
+	size_t to_write = size;
+
 	if (! buffer || ! buf)
 		return -EINVAL;
+	
+	if (! size)
+		return buffer->current_size;
 
-	to_write = (buffer->current_size + size) > buffer->max_size ? 
-			   (buffer->max_size - buffer->current_size) : size;
+	if (buffer->current_size == 0) {
+		if (size > buffer->max_size) {
+			dprintf("*** size (%d) > hard limit (%d)", size, buffer->max_size);
+			return 0;
+		}
+		to_write = size;
+	} else if ((buffer->current_size + size) > buffer->max_size) {
+		if (! pes)
+			to_write = buffer->max_size - buffer->current_size;
+		else {
+			char *ptr = (char *) realloc(buffer->data, buffer->current_size + size);
+			if (! ptr)
+				/* Couldn't realloc, so truncate data instead */
+				to_write = buffer->max_size - buffer->current_size;
+			else
+				buffer->data = ptr;
+		}
+	}
+
 	memcpy(&buffer->data[buffer->current_size], buf, to_write);
 	buffer->current_size += to_write;
 
-	return to_write;
+	return buffer->current_size;
+}
+
+bool buffer_contains_full_psi_section(struct buffer *buffer)
+{
+	uint16_t section_length;
+
+	if (! buffer || ! buffer->data || buffer->current_size < 4)
+		return false;
+
+	section_length = CONVERT_TO_16(buffer->data[1], buffer->data[2]) & 0x0fff;
+	if (buffer->current_size < (section_length + 3)) {
+		if ((section_length + 3) > buffer->max_size) {
+			dprintf("Bad section packet");
+			buffer->current_size = 0;
+		}
+		return false;
+	}
+	buffer->current_size = section_length + 3;
+	return true;
+}
+
+bool buffer_contains_full_pes_section(struct buffer *buffer)
+{
+	uint16_t section_length;
+
+	if (! buffer || ! buffer->data || buffer->current_size < 6)
+		return false;
+
+	section_length = CONVERT_TO_16(buffer->data[4], buffer->data[5]);
+	if (buffer->current_size < (section_length + 6 - 1))
+		return false;
+
+	buffer->current_size = section_length + 6;
+	return true;
+}
+
+void buffer_reset_size(struct buffer *buffer)
+{
+	if (buffer)
+		buffer->current_size = 0;
 }
