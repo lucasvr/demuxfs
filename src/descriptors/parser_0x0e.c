@@ -27,6 +27,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "ts.h"
 
 struct maximum_bitrate_descriptor {
 	uint32_t max_bitrate;

@@ -27,6 +27,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "ts.h"
+
 
 struct formatted_descriptor {
 	uint16_t area_code;

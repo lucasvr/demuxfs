@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "hash.h"
 
 void hashtable_lock(struct hash_table *hash)
 {

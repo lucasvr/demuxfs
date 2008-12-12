@@ -27,6 +27,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "hash.h"
+#include "ts.h"
+#include "tables/psi.h"
+#include "tables/pat.h"
+#include "tables/pmt.h"
+#include "tables/nit.h"
 
 /* PAT stuff */
 static void pat_populate(struct pat_table *pat, struct dentry *parent, 

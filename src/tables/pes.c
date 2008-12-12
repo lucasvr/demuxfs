@@ -27,6 +27,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "byteops.h"
+#include "fifo.h"
+#include "ts.h"
+#include "tables/psi.h"
+#include "tables/pes.h"
 
 #if 0
 struct program_stream_pack_header { /* mpeg2.pdf, table 2-33, pg 73 */

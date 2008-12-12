@@ -27,6 +27,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "hash.h"
+#include "ts.h"
+#include "descriptors.h"
+#include "tables/psi.h"
+#include "tables/nit.h"
 
 static void nit_create_directory(struct nit_table *nit, struct demuxfs_data *priv)
 {

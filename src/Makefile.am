@@ -6,6 +6,6 @@ noinst_HEADERS = demuxfs.h ts.h fsutils.h hash.h xattr.h fifo.h buffer.h list.h 
 demuxfs_SOURCES = $(demuxfsSources)
 demuxfs_DEPENDENCIES = backends/libbackends.la descriptors/libdescriptors.la tables/libtables.la
 demuxfs_LDADD = backends/libbackends.la descriptors/libdescriptors.la tables/libtables.la
-demuxfs_CPPFLAGS = -I backends
+demuxfs_CPPFLAGS = -I backends -I descriptors
 
 SUBDIRS = backends descriptors tables

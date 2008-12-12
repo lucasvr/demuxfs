@@ -27,6 +27,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "ts.h"
 
 /* BASIC_LOCAL_EVENT_DESCRIPTOR parser */
 int descriptor_0xd0_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)

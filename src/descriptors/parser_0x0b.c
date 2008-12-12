@@ -27,6 +27,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "ts.h"
 
 struct system_clock_descriptor {
 	uint8_t external_clock_reference_indicator:1;

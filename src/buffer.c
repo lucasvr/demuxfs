@@ -27,6 +27,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "byteops.h"
+#include "buffer.h"
 
 struct buffer *buffer_create(size_t max_size)
 {
