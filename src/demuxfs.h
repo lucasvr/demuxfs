@@ -14,6 +14,7 @@
 #include <stddef.h>
 #include <limits.h>
 #include <termios.h>
+#include <semaphore.h>
 #include <sys/types.h>
 #include <sys/xattr.h>
 
@@ -68,7 +69,7 @@ struct dentry {
 	struct list_head xattrs;
 	/* Protection for concurrent access */
 	pthread_mutex_t mutex;
-	pthread_cond_t condition;
+	sem_t semaphore;
 	/* Backpointer to parent */
 	struct dentry *parent;
 	/* List of children dentries, if this dentry happens to represent a directory */
@@ -88,9 +89,12 @@ struct dentry {
 /* This definition imposes the maximum size of the hash tables */
 #define DEMUXFS_MAX_PIDS 256
 
-/* Maximum number of TS packets to keep in a FIFO (1MB) */
-//#define MAX_TS_PACKETS_IN_A_FIFO 5698
-#define MAX_TS_PACKETS_IN_A_FIFO 682663 /* 128mb */
+/* 
+ * Maximum number of TS packets to queue in a FIFO. 
+ * The default value allows a single FIFO consume up
+ * to 15MB when a process starts reading from it.
+ */
+#define MAX_TS_PACKETS_IN_A_FIFO 256
 
 enum transmission_type {
 	SBTVD_STANDARD,
@@ -119,8 +123,6 @@ struct demuxfs_data {
 	struct descriptor *ts_descriptors;
 	/* The root dentry ("/") */
 	struct dentry *root;
-	/* This filesystem's instance mountpoint */
-	char *mountpoint;
 	/* Backend specific data */
 	struct input_parser *parser;
 	/* General data shared amongst table parsers and descriptor parsers */

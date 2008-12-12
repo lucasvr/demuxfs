@@ -74,18 +74,23 @@ static int demuxfs_fgetattr(const char *path, struct stat *stbuf,
 
 static int demuxfs_open(const char *path, struct fuse_file_info *fi)
 {
+	int ret = 0;
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
 	struct dentry *dentry = fsutils_get_dentry(priv->root, path);
 	if (! dentry)
 		return -ENOENT;
+
+	pthread_mutex_lock(&dentry->mutex);
 	if (dentry->fifo) {
 		/* 
 		 * Mimic a FIFO. This is a special file which gets filled up periodically
 		 * by the PES parsers and consumed on read. Tell FUSE as such. Also, we
 		 * only support one reader at a time.
 		 */
-		if (dentry->refcount > 0)
-			return -EBUSY;
+		if (dentry->refcount > 0) {
+			ret = -EBUSY;
+			goto out;
+		}
 		fi->direct_io = 1;
 #if FUSE_USE_VERSION >= 29
 		fi->nonseekable = 1;
@@ -93,7 +98,9 @@ static int demuxfs_open(const char *path, struct fuse_file_info *fi)
 	}
 	dentry->refcount++;
 	fi->fh = DENTRY_TO_FILEHANDLE(dentry);
-	return 0;
+out:
+	pthread_mutex_unlock(&dentry->mutex);
+	return ret;
 }
 
 static int demuxfs_flush(const char *path, struct fuse_file_info *fi)
@@ -104,7 +111,11 @@ static int demuxfs_flush(const char *path, struct fuse_file_info *fi)
 static int demuxfs_release(const char *path, struct fuse_file_info *fi)
 {
 	struct dentry *dentry = FILEHANDLE_TO_DENTRY(fi->fh);
+	pthread_mutex_lock(&dentry->mutex);
 	dentry->refcount--;
+	if (dentry->fifo)
+		fifo_flush(dentry->fifo);
+	pthread_mutex_unlock(&dentry->mutex);
 	return 0;
 }
 
@@ -117,11 +128,17 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 		return -ENOENT;
 
 	if (dentry->fifo) {
+		int ret;
 		size_t n;
 		while (read_size < size) {
 			pthread_mutex_lock(&dentry->mutex);
-			while (fifo_empty(dentry->fifo))
-				pthread_cond_wait(&dentry->condition, &dentry->mutex);
+			while (fifo_empty(dentry->fifo)) {
+				pthread_mutex_unlock(&dentry->mutex);
+				ret = sem_wait(&dentry->semaphore);
+				if (ret < 0 && errno == EINTR)
+					goto out;
+				pthread_mutex_lock(&dentry->mutex);
+			}
 			pthread_mutex_unlock(&dentry->mutex);
 			n = fifo_read(dentry->fifo, buf+read_size, size-read_size);
 			read_size += n;
@@ -134,7 +151,7 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 		dprintf("Error: dentry for '%s' doesn't have any contents set", path);
 		return -ENOTSUP;
 	}
-
+out:
 	return read_size;
 }
 
@@ -397,10 +414,6 @@ int main(int argc, char **argv)
 	if (ret < 0)
 		return 1;
 
-	struct fuse_args args_copy = FUSE_ARGS_INIT(argc, argv);
-	ret = fuse_parse_cmdline(&args_copy, &priv->mountpoint, NULL, NULL);
-	if (ret < 0)
-		return 1;
-
+	fuse_opt_add_arg(&args, "-ointr");
 	return fuse_main(args.argc, args.argv, &demuxfs_ops, priv);
 }

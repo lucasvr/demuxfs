@@ -33,10 +33,14 @@
 
 struct buffer *buffer_create(size_t size)
 {
+	size_t max_size = BUFFER_MAX_SIZE;
 	struct buffer *buffer;
 	
-	if (size > BUFFER_MAX_SIZE) {
-		dprintf("*** size (%d) > hard limit (%d)", size, BUFFER_MAX_SIZE);
+	if (size > max_size)
+		max_size = 0xffff;
+
+	if (size > max_size) {
+		dprintf("*** size (%d) > hard limit (%d)", size, max_size);
 		return NULL;
 	}
 
@@ -44,13 +48,13 @@ struct buffer *buffer_create(size_t size)
 	if (! buffer)
 		return NULL;
 
-	buffer->data = (char *) malloc(sizeof(char) * BUFFER_MAX_SIZE);
+	buffer->data = (char *) malloc(sizeof(char) * max_size);
 	if (! buffer->data) {
 		free(buffer);
 		return NULL;
 	}
 
-	buffer->max_size = BUFFER_MAX_SIZE;
+	buffer->max_size = max_size;
 	buffer->current_size = 0;
 	return buffer;
 }

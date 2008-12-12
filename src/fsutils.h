@@ -22,7 +22,7 @@ void fsutils_dispose_node(struct dentry *dentry);
 		INIT_LIST_HEAD(&(_dentry)->children); \
 		INIT_LIST_HEAD(&(_dentry)->xattrs); \
 		pthread_mutex_init(&(_dentry)->mutex, NULL); \
-		pthread_cond_init(&(_dentry)->condition, NULL); \
+		sem_init(&(_dentry)->semaphore, 0, 0); \
 		(_dentry)->parent = _parent; \
 		list_add_tail(&(_dentry)->list, &((_parent)->children));
 

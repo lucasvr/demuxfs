@@ -43,16 +43,21 @@ struct fifo *fifo_init(uint32_t max_elements)
 	return fifo;
 }
 
-void fifo_destroy(struct fifo *fifo)
+void fifo_flush(struct fifo *fifo)
 {
 	struct fifo_element *entry, *aux;
-
-	pthread_mutex_lock(&fifo->head_mutex);
 	list_for_each_entry_safe(entry, aux, &fifo->list, list) {
 		list_del(&entry->list);
 		free(entry->data);
 		free(entry);
 	}
+	fifo->num_elements = 0;
+}
+
+void fifo_destroy(struct fifo *fifo)
+{
+	pthread_mutex_lock(&fifo->head_mutex);
+	fifo_flush(fifo);
 	pthread_mutex_unlock(&fifo->head_mutex);
 	pthread_mutex_destroy(&fifo->head_mutex);
 	free(fifo);

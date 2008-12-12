@@ -25,6 +25,13 @@ struct fifo_element {
 struct fifo *fifo_init(uint32_t max_elements);
 
 /**
+ * fifo_flush - Removes remaining elements stored in a FIFO
+ *
+ * @fifo: the FIFO.
+ */
+void fifo_flush(struct fifo *fifo);
+
+/**
  * fifo_destroy - Destroys a FIFO and all resources allocated by it.
  *
  * @fifo: the FIFO.
