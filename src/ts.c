@@ -27,6 +27,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "buffer.h"
+#include "byteops.h"
+#include "hash.h"
+#include "ts.h"
+
+/* PSI tables */
+#include "tables/psi.h"
+#include "tables/pat.h"
+#include "tables/pmt.h"
+#include "tables/nit.h"
+#include "tables/eit.h"
+#include "tables/pes.h"
 
 void ts_dump_header(const struct ts_header *header)
 {

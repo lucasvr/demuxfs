@@ -27,6 +27,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "hash.h"
+#include "fifo.h"
+#include "ts.h"
+#include "descriptors.h"
+#include "stream_type.h"
+#include "tables/psi.h"
+#include "tables/pmt.h"
+#include "tables/pes.h"
 
 struct formatted_descriptor {
 	char *stream_type_identifier;

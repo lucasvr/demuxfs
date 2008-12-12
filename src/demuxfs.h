@@ -21,16 +21,13 @@
 #include <fuse/fuse_lowlevel.h>
 #include <fuse.h>
 
+#include "list.h"
+
 #define dprintf(x...) do { \
         fprintf(stderr, "%s:%s:%d ", __FILE__, __FUNCTION__, __LINE__); \
         fprintf(stderr, x); \
         fprintf(stderr, "\n"); \
 	} while(0)
-
-#include "hash.h"
-#include "list.h"
-#include "fifo.h"
-#include "buffer.h"
 
 #define DEMUXFS_SUPER_MAGIC 0xaa55
 
@@ -138,32 +135,5 @@ struct backend_ops {
     int (*process)(struct demuxfs_data *);
     bool (*keep_alive)(struct demuxfs_data *);
 };
-
-/* Extended attributes core */
-#include "xattr.h"
-
-/* Helper functions to traverse the filesystem tree */
-#include "fsutils.h"
-
-/* Transport stream parser */
-#include "ts.h"
-
-/* Byte convertion */
-#include "byteops.h"
-
-/* Transport stream descriptor related functions */
-#include "descriptors/descriptors.h"
-#include "descriptors/stream_type.h"
-
-/* PSI tables */
-#include "tables/psi.h"
-#include "tables/pat.h"
-#include "tables/pmt.h"
-#include "tables/nit.h"
-#include "tables/pes.h"
-
-/* Platform headers */
-#include "backends/filesrc.h"
-#include "backends/ce2110.h"
 
 #endif /* __demuxfs_h */

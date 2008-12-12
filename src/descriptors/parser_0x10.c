@@ -27,6 +27,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "byteops.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "ts.h"
 
 struct smoothing_buffer_descriptor {
 	uint8_t reserved_1;

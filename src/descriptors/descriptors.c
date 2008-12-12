@@ -27,6 +27,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "descriptors.h"
+#include "ts.h"
 
 uint8_t descriptors_parse(const char *payload, uint8_t num_descriptors, 
 		struct dentry *parent, struct demuxfs_data *priv)

@@ -27,6 +27,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "ts.h"
 
 /* AVC_VIDEO_DESCRIPTOR parser */
 int descriptor_0x28_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)

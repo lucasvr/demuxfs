@@ -27,6 +27,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "filesrc.h"
+#include "ts.h"
 
 struct input_parser {
 	char *filesrc;

@@ -27,6 +27,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "byteops.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "ts.h"
 
 struct transmission_type_data {
 	uint8_t transmission_type_info;

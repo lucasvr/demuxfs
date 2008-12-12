@@ -27,6 +27,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "ce2110.h"
+#include "ts.h"
 
 struct input_parser {
     GstElement *bin;

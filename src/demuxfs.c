@@ -27,6 +27,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "hash.h"
+#include "fifo.h"
+#include "ts.h"
+#include "descriptors.h"
+
+/* Platform headers */
+#include "backends/filesrc.h"
+#include "backends/ce2110.h"
 
 static void * demuxfs_init(struct fuse_conn_info *conn);
 static void demuxfs_destroy(void *data);
@@ -350,6 +360,7 @@ static void demuxfs_destroy(void *data)
 {
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
 	descriptors_destroy(priv->ts_descriptors);
+	hashtable_destroy(priv->packet_buffer, true);
 	hashtable_destroy(priv->psi_parsers, false);
 	hashtable_destroy(priv->pes_parsers, false);
 	hashtable_destroy(priv->table, true);
@@ -363,6 +374,7 @@ static void * demuxfs_init(struct fuse_conn_info *conn)
 	priv->table = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->psi_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->pes_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
+	priv->packet_buffer = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->ts_descriptors = descriptors_init(priv);
 	priv->root = create_rootfs("/");
 

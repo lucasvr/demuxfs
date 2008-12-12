@@ -27,6 +27,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "fsutils.h"
+#include "xattr.h"
+#include "ts.h"
+#include "stream_type.h"
+#include "tables/psi.h"
+#include "tables/pmt.h"
 
 struct stream_identifier_descriptor {
 	uint8_t component_tag;
