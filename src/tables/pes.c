@@ -472,8 +472,11 @@ int pes_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	}
 
 	pthread_mutex_lock(&dentry->mutex);
-	ret = fifo_append(dentry->fifo, payload, payload_len);
-	pthread_cond_broadcast(&dentry->condition);
+	if (dentry->refcount > 0) {
+		/* Do not feed the FIFO if no process wants to read from it */
+		ret = fifo_append(dentry->fifo, payload, payload_len);
+		sem_post(&dentry->semaphore);
+	}
 	pthread_mutex_unlock(&dentry->mutex);
 
 	return ret;

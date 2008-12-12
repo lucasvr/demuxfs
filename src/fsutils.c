@@ -122,7 +122,7 @@ void fsutils_dispose_node(struct dentry *dentry)
 		xattr_free(xattr);
 	free(dentry->name);
 	pthread_mutex_destroy(&dentry->mutex);
-	pthread_cond_destroy(&dentry->condition);
+	sem_destroy(&dentry->semaphore);
 	list_del(&dentry->list);
 	free(dentry);
 }
