@@ -1,5 +1,6 @@
 /* 
  * Copyright (c) 2008, Lucas C. Villa Real <lucasvr@gobolinux.org>
+ * Copyright (c) 2008, Iuri Gomes Diniz <iuridiniz@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -55,6 +56,7 @@ void ts_dump_header(const struct ts_header *header)
 static bool ts_is_psi_packet(uint16_t pid, struct demuxfs_data *priv)
 {
 	parse_function_t parse_function;
+
 	switch (pid) {
 		case TS_PAT_PID:
 		case TS_CAT_PID:
@@ -89,15 +91,48 @@ static bool ts_is_pes_packet(uint16_t pid, struct demuxfs_data *priv)
 	return parse_function ? true : false;
 }
 
+static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_t table_id,
+		struct demuxfs_data *priv)
+{
+	parse_function_t parse_function;
+	uint16_t pid = header->pid;
+
+
+	if (table_id == TS_PAT_TABLE_ID)
+		return pat_parse;
+	else if (table_id == TS_PMT_TABLE_ID)
+		return pmt_parse;
+	else if (table_id == TS_NIT_TABLE_ID)
+		return nit_parse;
+	//else if (table_id == TS_SDT_TABLE_ID)
+	//	dprintf("TS carries a SDT table");
+	//else if (table_id == TS_TOT_TABLE_ID)
+	//	dprintf("TS carries a TOT table");
+	//else if (table_id == TS_TDT_TABLE_ID)
+	//	dprintf("TS carries a TDT table");
+	//else if ((table_id >= TS_EIT_FIRST_TABLE_ID && table_id <= TS_EIT_LAST_TABLE_ID) || pid == TS_EIT1_PID)
+	//	return eit_parse;
+	else if ((parse_function = (parse_function_t) hashtable_get(priv->psi_parsers, pid)))
+		return parse_function;
+	else if ((pid == TS_NULL_PID) && (header->payload_unit_start_indicator != 0))
+		TS_WARNING("NULL packet has payload_unit_start_indicator != 0");
+    return NULL;
+}
+
 /**
  * ts_parse_packet - Parse a transport stream packet. Called by the backend's process() function.
  */
 int ts_parse_packet(const struct ts_header *header, const char *payload, struct demuxfs_data *priv)
 {
-	void *payload_start = (void *) payload;
+	int ret = 0;
+	uint8_t pointer_field = 0;
+	uint16_t section_length = 0;
+	const char *payload_end;
+	const char *payload_start = payload;
+	parse_function_t parse_function;
 
 	if (header->sync_byte != TS_SYNC_BYTE) {
-		TS_WARNING("sync_byte=%#x", header->sync_byte);
+		TS_WARNING("sync_byte != %#x (%#x)", TS_SYNC_BYTE, header->sync_byte);
 		return -EBADMSG;
 	}
 
@@ -111,38 +146,93 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 		return 0;
 	} else if (header->adaptation_field == 0x03) {
 		/* Adaptation field followed by payload */
-		uint8_t adaptation_field_length = ((char *) payload)[0];
-		payload_start += adaptation_field_length + 1;
+		uint8_t adaptation_field_length = payload[0];
+		payload_start += 1 + adaptation_field_length;
+		if ((payload_start - payload) > TS_PACKET_SIZE) {
+			TS_WARNING("adaptation_field length is bigger than a TS packet: %d", 
+					adaptation_field_length);
+			return -ENOBUFS;
+		}
+		/* TODO: parse adaptation field */
 	}
+	
+	payload_end = payload + TS_PACKET_SIZE - 1 - 4;
 
-	/* XXX: parse adaptation field */
+	if (ts_is_psi_packet(header->pid, priv)) {
+		const char *start = payload_start;
+		const char *end = payload_end;
+		bool remnant_flag = false;
+		uint8_t table_id;
 
-	uint8_t pointer_field = 0;
-	if (header->payload_unit_start_indicator == 1) {
-		if (ts_is_psi_packet(header->pid, priv)) {
+		if (header->payload_unit_start_indicator) {
 			/* The first byte of the payload carries the pointer_field */
-			pointer_field = ((char *) payload_start)[0];
-			payload_start += 1 + pointer_field;
-		} else if (ts_is_pes_packet(header->pid, priv)) {
-			/* The payload carries the first byte of a PES packet */
+			pointer_field = payload_start[0];
+			start = payload_start + 1;
+			if ((payload_start + pointer_field) > payload_end) {
+				TS_WARNING("pointer_field > TS packet size (%d)", pointer_field);
+				return -ENOBUFS;
+			}
+			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
+			if (pointer_field > 0) {
+				end = payload_start + pointer_field;
+				remnant_flag = true;
+			} else {
+				end = ((payload_start + 3 + section_length) <= payload_end) ?
+						payload_start + 3 + section_length : 
+						payload_end;
+			}
+		} else {
+			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
+			remnant_flag = true;
+		}
+
+		while (true) {
+			struct buffer *buffer = hashtable_get(priv->packet_buffer, header->pid);
+			if (! buffer && ! remnant_flag) {
+				buffer = buffer_create(section_length + 3);
+				hashtable_add(priv->packet_buffer, header->pid, buffer);
+			}
+
+			buffer_append(buffer, start, end - start + 1, false);
+			if (buffer_contains_full_psi_section(buffer) || pointer_field > 0) {
+				pointer_field = 0;
+				table_id = start[0];
+				if ((parse_function = ts_get_psi_parser(header, table_id, priv)))
+					/* Invoke the PSI parser for this packet */
+					ret = parse_function(header, buffer->data, buffer->current_size, priv);
+				buffer_reset_size(buffer);
+			}
+			
+			if (! header->payload_unit_start_indicator || ((end + 1) > payload_end))
+				break;
+
+			start = end + 1;
+			if (((uint8_t) start[0]) == 0xff)
+				break;
+
+			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
+			end = ((start + section_length + 2) <= payload_end) ? 
+					start + section_length + 2 :
+					payload_end;
+			remnant_flag = false;
+		}
+	} else if (ts_is_pes_packet(header->pid, priv)) {
+		struct buffer *buffer = hashtable_get(priv->packet_buffer, header->pid);
+		if (! buffer) {
+			uint16_t size = BUFFER_MAX_SIZE;
+			if (header->payload_unit_start_indicator && (payload_end - payload_start > 6))
+				size = CONVERT_TO_16(payload_start[4], payload_start[5]);
+			buffer = buffer_create(size);
+			hashtable_add(priv->packet_buffer, header->pid, buffer);
+		}
+
+		buffer_append(buffer, payload_start, payload_end - payload_start + 1, true);
+		if (buffer_contains_full_pes_section(buffer)) {
+			/* Invoke the PES parser for this packet */
+			if ((parse_function = (parse_function_t) hashtable_get(priv->pes_parsers, header->pid)))
+				ret = parse_function(header, buffer->data, buffer->current_size, priv);
+			buffer_reset_size(buffer);
 		}
 	}
-
-	long diff = (long *) payload_start - (long *) payload;
-	if (diff < 0 || diff > TS_PACKET_SIZE) {
-		TS_WARNING("invalid pointer_field value '%d'", pointer_field);
-		return -ENOBUFS;
-	}
-	uint8_t payload_len = TS_PACKET_SIZE - (uint8_t) diff;
-	parse_function_t parse_function;
-	
-	if (header->pid == TS_PAT_PID)
-		return pat_parse(header, payload_start, payload_len, priv);
-	else if ((header->pid == TS_NULL_PID) && (header->payload_unit_start_indicator != 0))
-		TS_WARNING("NULL packet has payload_unit_start_indicator != 0");
-	else if ((parse_function = (parse_function_t) hashtable_get(priv->psi_parsers, header->pid)))
-		return parse_function(header, payload_start, payload_len, priv);
-	else if ((parse_function = (parse_function_t) hashtable_get(priv->pes_parsers, header->pid)))
-		return parse_function(header, payload_start, payload_len, priv);
-    return 0;
+	return ret;
 }

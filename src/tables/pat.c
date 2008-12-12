@@ -80,7 +80,7 @@ static void pat_update_directory(struct pat_table *current_pat, struct pat_table
 	dprintf("TODO: parse new version");
 }
 
-int pat_parse(const struct ts_header *header, const char *payload, uint8_t payload_len, 
+int pat_parse(const struct ts_header *header, const char *payload, uint32_t payload_len, 
 		struct demuxfs_data *priv)
 {
 	struct pat_table *current_pat = NULL;
@@ -108,6 +108,8 @@ int pat_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 		free(pat);
 		return 0;
 	}
+	dprintf("*** PAT parser: pid=%#x, table_id=%#x, current_pat=%p, pat->version_number=%#x, len=%d ***", 
+			header->pid, pat->table_id, current_pat, pat->version_number, payload_len);
 
 	/* Parse PAT specific bits */
 	pat->num_programs = (pat->section_length - 

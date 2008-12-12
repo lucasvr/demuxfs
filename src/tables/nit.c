@@ -45,7 +45,7 @@ static void nit_create_directory(struct nit_table *nit, struct demuxfs_data *pri
 	psi_populate((void **) &nit, nit->dentry);
 }
 
-int nit_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
+int nit_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
 	struct nit_table *current_nit = NULL;
@@ -73,6 +73,9 @@ int nit_parse(const struct ts_header *header, const char *payload, uint8_t paylo
 		free(nit);
 		return 0;
 	}
+	
+	dprintf("*** NIT parser: pid=%#x, table_id=%#x, current_nit=%p, nit->version_number=%#x, len=%d ***", 
+			header->pid, nit->table_id, current_nit, nit->version_number, payload_len);
 
 	/* TODO: increment the directory number somehow to indicate that this is a new version */
 

@@ -445,7 +445,7 @@ static struct dentry *pes_get_dentry(const struct ts_header *header, struct demu
 }
 
 /* Packetized Elementary Stream parser */
-int pes_parse(const struct ts_header *header, const char *payload, uint8_t payload_len,
+int pes_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
 	struct dentry *dentry;
