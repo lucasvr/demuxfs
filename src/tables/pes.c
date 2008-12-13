@@ -428,14 +428,14 @@ static struct dentry *pes_get_dentry(const struct ts_header *header, struct demu
 	char pathname[PATH_MAX];
 
 	/* TODO: create a dedicated hash table for quick access to the dentries */
-	sprintf(pathname, "/%#x", header->pid);
+	sprintf(pathname, "/%s/%#x", FS_STREAMS_NAME, header->pid);
 	slink = fsutils_get_dentry(priv->root, pathname);
 	if (! slink) {
 		dprintf("couldn't get a dentry for '%s'", pathname);
 		return NULL;
 	}
 
-	sprintf(pathname, "/%s/%s", slink->contents, FS_PES_FIFO_NAME);
+	sprintf(pathname, "%s/%s", slink->contents, FS_PES_FIFO_NAME);
 	dentry = fsutils_get_dentry(priv->root, pathname);
 	if (! dentry) {
 		dprintf("couldn't get a dentry for '%s'", pathname);

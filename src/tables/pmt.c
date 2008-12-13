@@ -66,10 +66,18 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 	sprintf(dirname, "%#4x", stream->elementary_stream_pid);
 	*subdir = CREATE_DIRECTORY(parent, dirname);
 	
-	/* Create a symlink in the root filesystem pointing to this new directory */
+	/* Create a symlink in /Streams pointing to this new directory */
 	es = fsutils_path_walk((*subdir), es_path, sizeof(es_path));
-	if (es)
-		CREATE_SYMLINK(priv->root, dirname, es+1);
+	if (es) {
+		struct dentry *streams_dir = fsutils_get_child(priv->root, FS_STREAMS_NAME);
+		if (! streams_dir)
+			streams_dir = CREATE_DIRECTORY(priv->root, FS_STREAMS_NAME);
+		if (es > es_path + 2) {
+			*(--es) = '.';
+			*(--es) = '.';
+		}
+		CREATE_SYMLINK(streams_dir, dirname, es);
+	}
 
 	/* Create a FIFO which will contain this PES contents */
 	CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
@@ -91,7 +99,8 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream,
 }
 
 static void pmt_create_directory(const struct ts_header *header, struct pmt_table *pmt, 
-		struct dentry **streams_dentry, struct demuxfs_data *priv)
+		struct dentry **version_dentry, struct dentry **streams_dentry, 
+		struct demuxfs_data *priv)
 {
 	char pathname[PATH_MAX];
 
@@ -105,12 +114,15 @@ static void pmt_create_directory(const struct ts_header *header, struct pmt_tabl
 	asprintf(&pmt->dentry->name, "%#04x", header->pid);
 	pmt->dentry->mode = S_IFDIR | 0555;
 	CREATE_COMMON(pmt_dir, pmt->dentry);
+	
+	/* Create the versioned dir and update the Current symlink */
+	*version_dentry = fsutils_create_version_dir(pmt->dentry, pmt->version_number);
 
-	psi_populate((void **) &pmt, pmt->dentry);
-	pmt_populate(pmt, pmt->dentry, priv);
+	psi_populate((void **) &pmt, *version_dentry);
+	pmt_populate(pmt, *version_dentry, priv);
 
 	/* Create a sub-directory named "Streams" */
-	*streams_dentry = CREATE_DIRECTORY(pmt->dentry, FS_STREAMS_NAME);
+	*streams_dentry = CREATE_DIRECTORY(*version_dentry, FS_STREAMS_NAME);
 }
 
 int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
@@ -134,7 +146,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	
 	/* Set hash key and check if there's already one version of this table in the hash */
 	pmt->dentry->inode = TS_PACKET_HASH_KEY(header, pmt);
-	current_pmt = hashtable_get(priv->table, pmt->dentry->inode);
+	current_pmt = hashtable_get(priv->table, pmt->dentry->inode); // XXX: como fica qdo temos 2 versoes da PMT na hash?
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! pmt->current_next_indicator || (current_pmt && current_pmt->version_number == pmt->version_number)) {
@@ -146,19 +158,17 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	dprintf("*** PMT parser: pid=%#x, table_id=%#x, current_pmt=%p, pmt->version_number=%#x, len=%d ***", 
 			header->pid, pmt->table_id, current_pmt, pmt->version_number, payload_len);
 
-	/* TODO: increment the directory number somehow to indicate that this is a new version */
-	
 	/* Parse PMT specific bits */
-	struct dentry *streams_dentry;
+	struct dentry *streams_dentry, *version_dentry;
 	pmt->reserved_4 = payload[8] >> 5;
 	pmt->pcr_pid = ((payload[8] << 8) | payload[9]) & 0x1fff;
 	pmt->reserved_5 = payload[10] >> 4;
 	pmt->program_information_length = ((payload[10] << 8) | payload[11]) & 0x0fff;
 	pmt->num_descriptors = descriptors_count(&payload[12], pmt->program_information_length);
-	pmt_create_directory(header, pmt, &streams_dentry, priv);
+	pmt_create_directory(header, pmt, &version_dentry, &streams_dentry, priv);
 
 	uint8_t descriptors_len = descriptors_parse(&payload[12], pmt->num_descriptors, 
-			pmt->dentry, priv);
+			version_dentry, priv);
 
 	uint8_t offset = 12 + descriptors_len;
 	pmt->num_programs = 0;

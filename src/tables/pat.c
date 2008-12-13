@@ -51,10 +51,11 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 		/* Create a symlink which points to this dentry in the PMT */
 		snprintf(name, sizeof(name), "%#04x", pat->programs[i].program_number);
 		if (program_number == 0) {
-			snprintf(target, sizeof(target), "../../%s", FS_NIT_NAME);
+			snprintf(target, sizeof(target), "../../../%s/%s", FS_NIT_NAME, FS_CURRENT_NAME);
 			hashtable_add(priv->psi_parsers, pid, nit_parse);
 		} else {
-			snprintf(target, sizeof(target), "../../%s/%#04x", FS_PMT_NAME, pat->programs[i].pid);
+			snprintf(target, sizeof(target), "../../../%s/%#04x/%s", 
+					FS_PMT_NAME, pat->programs[i].pid, FS_CURRENT_NAME);
 			hashtable_add(priv->psi_parsers, pid, pmt_parse);
 		}
 		CREATE_SYMLINK(dentry, name, target);
@@ -63,21 +64,20 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 
 static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *priv)
 {
+	struct dentry *version_dentry;
+
 	/* Create a directory named "PAT" and populate it with files */
 	pat->dentry->name = strdup(FS_PAT_NAME);
 	pat->dentry->mode = S_IFDIR | 0555;
 	CREATE_COMMON(priv->root, pat->dentry);
 
-	psi_populate((void **) &pat, pat->dentry);
-	pat_populate(pat, pat->dentry, priv);
+	/* Create the versioned dir and update the Current symlink */
+	version_dentry = fsutils_create_version_dir(pat->dentry, pat->version_number);
+
+	psi_populate((void **) &pat, version_dentry);
+	pat_populate(pat, version_dentry, priv);
 
 	hashtable_add(priv->table, pat->dentry->inode, pat);
-}
-
-static void pat_update_directory(struct pat_table *current_pat, struct pat_table *pat,
-		struct demuxfs_data *priv)
-{
-	dprintf("TODO: parse new version");
 }
 
 int pat_parse(const struct ts_header *header, const char *payload, uint32_t payload_len, 
@@ -129,10 +129,6 @@ int pat_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		pat->programs[i].pid = ((payload[offset+2] << 8) | payload[offset+3]) & 0x1fff;
 	}
 
-	if (! current_pat)
-		pat_create_directory(pat, priv);
-	else
-		pat_update_directory(current_pat, pat, priv);
-	
+	pat_create_directory(pat, priv);
 	return 0;
 }

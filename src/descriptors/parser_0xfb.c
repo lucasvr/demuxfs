@@ -40,10 +40,10 @@ struct formatted_descriptor {
 int descriptor_0xfb_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
 	uint8_t i;
-	char buf[32];
+	char buf[64];
 	struct dentry *dentry, *subdir, *pat_programs;
 
-	sprintf(buf, "/PAT/Programs");
+	snprintf(buf, sizeof(buf), "/%s/%s/%s", FS_PAT_NAME, FS_CURRENT_NAME, FS_PROGRAMS_NAME);
 	pat_programs = fsutils_get_dentry(priv->root, buf);
 	if (! pat_programs) {
 		TS_WARNING("/PAT/Programs doesn't exit");

@@ -51,17 +51,17 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 	struct formatted_descriptor f;
 	struct dentry *pat_programs;
 	uint8_t offset, i, j;
-	char buf[32];
+	char buf[64];
 
 	if (len < 2) {
 		TS_WARNING("cannot parse descriptor %#x: contents smaller than 2 bytes (%d)", 0xfe, len);
 		return -1;
 	}
 	
-	sprintf(buf, "/PAT/Programs");
+	snprintf(buf, sizeof(buf), "/%s/%s/%s", FS_PAT_NAME, FS_CURRENT_NAME, FS_PROGRAMS_NAME);
 	pat_programs = fsutils_get_dentry(priv->root, buf);
 	if (! pat_programs) {
-		TS_WARNING("/PAT/Programs doesn't exit");
+		TS_WARNING("%s doesn't exit", buf);
 		return -1;
 	}
 
