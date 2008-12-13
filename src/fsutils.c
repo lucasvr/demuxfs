@@ -160,6 +160,10 @@ void fsutils_dispose_tree(struct dentry *dentry)
 struct dentry * fsutils_get_child(struct dentry *dentry, char *name)
 {
 	struct dentry *ptr;
+	if (! strcmp(name, "."))
+		return dentry;
+	if (! strcmp(name, ".."))
+		return dentry->parent ? dentry->parent : dentry;
 	list_for_each_entry(ptr, &dentry->children, list)
 		if (! strcmp(ptr->name, name))
 			return ptr;
@@ -175,14 +179,17 @@ struct dentry * fsutils_get_child(struct dentry *dentry, char *name)
  */
 struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 {
-	char *end, *ptr;
-	char *path = (char *) cpath;
-	char *start = strstr(path, "/");
+	char *start, *end, *ptr;
+	char path[strlen(cpath)+1];
 	struct dentry *prev = root;
 	struct dentry *cached = NULL;
 
-	if (path && path[1] == '\0')
+	if (cpath && cpath[1] == '\0')
 		return root;
+
+	/* We cannot change the input path in any way */
+	strcpy(path, cpath);
+	start = strstr(path, "/");
 
 	while (start) {
 		ptr = start;
@@ -204,8 +211,40 @@ struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 			continue;
 		}
 		RESTORE_STRING(end);
+
+		if (prev->mode & S_IFLNK) {
+			/* Follow symlink */
+			cached = fsutils_get_dentry(prev, prev->contents);
+			if (cached) {
+				prev = cached;
+				continue;
+			}
+		}
 		return NULL;
 	}
 	//printf("returning '%s'\n", prev->name);
 	return prev;
+}
+
+struct dentry * fsutils_create_version_dir(struct dentry *parent, int version)
+{
+	char version_dir[32];
+	struct dentry *child;
+	struct dentry *current;
+
+	snprintf(version_dir, sizeof(version_dir), "Version_%d", version);
+	child = CREATE_DIRECTORY(parent, version_dir);
+	
+	/* Update the 'Current' symlink if it exists or create a new symlink if it doesn't */
+	current = fsutils_get_child(parent, FS_CURRENT_NAME);
+	if (! current)
+		current = CREATE_SYMLINK(parent, FS_CURRENT_NAME, version_dir);
+	else {
+		pthread_mutex_lock(&current->mutex);
+		free(current->contents);
+		current->contents = strdup(version_dir);
+		pthread_mutex_unlock(&current->mutex);
+	}
+
+	return child;
 }

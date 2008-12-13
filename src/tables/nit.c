@@ -35,14 +35,17 @@
 #include "tables/psi.h"
 #include "tables/nit.h"
 
-static void nit_create_directory(struct nit_table *nit, struct demuxfs_data *priv)
+static void nit_create_directory(struct nit_table *nit, struct dentry **version_dentry,
+		struct demuxfs_data *priv)
 {
 	/* Create a directory named "NIT" and populate it with files */
 	nit->dentry->name = strdup(FS_NIT_NAME);
 	nit->dentry->mode = S_IFDIR | 0555;
 	CREATE_COMMON(priv->root, nit->dentry);
 
-	psi_populate((void **) &nit, nit->dentry);
+	/* Create the versioned dir and update the Current symlink */
+	*version_dentry = fsutils_create_version_dir(nit->dentry, nit->version_number);
+	psi_populate((void **) &nit, *version_dentry);
 }
 
 int nit_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
@@ -77,24 +80,23 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	dprintf("*** NIT parser: pid=%#x, table_id=%#x, current_nit=%p, nit->version_number=%#x, len=%d ***", 
 			header->pid, nit->table_id, current_nit, nit->version_number, payload_len);
 
-	/* TODO: increment the directory number somehow to indicate that this is a new version */
-
 	/* TODO: check payload boundaries */
 
 	/* Parse NIT specific bits */
+	struct dentry *version_dentry;
 	nit->reserved_4 = payload[8] >> 4;
 	nit->network_descriptors_length = ((payload[8] << 8) | payload[9]) & 0x0fff;
 	nit->num_descriptors = descriptors_count(&payload[10], nit->network_descriptors_length);
-	nit_create_directory(nit, priv);
+	nit_create_directory(nit, &version_dentry, priv);
 
-	descriptors_parse(&payload[10], nit->num_descriptors, nit->dentry, priv);
+	descriptors_parse(&payload[10], nit->num_descriptors, version_dentry, priv);
 
 	uint8_t offset = 10 + nit->network_descriptors_length;
 	nit->reserved_5 = payload[offset] >> 4;
 	nit->transport_stream_loop_length = ((payload[offset] << 8) | payload[offset+1]) & 0x0fff;
 	offset += 2;
 
-	struct dentry *ts_dentry = CREATE_DIRECTORY(nit->dentry, "TS_INFORMATION");
+	struct dentry *ts_dentry = CREATE_DIRECTORY(version_dentry, "TS_INFORMATION");
 	uint16_t i = 0, info_index = 0;
 	while (i < nit->transport_stream_loop_length) {
 		char subdir[PATH_MAX];

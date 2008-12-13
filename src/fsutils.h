@@ -8,12 +8,14 @@
 #define FS_EIT_NAME         "EIT"
 #define FS_PROGRAMS_NAME    "Programs"
 #define FS_STREAMS_NAME     "Streams"
+#define FS_CURRENT_NAME     "Current"
 
 char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size);
 void fsutils_dump_tree(struct dentry *dentry);
 struct dentry *fsutils_get_child(struct dentry *dentry, char *name);
 struct dentry *fsutils_get_dentry(struct dentry *root, const char *path);
 struct dentry *fsutils_create_dentry(const char *path, mode_t mode);
+struct dentry * fsutils_create_version_dir(struct dentry *parent, int version);
 void fsutils_dispose_tree(struct dentry *dentry);
 void fsutils_dispose_node(struct dentry *dentry);
 

@@ -87,14 +87,14 @@ static const char *translate_service(uint8_t service_type)
 int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
 	uint8_t i;
-	char buf[32];
+	char buf[64];
 	struct dentry *dentry, *subdir, *pat_programs;
 	struct formatted_descriptor f;
 	
-	sprintf(buf, "/PAT/Programs");
+	snprintf(buf, sizeof(buf), "/%s/%s/%s", FS_PAT_NAME, FS_CURRENT_NAME, FS_PROGRAMS_NAME);
 	pat_programs = fsutils_get_dentry(priv->root, buf);
 	if (! pat_programs) {
-		TS_WARNING("/PAT/Programs doesn't exit");
+		TS_WARNING("%s doesn't exit", buf);
 		return -1;
 	}
 
