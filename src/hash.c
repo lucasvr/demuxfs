@@ -50,15 +50,15 @@ struct hash_table *hashtable_new(int size)
 	return table;
 }
 
-void hashtable_destroy(struct hash_table *table, bool free_data)
+void hashtable_destroy(struct hash_table *table, hashtable_free_function_t free_function)
 {
 	int i;
 	pthread_mutex_destroy(&table->mutex);
 	for (i=0; i<table->size; ++i) {
 		struct hash_item *item = table->items[i];
 		if (item) {
-			if (free_data && item->data)
-				free(item->data);
+			if (free_function && item->data)
+				free_function(item->data);
 			free(item);
 			table->items[i] = NULL;
 		}

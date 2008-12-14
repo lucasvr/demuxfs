@@ -189,11 +189,11 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 		while (true) {
 			struct buffer *buffer = hashtable_get(priv->packet_buffer, header->pid);
 			if (! buffer && ! remnant_flag) {
-				buffer = buffer_create(section_length + 3);
+				buffer = buffer_create(section_length + 3, false);
 				hashtable_add(priv->packet_buffer, header->pid, buffer);
 			}
 
-			buffer_append(buffer, start, end - start + 1, false);
+			buffer_append(buffer, start, end - start + 1);
 			if (buffer_contains_full_psi_section(buffer) || pointer_field > 0) {
 				pointer_field = 0;
 				table_id = start[0];
@@ -222,11 +222,11 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			uint16_t size = BUFFER_MAX_SIZE;
 			if (header->payload_unit_start_indicator && (payload_end - payload_start > 6))
 				size = CONVERT_TO_16(payload_start[4], payload_start[5]);
-			buffer = buffer_create(size);
+			buffer = buffer_create(size, true);
 			hashtable_add(priv->packet_buffer, header->pid, buffer);
 		}
 
-		buffer_append(buffer, payload_start, payload_end - payload_start + 1, true);
+		buffer_append(buffer, payload_start, payload_end - payload_start + 1);
 		if (buffer_contains_full_pes_section(buffer)) {
 			/* Invoke the PES parser for this packet */
 			if ((parse_function = (parse_function_t) hashtable_get(priv->pes_parsers, header->pid)))

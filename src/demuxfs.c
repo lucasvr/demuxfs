@@ -29,6 +29,7 @@
 #include "demuxfs.h"
 #include "fsutils.h"
 #include "xattr.h"
+#include "buffer.h"
 #include "hash.h"
 #include "fifo.h"
 #include "ts.h"
@@ -377,10 +378,11 @@ static void demuxfs_destroy(void *data)
 {
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
 	descriptors_destroy(priv->ts_descriptors);
-	hashtable_destroy(priv->packet_buffer, true);
-	hashtable_destroy(priv->psi_parsers, false);
-	hashtable_destroy(priv->pes_parsers, false);
-	hashtable_destroy(priv->table, true);
+	hashtable_destroy(priv->packet_buffer, (hashtable_free_function_t) free);
+	hashtable_destroy(priv->psi_parsers, NULL);
+	hashtable_destroy(priv->pes_parsers, NULL);
+	hashtable_destroy(priv->table, (hashtable_free_function_t) free);
+	hashtable_destroy(priv->packet_buffer, (hashtable_free_function_t) buffer_destroy);
 	fsutils_dispose_tree(priv->root);
 }
 
