@@ -31,13 +31,13 @@
 #include "byteops.h"
 #include "buffer.h"
 
-struct buffer *buffer_create(size_t size)
+struct buffer *buffer_create(size_t size, bool pes_data)
 {
 	size_t max_size = BUFFER_MAX_SIZE;
 	struct buffer *buffer;
 	
-	if (size > max_size)
-		max_size = 0xffff;
+	if (size <= max_size && pes_data)
+		max_size = 0xffff + 0x100;
 
 	if (size > max_size) {
 		dprintf("*** size (%d) > hard limit (%d)", size, max_size);
@@ -56,6 +56,7 @@ struct buffer *buffer_create(size_t size)
 
 	buffer->max_size = max_size;
 	buffer->current_size = 0;
+	buffer->holds_pes_data = pes_data;
 	return buffer;
 }
 
@@ -68,7 +69,7 @@ void buffer_destroy(struct buffer *buffer)
 	}
 }
 
-int buffer_append(struct buffer *buffer, const char *buf, size_t size, bool pes)
+int buffer_append(struct buffer *buffer, const char *buf, size_t size)
 {
 	size_t to_write = size;
 
@@ -85,7 +86,7 @@ int buffer_append(struct buffer *buffer, const char *buf, size_t size, bool pes)
 		}
 		to_write = size;
 	} else if ((buffer->current_size + size) > buffer->max_size) {
-		if (! pes)
+		if (! buffer->holds_pes_data)
 			to_write = buffer->max_size - buffer->current_size;
 		else {
 			char *ptr = (char *) realloc(buffer->data, buffer->current_size + size);
