@@ -36,7 +36,7 @@ struct buffer *buffer_create(size_t size, bool pes_data)
 	size_t max_size = BUFFER_MAX_SIZE;
 	struct buffer *buffer;
 	
-	if (size <= max_size && pes_data)
+	if (pes_data)
 		max_size = 0xffff + 0x100;
 
 	if (size > max_size) {

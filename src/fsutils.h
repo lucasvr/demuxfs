@@ -1,14 +1,27 @@
 #ifndef __fsutils_h
 #define __fsutils_h
 
-#define FS_PES_FIFO_NAME    "PES"
-#define FS_PAT_NAME         "PAT"
-#define FS_PMT_NAME         "PMT"
-#define FS_NIT_NAME         "NIT"
-#define FS_EIT_NAME         "EIT"
-#define FS_PROGRAMS_NAME    "Programs"
-#define FS_STREAMS_NAME     "Streams"
-#define FS_CURRENT_NAME     "Current"
+#define FS_PES_FIFO_NAME                "PES"
+#define FS_PAT_NAME                     "PAT"
+#define FS_PMT_NAME                     "PMT"
+#define FS_NIT_NAME                     "NIT"
+#define FS_EIT_NAME                     "EIT"
+
+#define FS_PROGRAMS_NAME                "Programs"
+#define FS_CURRENT_NAME                 "Current"
+#define FS_PRIMARY_NAME                 "Primary"
+
+#define FS_STREAMS_NAME                 "Streams"
+#define FS_AUDIO_STREAMS_NAME           "AudioStreams"
+#define FS_VIDEO_STREAMS_NAME           "VideoStreams"
+#define FS_ONE_SEG_AUDIO_STREAMS_NAME   "AudioStreams-OneSeg"
+#define FS_ONE_SEG_VIDEO_STREAMS_NAME   "VideoStreams-OneSeg"
+#define FS_CLOSED_CAPTION_STREAMS_NAME  "ClosedCaptionStreams"
+#define FS_SUPERIMPOSED_STREAMS_NAME    "SuperImposedStreams"
+#define FS_OBJECT_CAROUSEL_STREAMS_NAME "ObjectCarouselStreams"
+#define FS_DATA_CAROUSEL_STREAMS_NAME   "DataCarouselStreams"
+#define FS_EVENT_MESSAGE_STREAMS_NAME   "EventMessageStreams"
+#define FS_RESERVED_STREAMS_NAME        "ReservedStreams"
 
 char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size);
 void fsutils_dump_tree(struct dentry *dentry);

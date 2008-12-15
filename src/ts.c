@@ -223,6 +223,8 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			if (header->payload_unit_start_indicator && (payload_end - payload_start > 6))
 				size = CONVERT_TO_16(payload_start[4], payload_start[5]);
 			buffer = buffer_create(size, true);
+			if (! buffer)
+				return 0;
 			hashtable_add(priv->packet_buffer, header->pid, buffer);
 		}
 
