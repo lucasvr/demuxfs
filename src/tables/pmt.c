@@ -101,9 +101,6 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 	sprintf(dirname, "%#4x", stream->elementary_stream_pid);
 	*subdir = CREATE_DIRECTORY(parent, dirname);
 
-	/* Create a FIFO which will contain this PES contents */
-	CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
-
 	/* Create a 'Primary' symlink pointing to <streams_name> if it happens to be the primary component */
 	if (is_primary)
 		CREATE_SYMLINK(parent, FS_PRIMARY_NAME, dirname);
