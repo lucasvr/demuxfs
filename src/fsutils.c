@@ -157,7 +157,7 @@ void fsutils_dispose_tree(struct dentry *dentry)
  *
  * Returns the child dentry on success or NULL if no such child exist.
  */
-struct dentry * fsutils_get_child(struct dentry *dentry, char *name)
+struct dentry * fsutils_get_child(struct dentry *dentry, const char *name)
 {
 	struct dentry *ptr;
 	if (! strcmp(name, "."))
@@ -190,6 +190,13 @@ struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 	/* We cannot change the input path in any way */
 	strcpy(path, cpath);
 	start = strstr(path, "/");
+	if (! start && S_ISLNK(root->mode)) {
+		/* One-level symlink */
+		struct dentry *parent = root->parent;
+		if (! parent)
+			return NULL;
+		return fsutils_get_child(parent, cpath);
+	}
 
 	while (start) {
 		ptr = start;
@@ -217,6 +224,7 @@ struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 			cached = fsutils_get_dentry(prev, prev->contents);
 			if (cached) {
 				prev = cached;
+				start--;
 				continue;
 			}
 		}
