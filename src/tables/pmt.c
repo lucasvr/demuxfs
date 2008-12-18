@@ -71,29 +71,35 @@ static struct dentry *test_and_create_directory(struct dentry *parent, const cha
 static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descriptor_info,
 		struct dentry *version_dentry, struct dentry **subdir, struct demuxfs_data *priv)
 {
-	uint8_t component_tag = descriptor_info[0];
+	uint8_t tag = descriptor_info[0];
+	uint8_t component_tag = descriptor_info[2];
 	bool is_primary = false;
+	bool is_secondary = false;
 	struct dentry *parent = NULL;
 	const char *streams_name = FS_RESERVED_STREAMS_NAME;
 	char dirname[16], stream_type[256], es_path[PATH_MAX], *es;
 
 	// STREAM_IDENTIFIER_DESCRIPTOR
-	if (component_tag == 0x52) {
-		uint8_t tag = descriptor_info[2];
-		if (component_is_video(tag, &is_primary))
-			streams_name = component_is_one_seg(tag) ? FS_ONE_SEG_VIDEO_STREAMS_NAME : FS_VIDEO_STREAMS_NAME;
-		else if (component_is_audio(tag, &is_primary))
-			streams_name = component_is_one_seg(tag) ? FS_ONE_SEG_AUDIO_STREAMS_NAME : FS_AUDIO_STREAMS_NAME;
-		else if (component_is_caption(tag, &is_primary))
+	if (tag == 0x52) {
+		bool is_reserved = false;
+		if (component_is_video(component_tag, &is_primary))
+			streams_name = component_is_one_seg(component_tag) ? FS_ONE_SEG_VIDEO_STREAMS_NAME : FS_VIDEO_STREAMS_NAME;
+		else if (component_is_audio(component_tag, &is_primary))
+			streams_name = component_is_one_seg(component_tag) ? FS_ONE_SEG_AUDIO_STREAMS_NAME : FS_AUDIO_STREAMS_NAME;
+		else if (component_is_caption(component_tag, &is_primary))
 			streams_name = FS_CLOSED_CAPTION_STREAMS_NAME;
-		else if (component_is_superimposed(tag, &is_primary))
+		else if (component_is_superimposed(component_tag, &is_primary))
 			streams_name = FS_SUPERIMPOSED_STREAMS_NAME;
-		else if (component_is_object_carousel(tag, &is_primary))
+		else if (component_is_object_carousel(component_tag, &is_primary))
 			streams_name = FS_OBJECT_CAROUSEL_STREAMS_NAME;
-		else if (component_is_data_carousel(tag, &is_primary))
+		else if (component_is_data_carousel(component_tag, &is_primary))
 			streams_name = FS_DATA_CAROUSEL_STREAMS_NAME;
-		else if (component_is_event_message(tag))
+		else if (component_is_event_message(component_tag))
 			streams_name = FS_EVENT_MESSAGE_STREAMS_NAME;
+		else
+			is_reserved = true;
+		if (! is_primary && ! is_reserved)
+			is_secondary = true;
 	}
 	parent = test_and_create_directory(version_dentry, streams_name);
 
@@ -104,6 +110,14 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 	/* Create a 'Primary' symlink pointing to <streams_name> if it happens to be the primary component */
 	if (is_primary)
 		CREATE_SYMLINK(parent, FS_PRIMARY_NAME, dirname);
+	else if (is_secondary) {
+		struct dentry *secondary = fsutils_get_child(parent, FS_SECONDARY_NAME);
+		if (! secondary)
+			CREATE_SYMLINK(parent, FS_SECONDARY_NAME, dirname);
+		else {
+			/* TODO: The descriptor with the lowest component_tag will become the secondary stream */
+		}
+	}
 
 	/* Create a symlink in /Streams pointing to this new directory */
 	es = fsutils_path_walk((*subdir), es_path, sizeof(es_path));
