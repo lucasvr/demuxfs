@@ -217,11 +217,12 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			remnant_flag = false;
 		}
 	} else if (ts_is_pes_packet(header->pid, priv)) {
+		uint16_t size;
 		struct buffer *buffer = hashtable_get(priv->packet_buffer, header->pid);
 		if (! buffer) {
-			uint16_t size = BUFFER_MAX_SIZE;
-			if (header->payload_unit_start_indicator && (payload_end - payload_start > 6))
-				size = CONVERT_TO_16(payload_start[4], payload_start[5]);
+			if (! header->payload_unit_start_indicator || (payload_end - payload_start <= 6))
+				return 0;
+			size = CONVERT_TO_16(payload_start[4], payload_start[5]);
 			buffer = buffer_create(size, true);
 			if (! buffer)
 				return 0;
