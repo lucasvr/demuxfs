@@ -33,14 +33,10 @@
 
 struct buffer *buffer_create(size_t size, bool pes_data)
 {
-	size_t max_size = BUFFER_MAX_SIZE;
 	struct buffer *buffer;
-	
-	if (pes_data)
-		max_size = 0xffff + 0x100;
 
-	if (size > max_size) {
-		dprintf("*** size (%d) > hard limit (%d)", size, max_size);
+	if (size > MAX_SECTION_SIZE && ! pes_data) {
+		dprintf("*** size (%d) > hard limit (%d)", size, size);
 		return NULL;
 	}
 
@@ -48,13 +44,13 @@ struct buffer *buffer_create(size_t size, bool pes_data)
 	if (! buffer)
 		return NULL;
 
-	buffer->data = (char *) malloc(sizeof(char) * max_size);
+	buffer->data = (char *) malloc(sizeof(char) * size);
 	if (! buffer->data) {
 		free(buffer);
 		return NULL;
 	}
 
-	buffer->max_size = max_size;
+	buffer->max_size = size;
 	buffer->current_size = 0;
 	buffer->holds_pes_data = pes_data;
 	return buffer;
@@ -65,13 +61,14 @@ void buffer_destroy(struct buffer *buffer)
 	if (buffer) {
 		if (buffer->data)
 			free(buffer->data);
+		buffer->data = NULL;
 		free(buffer);
 	}
 }
 
 int buffer_append(struct buffer *buffer, const char *buf, size_t size)
 {
-	size_t to_write = size;
+	size_t to_write = 0;
 
 	if (! buffer || ! buf)
 		return -EINVAL;
@@ -81,20 +78,30 @@ int buffer_append(struct buffer *buffer, const char *buf, size_t size)
 
 	if (buffer->current_size == 0) {
 		if (size > buffer->max_size) {
-			dprintf("*** size (%d) > hard limit (%d)", size, buffer->max_size);
-			return 0;
+			/* Reusing the slot */
+			free(buffer->data);
+			buffer->data = (char *) malloc(sizeof(char) * size);
+			if (! buffer->data) {
+				buffer->max_size = 0;
+				free(buffer->data);
+				return -ENOMEM;
+			}
+			buffer->max_size = size;
 		}
 		to_write = size;
-	} else if ((buffer->current_size + size) > buffer->max_size) {
-		if (! buffer->holds_pes_data)
-			to_write = buffer->max_size - buffer->current_size;
-		else {
-			char *ptr = (char *) realloc(buffer->data, buffer->current_size + size);
-			if (! ptr)
-				/* Couldn't realloc, so truncate data instead */
-				to_write = buffer->max_size - buffer->current_size;
-			else
-				buffer->data = ptr;
+	} else {
+		if ((buffer->current_size + size > MAX_SECTION_SIZE) && ! buffer->holds_pes_data)
+			to_write = MAX_SECTION_SIZE - buffer->current_size;
+		else
+			to_write = size;
+		if (buffer->current_size + to_write > buffer->max_size) {
+			char *ptr = (char *) realloc(buffer->data, buffer->current_size + to_write);
+			if (! ptr) {
+				dprintf("Error reallocating memory");
+				return -ENOMEM;
+			}
+			buffer->data = ptr;
+			buffer->max_size = buffer->current_size + to_write;
 		}
 	}
 
@@ -113,8 +120,9 @@ bool buffer_contains_full_psi_section(struct buffer *buffer)
 
 	section_length = CONVERT_TO_16(buffer->data[1], buffer->data[2]) & 0x0fff;
 	if (buffer->current_size < (section_length + 3)) {
-		if ((section_length + 3) > buffer->max_size) {
-			dprintf("Bad section packet");
+		if ((section_length + 3) > MAX_SECTION_SIZE) {
+			dprintf("Bad section packet: curr_size=%d max_size=%d section_length=%d",
+					buffer->current_size, buffer->max_size, section_length);
 			buffer->current_size = 0;
 		}
 		return false;

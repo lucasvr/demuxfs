@@ -1,7 +1,8 @@
 #ifndef __buffer_h
 #define __buffer_h
 
-#define BUFFER_MAX_SIZE 4096
+#define MAX_SECTION_SIZE 4096
+#define MAX_PACKET_SIZE  0xffff
 
 struct buffer {
 	char *data;
