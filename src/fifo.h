@@ -5,6 +5,7 @@ struct fifo {
 	struct list_head list;
 	uint32_t num_elements;
 	uint32_t max_elements;
+	bool flushed;
 	pthread_mutex_t head_mutex;
 };
 
@@ -46,6 +47,15 @@ void fifo_destroy(struct fifo *fifo);
  * Returns true if the FIFO is empty or false if it's not.
  */
 bool fifo_empty(struct fifo *fifo);
+
+/**
+ * fifo_flushed - Tells if a FIFO is in a flushed state
+ *
+ * @fifo: the FIFO
+ *
+ * Returns true if the FIFO is in a flushed state of false if it's not.
+ */
+bool fifo_flushed(struct fifo *fifo);
 
 /**
  * fifo_read - Consumes data from a FIFO

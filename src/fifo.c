@@ -39,6 +39,7 @@ struct fifo *fifo_init(uint32_t max_elements)
 	INIT_LIST_HEAD(&fifo->list);
 	fifo->max_elements = max_elements;
 	fifo->num_elements = 0;
+	fifo->flushed = true;
 	pthread_mutex_init(&fifo->head_mutex, NULL);
 	return fifo;
 }
@@ -52,6 +53,7 @@ void fifo_flush(struct fifo *fifo)
 		free(entry);
 	}
 	fifo->num_elements = 0;
+	fifo->flushed = true;
 }
 
 void fifo_destroy(struct fifo *fifo)
@@ -61,6 +63,15 @@ void fifo_destroy(struct fifo *fifo)
 	pthread_mutex_unlock(&fifo->head_mutex);
 	pthread_mutex_destroy(&fifo->head_mutex);
 	free(fifo);
+}
+
+bool fifo_flushed(struct fifo *fifo)
+{
+	bool flushed;
+	pthread_mutex_lock(&fifo->head_mutex);
+	flushed = fifo->flushed;
+	pthread_mutex_unlock(&fifo->head_mutex);
+	return flushed;
 }
 
 bool fifo_empty(struct fifo *fifo)
@@ -122,11 +133,18 @@ int fifo_append(struct fifo *fifo, const char *data, uint32_t size)
 	pthread_mutex_unlock(&fifo->head_mutex);
 
 	element = (struct fifo_element *) calloc(1, sizeof(struct fifo_element));
-	if (! element)
+	if (! element) {
+		pthread_mutex_lock(&fifo->head_mutex);
+		fifo->num_elements--;
+		pthread_mutex_unlock(&fifo->head_mutex);
 		return -ENOMEM;
+	}
 
 	element->data = (char *) malloc(sizeof(char) * size);
 	if (! element->data) {
+		pthread_mutex_lock(&fifo->head_mutex);
+		fifo->num_elements--;
+		pthread_mutex_unlock(&fifo->head_mutex);
 		free(element);
 		return -ENOMEM;
 	}
@@ -138,6 +156,7 @@ int fifo_append(struct fifo *fifo, const char *data, uint32_t size)
 	/* Need to get a lock, as it's possible that the list is empty by now. */
 	pthread_mutex_lock(&fifo->head_mutex);
 	list_add_tail(&element->list, &fifo->list);
+	fifo->flushed = false;
 	pthread_mutex_unlock(&fifo->head_mutex);
 
 	return 0;
