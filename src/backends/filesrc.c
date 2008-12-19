@@ -180,6 +180,8 @@ int filesrc_read_packet(struct demuxfs_data *priv)
 		perror("fread");
 		return -1;
 	}
+	if (p->fileloop)
+		usleep(1);
 	p->packet_valid = true;
 	return 0;
 }
