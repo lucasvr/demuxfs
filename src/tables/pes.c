@@ -474,10 +474,9 @@ int pes_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	pthread_mutex_lock(&dentry->mutex);
 	/* Do not feed the FIFO if no process wants to read from it */
 	if (dentry->refcount > 0) {
-		bool start_ok, append = true;
+		bool append = true;
 		if (fifo_flushed(dentry->fifo)) {
-			start_ok = payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01;
-			if (! header->payload_unit_start_indicator || ! start_ok)
+			if (! (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01))
 				append = false;
 		}
 		if (append) {
