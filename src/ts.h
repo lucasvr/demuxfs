@@ -33,15 +33,25 @@
 #define TS_CDT_PID    0x29
 #define TS_NULL_PID   0x1FFF
 
-/* Known table IDs */
-#define TS_PAT_TABLE_ID       0x00
-#define TS_PMT_TABLE_ID       0x02
-#define TS_NIT_TABLE_ID       0x40
-#define TS_SDT_TABLE_ID       0x42
-#define TS_TOT_TABLE_ID       0x70
-#define TS_TDT_TABLE_ID       0x73
-#define TS_EIT_FIRST_TABLE_ID 0x4e
-#define TS_EIT_LAST_TABLE_ID  0x6f
+/* 
+ * Known table IDs, according to ABNT NBR 15603-1.
+ * The transmission of tables CAT, TDT, RST, NBIT, LDT, BAT, LIT, ERT, 
+ * ITT and PCAT is reserved for future implementations of the SBTVD.
+ */
+#define TS_PAT_TABLE_ID                 0x00
+#define TS_PMT_TABLE_ID                 0x02
+#define TS_NIT_TABLE_ID                 0x40
+#define TS_SDT_TABLE_ID                 0x42
+#define TS_EIT_P_F_TABLE_ID             0x4e
+#define TS_EIT_SCHEDULE_FIRST_TABLE_ID  0x50
+#define TS_EIT_SCHEDULE_LAST_TABLE_ID   0x57
+#define TS_EIT_XSCHEDULE_FIRST_TABLE_ID 0x58
+#define TS_EIT_XSCHEDULE_LAST_TABLE_ID  0x5f
+#define TS_ST_TABLE_ID                  0x72
+#define TS_TOT_TABLE_ID                 0x73
+#define TS_SDTT_TABLE_ID                0xc3
+#define TS_BIT_TABLE_ID                 0xc4
+#define TS_CDT_TABLE_ID                 0xc8
 
 /* The hash key generator to the private hash table */
 #define TS_PACKET_HASH_KEY(ts_header,packet_header) \
