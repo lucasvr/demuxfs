@@ -1,6 +1,7 @@
 #ifndef __fsutils_h
 #define __fsutils_h
 
+#define FS_ES_FIFO_NAME                 "ES"
 #define FS_PES_FIFO_NAME                "PES"
 #define FS_PAT_NAME                     "PAT"
 #define FS_PMT_NAME                     "PMT"
@@ -10,6 +11,7 @@
 #define FS_PROGRAMS_NAME                "Programs"
 #define FS_CURRENT_NAME                 "Current"
 #define FS_PRIMARY_NAME                 "Primary"
+#define FS_SECONDARY_NAME               "Secondary"
 
 #define FS_STREAMS_NAME                 "Streams"
 #define FS_AUDIO_STREAMS_NAME           "AudioStreams"
