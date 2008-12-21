@@ -44,6 +44,19 @@ void fsutils_dispose_node(struct dentry *dentry);
 		(_dentry)->parent = _parent; \
 		list_add_tail(&(_dentry)->list, &((_parent)->children));
 
+#define CREATE_FILE_BIN(parent,header,member,_size) \
+	({ \
+		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+	 	_dentry->contents = malloc(_size); \
+	 	memcpy(_dentry->contents, (header)->member, _size); \
+		_dentry->name = strdup(#member); \
+		_dentry->size = _size; \
+		_dentry->mode = S_IFREG | 0444; \
+		CREATE_COMMON((parent),_dentry); \
+		xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false); \
+	 	_dentry; \
+	})
+
 #define CREATE_FILE_NUMBER(parent,header,member) \
 	({ \
 		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \

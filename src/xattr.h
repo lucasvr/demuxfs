@@ -6,6 +6,7 @@
 #endif
 
 #define XATTR_FORMAT                    "system.format"
+#define XATTR_FORMAT_BIN                "binary data"
 #define XATTR_FORMAT_NUMBER             "number"
 #define XATTR_FORMAT_STRING             "string"
 #define XATTR_FORMAT_STRING_AND_NUMBER  "string [number]"

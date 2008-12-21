@@ -27,13 +27,99 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "demuxfs.h"
+#include "byteops.h"
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
 
+struct transmission_type_01 {
+	uint16_t reserved_1:7;
+	uint16_t logo_id:9;
+	uint16_t reserved_2:4;
+	uint16_t logo_version:12;
+	uint16_t download_data_id;
+};
+
+struct transmission_type_02 {
+	uint16_t reserved_1:7;
+	uint16_t logo_id:9;
+};
+
+struct transmission_type_03 {
+	char logo_char[256];
+	uint8_t _len;
+};
+
+struct transmission_type_other {
+	char reserved_future_use[256];
+	uint8_t _len;
+};
+
+struct formatted_descriptor {
+	uint8_t _logo_transmission_type;
+	char logo_transmission_type[256];
+	struct transmission_type_01 t1;
+	struct transmission_type_02 t2;
+	struct transmission_type_03 t3;
+	struct transmission_type_other other;
+};
+
+static const char * transmission_type_meaning(uint8_t transmission_type)
+{
+	switch (transmission_type) {
+		case 0x01:
+			return "CDT transmission type 1";
+		case 0x02:
+			return "CDT transmission type 2";
+		case 0x03:
+			return "Simple logo type system";
+		default:
+			return "Reserved for future use";
+	}
+}
+
 /* LOGO_TRANSMISSION_DESCRIPTOR parser */
 int descriptor_0xcf_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct formatted_descriptor f;
+	struct dentry *dentry = CREATE_DIRECTORY(parent, "LOGO_TRANSMISSION");
+	
+	f._logo_transmission_type = payload[0];
+	snprintf(f.logo_transmission_type, sizeof(f.logo_transmission_type), "%s [%#x]",
+			transmission_type_meaning(f._logo_transmission_type), 
+			f._logo_transmission_type);
+	CREATE_FILE_STRING(dentry, &f, logo_transmission_type, XATTR_FORMAT_STRING_AND_NUMBER);
+
+	if (f._logo_transmission_type == 0x01) {
+		f.t1.reserved_1 = payload[1] >> 1;
+		f.t1.logo_id = CONVERT_TO_16(payload[1], payload[2]) & 0x01ff;
+		f.t1.reserved_2 = payload[3] >> 4;
+		f.t1.logo_version = CONVERT_TO_16(payload[3], payload[4]) & 0x0fff;
+		f.t1.download_data_id = CONVERT_TO_16(payload[5], payload[6]);
+		CREATE_FILE_NUMBER(dentry, &f.t1, logo_id);
+		CREATE_FILE_NUMBER(dentry, &f.t1, logo_version);
+		CREATE_FILE_NUMBER(dentry, &f.t1, download_data_id);
+
+	} else if (f._logo_transmission_type == 0x02) {
+		f.t2.reserved_1 = payload[1] >> 1;
+		f.t2.logo_id = CONVERT_TO_16(payload[1], payload[2]) & 0x01ff;
+		CREATE_FILE_NUMBER(dentry, &f.t2, logo_id);
+
+	} else if (f._logo_transmission_type == 0x03) {
+		int i;
+		for (i=0; i<len-1; ++i)
+			f.t3.logo_char[i] = payload[1+i];
+		f.t3._len = i;
+		CREATE_FILE_BIN(dentry, &f.t3, logo_char, f.t3._len);
+
+	} else {
+		int i;
+		for (i=0; i<len-1; ++i)
+			f.other.reserved_future_use[i] = payload[1+i];
+		f.other._len = i;
+		CREATE_FILE_BIN(dentry, &f.other, reserved_future_use, f.other._len);
+	}
+
+    return 0;
 }
 
