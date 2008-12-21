@@ -38,8 +38,8 @@
 #include "tables/pat.h"
 #include "tables/pmt.h"
 #include "tables/nit.h"
-#include "tables/eit.h"
 #include "tables/pes.h"
+#include "tables/sdt.h"
 
 void ts_dump_header(const struct ts_header *header)
 {
@@ -104,8 +104,8 @@ static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_
 		return pmt_parse;
 	else if (table_id == TS_NIT_TABLE_ID)
 		return nit_parse;
-	//else if (table_id == TS_SDT_TABLE_ID)
-	//	dprintf("TS carries a SDT table");
+	else if (table_id == TS_SDT_TABLE_ID)
+		return sdt_parse;
 	//else if (table_id == TS_TOT_TABLE_ID)
 	//	dprintf("TS carries a TOT table");
 	//else if (table_id == TS_TDT_TABLE_ID)
