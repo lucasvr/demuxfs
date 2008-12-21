@@ -48,9 +48,9 @@ static void filesrc_usage(void)
 {
 	fprintf(stderr, "FILESRC options:\n"
 			"    -o filesrc=FILE        transport stream input file\n"
-			"    -o fileloop=1|0        loop back on EOF [0]\n"
-			"    -o parse_pes=1|0       parse PES packets [0]\n"
-			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC [SBTVD]\n\n");
+			"    -o fileloop=1|0        loop back on EOF (default: 0)\n"
+			"    -o parse_pes=1|0       parse PES packets (default: 0)\n"
+			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC (default: SBTVD)\n\n");
 }
 
 #define FILESRC_OPT(templ,offset,value) { templ, offsetof(struct input_parser, offset), value }
