@@ -54,63 +54,44 @@ struct program_stream_pack_header { /* mpeg2.pdf, table 2-33, pg 73 */
 };
 #endif
 
+static int pes_append_to_fifo(struct dentry *dentry, bool pes,
+		const char *payload, uint32_t payload_len);
+static struct dentry *pes_get_dentry(const struct ts_header *header, 
+		const char *fifo_name, struct demuxfs_data *priv);
+
 #define TRICK_MODE_FAST_FORWARD 0x00
 #define TRICK_MODE_SLOW_MOTION  0x01
 #define TRICK_MODE_FREEZE_FRAME 0x02
 #define TRICK_MODE_FAST_REVERSE 0x03
 #define TRICK_MODE_SLOW_REVERSE 0x04
 
-enum {
-	PROGRAM_STREAM_MAP,
-	PRIVATE_STREAM_1,
-	PADDING_STREAM,
-	PRIVATE_STREAM_2,
-	AUDIO_STREAM,
-	VIDEO_STREAM,
-	ECM_STREAM,
-	EMM_STREAM,
-	DSMCC_STREAM,
-	ISO_IEC_13522_STREAM,
-	H222_1_TYPE_A,
-	H222_1_TYPE_B,
-	H222_1_TYPE_C,
-	H222_1_TYPE_D,
-	H222_1_TYPE_E,
-	ANCILLARY_STREAM,
-	SL_PACKETIZED_STREAM,
-	FLEXMUX_STREAM,
-	RESERVED_DATA_STREAM,
-	PROGRAM_STREAM_DIRECTORY,
-	UNKNOWN_STREAM
-};
-
-static int pes_identify_stream_id(uint8_t stream_id)
+int pes_identify_stream_id(uint8_t stream_id)
 {
 	switch (stream_id) {
-		case 0xbc: return PROGRAM_STREAM_MAP;
-		case 0xbd: return PRIVATE_STREAM_1;
-		case 0xbe: return PADDING_STREAM;
-		case 0xbf: return PRIVATE_STREAM_2;
+		case 0xbc: return PES_PROGRAM_STREAM_MAP;
+		case 0xbd: return PES_PRIVATE_STREAM_1;
+		case 0xbe: return PES_PADDING_STREAM;
+		case 0xbf: return PES_PRIVATE_STREAM_2;
 		case 0xc0 ... 0xdf:
-				   return AUDIO_STREAM;
+				   return PES_AUDIO_STREAM;
 		case 0xe0 ... 0xef:
-				   return VIDEO_STREAM;
-		case 0xf0: return ECM_STREAM;
-		case 0xf1: return EMM_STREAM;
-		case 0xf2: return DSMCC_STREAM;
-		case 0xf3: return ISO_IEC_13522_STREAM; 
-		case 0xf4: return H222_1_TYPE_A; 
-		case 0xf5: return H222_1_TYPE_B;
-		case 0xf6: return H222_1_TYPE_C;
-		case 0xf7: return H222_1_TYPE_D;
-		case 0xf8: return H222_1_TYPE_E;
-		case 0xf9: return ANCILLARY_STREAM;
-		case 0xfa: return SL_PACKETIZED_STREAM;
-		case 0xfb: return FLEXMUX_STREAM;
+				   return PES_VIDEO_STREAM;
+		case 0xf0: return PES_ECM_STREAM;
+		case 0xf1: return PES_EMM_STREAM;
+		case 0xf2: return PES_DSMCC_STREAM;
+		case 0xf3: return PES_ISO_IEC_13522_STREAM; 
+		case 0xf4: return PES_H222_1_TYPE_A; 
+		case 0xf5: return PES_H222_1_TYPE_B;
+		case 0xf6: return PES_H222_1_TYPE_C;
+		case 0xf7: return PES_H222_1_TYPE_D;
+		case 0xf8: return PES_H222_1_TYPE_E;
+		case 0xf9: return PES_ANCILLARY_STREAM;
+		case 0xfa: return PES_SL_PACKETIZED_STREAM;
+		case 0xfb: return PES_FLEXMUX_STREAM;
 		case 0xfc ... 0xfe:
-				   return RESERVED_DATA_STREAM;
-		case 0xff: return PROGRAM_STREAM_DIRECTORY;
-		default:   return UNKNOWN_STREAM;
+				   return PES_RESERVED_DATA_STREAM;
+		case 0xff: return PES_PROGRAM_STREAM_DIRECTORY;
+		default:   return PES_UNKNOWN_STREAM;
 	}
 }
 
@@ -139,10 +120,11 @@ struct pes_other {
  *
  * TODO: verify offset against @payload_len so that we never go out of bounds in @payload.
  */
-static int pes_parse_other(const char *payload, uint8_t payload_len, struct demuxfs_data *priv)
+static int pes_parse_other(const char *payload, uint32_t payload_len, struct demuxfs_data *priv)
 {
 	int offset;
 	struct pes_other other;
+	
 	other._1_0 = (payload[6] >> 6) & 0x03;
 	other.pes_scrambling_control = (payload[6] >> 4) & 0x03;
 	other.pes_priority = (payload[6] >> 3) & 0x01;
@@ -166,20 +148,20 @@ static int pes_parse_other(const char *payload, uint8_t payload_len, struct demu
 	if (other.pts_dts_flags == 0x02) {
 		uint8_t  _0_0_1_0 = (payload[9] >> 4) & 0x0f;
 		if (_0_0_1_0 != 0x02)
-			TS_WARNING("[1] PTS: expected fixed value 0x02, found %#x", _0_0_1_0);
+			PES_WARNING("[1] PTS: expected fixed value 0x02, found %#x", _0_0_1_0);
 
 		/* PTS is encoded as a 33-bit variable */
 		uint64_t pts = (payload[9] << 30);
 		uint64_t pts_2 = CONVERT_TO_16(payload[10], payload[11]) & 0xfffe;
 		uint64_t pts_3 = CONVERT_TO_16(payload[12], payload[13]) & 0xfffe;
 		pts |= ((pts_2 << 14) | (pts_3 >> 1));
-		dprintf("[1] PTS=%#llx", pts & 0x1ffffffff);
+		pes_dprintf("[1] PTS=%#llx", pts & 0x1ffffffff);
 
 		uint8_t  marker_1 = payload[9] & 0x01;
 		uint8_t  marker_2 = payload[11] & 0x01;
 		uint8_t  marker_3 = payload[13] & 0x01;
 		if (!marker_1 || !marker_2 || !marker_3)
-			TS_WARNING("[1] PTS: marker_1=%#x, marker_2=%#x, marker_3=%#x", marker_1, marker_2, marker_3);
+			PES_WARNING("[1] PTS: marker_1=%#x, marker_2=%#x, marker_3=%#x", marker_1, marker_2, marker_3);
 
 		/* Next read starts at offset 14 */
 		offset = 14;
@@ -187,38 +169,38 @@ static int pes_parse_other(const char *payload, uint8_t payload_len, struct demu
 		/* Parse Presentation Time Stamp */
 		uint8_t  _0_0_1_1 = (payload[9] >> 4) & 0x0f;
 		if (_0_0_1_1 != 0x03)
-			TS_WARNING("[2] PTS: expected fixed value 0x03, found %#x", _0_0_1_1);
+			PES_WARNING("[2] PTS: expected fixed value 0x03, found %#x", _0_0_1_1);
 
 		/* PTS is encoded as a 33-bit variable */
 		uint64_t pts = (payload[9] << 30);
 		uint64_t pts_2 = CONVERT_TO_16(payload[10], payload[11]) & 0xfffe;
 		uint64_t pts_3 = CONVERT_TO_16(payload[12], payload[13]) & 0xfffe;
 		pts |= ((pts_2 << 14) | (pts_3 >> 1));
-		dprintf("[2] PTS=%#llx", pts & 0x1ffffffff);
+		pes_dprintf("[2] PTS=%#llx", pts & 0x1ffffffff);
 
 		uint8_t  marker_1 = payload[9] & 0x01;
 		uint8_t  marker_2 = payload[11] & 0x01;
 		uint8_t  marker_3 = payload[13] & 0x01;
 		if (!marker_1 || !marker_2 || !marker_3)
-			TS_WARNING("[2] PTS: marker_1=%#x, marker_2=%#x, marker_3=%#x", marker_1, marker_2, marker_3);
+			PES_WARNING("[2] PTS: marker_1=%#x, marker_2=%#x, marker_3=%#x", marker_1, marker_2, marker_3);
 
 		/* Parse Decoding Time Stamp */
 		uint8_t  _0_0_0_1 = (payload[14] >> 4) & 0x0f;
 		if (_0_0_0_1 != 0x01)
-			TS_WARNING("[2] DTS: expected fixed value 0x03, found %#x", _0_0_0_1);
+			PES_WARNING("[2] DTS: expected fixed value 0x03, found %#x", _0_0_0_1);
 
 		/* DTS is encoded as a 33-bit variable, too */
 		uint64_t dts = (payload[14] << 30);
 		uint64_t dts_2 = CONVERT_TO_16(payload[15], payload[16]) & 0xfffe;
 		uint64_t dts_3 = CONVERT_TO_16(payload[17], payload[18]) & 0xfffe;
 		dts |= ((dts_2 << 14) | (dts_3 >> 1));
-		dprintf("[2] DTS=%#llx", dts & 0x1ffffffff);
+		pes_dprintf("[2] DTS=%#llx", dts & 0x1ffffffff);
 
 		uint8_t  marker_4 = payload[14] & 0x01;
 		uint8_t  marker_5 = payload[16] & 0x01;
 		uint8_t  marker_6 = payload[18] & 0x01;
 		if (!marker_4 || !marker_5 || !marker_6)
-			TS_WARNING("[2] DTS: marker_4=%#x, marker_5=%#x, marker_6=%#x", marker_4, marker_5, marker_6);
+			PES_WARNING("[2] DTS: marker_4=%#x, marker_5=%#x, marker_6=%#x", marker_4, marker_5, marker_6);
 		
 		/* Next read starts at offset 19 */
 		offset = 19;
@@ -233,18 +215,18 @@ static int pes_parse_other(const char *payload, uint8_t payload_len, struct demu
 		escr |= (payload[offset+2] & 0x03) << 13;
 		escr |= (payload[offset+3] << 5);
 		escr |= (payload[offset+4] & 0xf8) >> 3;
-		dprintf("[3] ESCR=%#llx", escr & 0x1ffffffff);
+		pes_dprintf("[3] ESCR=%#llx", escr & 0x1ffffffff);
 
 		uint16_t escr_extension = (payload[offset+4] & 0x03) << 7;
 		escr_extension |= (payload[offset+5] >> 1);
-		dprintf("[3] ESCR_extension=%#x", escr_extension);
+		pes_dprintf("[3] ESCR_extension=%#x", escr_extension);
 		
 		uint8_t marker_1 = (payload[offset] >> 2) & 0x01;
 		uint8_t marker_2 = (payload[offset+2] >> 2) & 0x01;
 		uint8_t marker_3 = (payload[offset+4] >> 2) & 0x01;
 		uint8_t marker_4 = (payload[offset+5] & 0x01);
 		if (!marker_1 || !marker_2 || !marker_3 || !marker_4)
-			TS_WARNING("[3] ESCR: marker_1=%#x, marker_2=%#x, marker_3=%#x, marker_4=%#x", 
+			PES_WARNING("[3] ESCR: marker_1=%#x, marker_2=%#x, marker_3=%#x, marker_4=%#x", 
 					marker_1, marker_2, marker_3, marker_4);
 		
 		/* Update offset */
@@ -252,11 +234,11 @@ static int pes_parse_other(const char *payload, uint8_t payload_len, struct demu
 	}
 	if (other.es_rate_flag == 0x01) {
 		uint32_t es_rate = (CONVERT_TO_24(payload[offset], payload[offset+1], payload[offset+2]) >> 1) & 0x3fffff;
-		dprintf("ES_rate=%#x", es_rate);
+		pes_dprintf("ES_rate=%#x", es_rate);
 		uint8_t marker_1 = payload[offset] >> 7;
 		uint8_t marker_2 = payload[offset+2] & 0x01;
 		if (!marker_1 || !marker_2)
-			TS_WARNING("[3] ES_rate: marker_1=%#x, marker_2=%#x", marker_1, marker_2);
+			PES_WARNING("[3] ES_rate: marker_1=%#x, marker_2=%#x", marker_1, marker_2);
 
 		/* Update offset */
 		offset += 3;
@@ -267,26 +249,26 @@ static int pes_parse_other(const char *payload, uint8_t payload_len, struct demu
 			uint8_t field_id = (payload[offset] >> 3) & 0x03;
 			uint8_t intra_slice_refresh = (payload[offset] >> 2) & 0x01;
 			uint8_t frequency_truncation = payload[offset] & 0x03;
-			dprintf("trick_mode=fast_forward field_id=%#x, intra_slice_refresh=%#x, frequency_truncation=%#x",
+			pes_dprintf("trick_mode=fast_forward field_id=%#x, intra_slice_refresh=%#x, frequency_truncation=%#x",
 					field_id, intra_slice_refresh, frequency_truncation);
 		} else if (trick_mode_control == TRICK_MODE_SLOW_MOTION) {
 			uint8_t rep_cntrl = payload[offset] & 0x1f;
-			dprintf("trick_mode=slow_motion rep_cntrl=%#x", rep_cntrl);
+			pes_dprintf("trick_mode=slow_motion rep_cntrl=%#x", rep_cntrl);
 		} else if (trick_mode_control == TRICK_MODE_FREEZE_FRAME) {
 			uint8_t field_id = (payload[offset] >> 3) & 0x03;
 			uint8_t reserved = payload[offset] & 0x07;
-			dprintf("trick_mode=freeze_frame field_id=%#x, reserved=%#x", field_id, reserved);
+			pes_dprintf("trick_mode=freeze_frame field_id=%#x, reserved=%#x", field_id, reserved);
 		} else if (trick_mode_control == TRICK_MODE_FAST_REVERSE) {
 			uint8_t field_id = (payload[offset] >> 3) & 0x03;
 			uint8_t intra_slice_refresh = (payload[offset] >> 2) & 0x01;
 			uint8_t frequency_truncation = payload[offset] & 0x03;
-			dprintf("trick_mode=fast_reverse field_id=%#x, intra_slice_refresh=%#x, frequency_truncation=%#x",
+			pes_dprintf("trick_mode=fast_reverse field_id=%#x, intra_slice_refresh=%#x, frequency_truncation=%#x",
 					field_id, intra_slice_refresh, frequency_truncation);
 		} else if (trick_mode_control == TRICK_MODE_SLOW_REVERSE) {
 			uint8_t rep_cntrl = payload[offset] & 0x1f;
-			dprintf("trick_mode=slow_reverse rep_cntrl=%#x", rep_cntrl);
+			pes_dprintf("trick_mode=slow_reverse rep_cntrl=%#x", rep_cntrl);
 		} else {
-			dprintf("Using reserved bits in trick_mode_control");
+			pes_dprintf("Using reserved bits in trick_mode_control");
 		}
 		/* Update offset */
 		offset++;
@@ -294,15 +276,15 @@ static int pes_parse_other(const char *payload, uint8_t payload_len, struct demu
 	if (other.additional_copy_info_flag == 0x01) {
 		uint8_t marker = (payload[offset] >> 7) & 0x01;
 		uint8_t additional_copy_info = payload[offset] & 0x7f;
-		dprintf("additional_copy_info=%#x", additional_copy_info);
+		pes_dprintf("additional_copy_info=%#x", additional_copy_info);
 		if (!marker)
-			dprintf("additional_copy_info: marker=%#x", marker);
+			pes_dprintf("additional_copy_info: marker=%#x", marker);
 		/* Update offset */
 		offset++;
 	}
 	if (other.pes_crc_flag == 0x01) {
 		uint16_t previous_pes_packet_crc = CONVERT_TO_16(payload[offset], payload[offset+1]);
-		dprintf("previous_pes_packet_crc=%#x", previous_pes_packet_crc);
+		pes_dprintf("previous_pes_packet_crc=%#x", previous_pes_packet_crc);
 		/* Update offset */
 		offset += 2;
 	}
@@ -356,7 +338,7 @@ static int pes_parse_other(const char *payload, uint8_t payload_len, struct demu
 			/* stuffing byte */ 
 			offset++;
 		}
-		for (uint8_t i=0; i<p_std_buffer_size; ++i) { 
+		for (uint16_t i=0; i<p_std_buffer_size; ++i) { 
 			/* PES_packet_data_byte */ 
 			offset++;
 		}
@@ -371,45 +353,51 @@ struct pes_header {
 };
 
 static int pes_parse_packet(const struct ts_header *header, const char *payload, 
-		uint8_t payload_len, struct demuxfs_data *priv)
+		uint32_t payload_len, struct demuxfs_data *priv)
 {
+	int ret = 0;
 	struct pes_header pes;
+	struct dentry *es_dentry;
+	
+	es_dentry = pes_get_dentry(header, FS_ES_FIFO_NAME, priv);
+	if (! es_dentry) {
+		dprintf("es_dentry = NULL");
+		return -ENOENT;
+	}
 	
 	pes.packet_start_code_prefix = CONVERT_TO_24(payload[0],payload[1],payload[2]);
 	pes.stream_id = payload[3];
 	pes.pes_packet_length = CONVERT_TO_16(payload[4],payload[5]);
 
-	if (pes.packet_start_code_prefix != PES_PACKET_START_CODE_PREFIX) {
-		TS_WARNING("packet_start_code_prefix != %#x (%#x)", 
-				PES_PACKET_START_CODE_PREFIX, pes.packet_start_code_prefix);
+	if (pes.pes_packet_length == 0) {
+		/* cannot parse this packet any further */
+		return 0;
 	}
 
-	/* XXX: check header->payload_unit_start_indicator */
-
-	int index = 0;
+	uint32_t index = 6;
 	int stream_id = pes_identify_stream_id(pes.stream_id);
-	if (stream_id != PROGRAM_STREAM_MAP &&
-		stream_id != PADDING_STREAM &&
-		stream_id != PRIVATE_STREAM_2 &&
-		stream_id != ECM_STREAM &&
-		stream_id != EMM_STREAM &&
-		stream_id != PROGRAM_STREAM_DIRECTORY &&
-		stream_id != DSMCC_STREAM &&
-		stream_id != H222_1_TYPE_E) {
+	if (stream_id != PES_PROGRAM_STREAM_MAP &&
+		stream_id != PES_PADDING_STREAM &&
+		stream_id != PES_PRIVATE_STREAM_2 &&
+		stream_id != PES_ECM_STREAM &&
+		stream_id != PES_EMM_STREAM &&
+		stream_id != PES_PROGRAM_STREAM_DIRECTORY &&
+		stream_id != PES_DSMCC_STREAM &&
+		stream_id != PES_H222_1_TYPE_E) {
 		index = pes_parse_other(payload, payload_len, priv);
-	} else if (stream_id == PROGRAM_STREAM_MAP ||
-		stream_id != PADDING_STREAM ||
-		stream_id != PRIVATE_STREAM_2 ||
-		stream_id != ECM_STREAM ||
-		stream_id != EMM_STREAM ||
-		stream_id != PROGRAM_STREAM_DIRECTORY ||
-		stream_id != DSMCC_STREAM ||
-		stream_id != H222_1_TYPE_E) {
+	} else if (stream_id == PES_PROGRAM_STREAM_MAP ||
+		stream_id != PES_PADDING_STREAM ||
+		stream_id != PES_PRIVATE_STREAM_2 ||
+		stream_id != PES_ECM_STREAM ||
+		stream_id != PES_EMM_STREAM ||
+		stream_id != PES_PROGRAM_STREAM_DIRECTORY ||
+		stream_id != PES_DSMCC_STREAM ||
+		stream_id != PES_H222_1_TYPE_E) {
 		for (uint16_t i=0; i<pes.pes_packet_length; ++i) {
 			/* PES_packet_data_byte */
 			index++;
 		}
-	} else if (stream_id == PADDING_STREAM) {
+	} else if (stream_id == PES_PADDING_STREAM) {
 		for (uint16_t i=0; i<pes.pes_packet_length; ++i) {
 			/* padding bytes */
 			index++;
@@ -417,12 +405,16 @@ static int pes_parse_packet(const struct ts_header *header, const char *payload,
 	} else {
 		dprintf("Unknown stream_id %#x", pes.stream_id);
 	}
-	dprintf(">>> payload_len=%d, pes.pes_packet_length=%d, index=%d", payload_len, pes.pes_packet_length, index);
 
-	return 0;
+	if (payload_len < index) {
+		dprintf("oops, payload_len(%d) < index(%d)", payload_len, index);
+		return 0;
+	}
+	return pes_append_to_fifo(es_dentry, false, &payload[index], payload_len - index);
 }
 
-static struct dentry *pes_get_dentry(const struct ts_header *header, struct demuxfs_data *priv)
+static struct dentry *pes_get_dentry(const struct ts_header *header, 
+		const char *fifo_name, struct demuxfs_data *priv)
 {
 	struct dentry *slink, *dentry;
 	char pathname[PATH_MAX];
@@ -435,7 +427,7 @@ static struct dentry *pes_get_dentry(const struct ts_header *header, struct demu
 		return NULL;
 	}
 
-	sprintf(pathname, "%s/%s", slink->contents, FS_PES_FIFO_NAME);
+	sprintf(pathname, "%s/%s", slink->contents, fifo_name);
 	dentry = fsutils_get_dentry(priv->root, pathname);
 	if (! dentry) {
 		dprintf("couldn't get a dentry for '%s'", pathname);
@@ -444,39 +436,22 @@ static struct dentry *pes_get_dentry(const struct ts_header *header, struct demu
 	return dentry;
 }
 
-/* Packetized Elementary Stream parser */
-int pes_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
-		struct demuxfs_data *priv)
+static int pes_append_to_fifo(struct dentry *dentry, bool pes,
+		const char *payload, uint32_t payload_len)
 {
-	struct dentry *dentry;
-	int ret;
+	int ret = 0;
+	bool append = true;
 
-	if (payload_len < 6) {
-		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
-		return -1;
-	}
-
-	if (priv->options.parse_pes) {
-		if (header->payload_unit_start_indicator == 1) {
-			if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
-				pes_parse_packet(header, payload, payload_len, priv);
-			else
-				dprintf("payload = { %#x, %#x, %#x }", payload[0], payload[1], payload[2]);
-		}
-	}
-
-	dentry = pes_get_dentry(header, priv);
-	if (! dentry) {
-		dprintf("dentry = NULL");
-		return -ENOENT;
+	if (payload_len == 0) {
+		dprintf("refusing to write 0 bytes of data");
+		return 0;
 	}
 
 	pthread_mutex_lock(&dentry->mutex);
 	/* Do not feed the FIFO if no process wants to read from it */
 	if (dentry->refcount > 0) {
-		bool append = true;
 		if (fifo_flushed(dentry->fifo)) {
-			if (! (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01))
+			if (! (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01) && pes)
 				append = false;
 		}
 		if (append) {
@@ -485,6 +460,44 @@ int pes_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		}
 	}
 	pthread_mutex_unlock(&dentry->mutex);
+	return ret;
+}
+
+/* Packetized Elementary Stream parser */
+int pes_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv)
+{
+	struct dentry *es_dentry, *pes_dentry;
+	int ret;
+
+	if (payload_len < 6) {
+		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
+		return -1;
+	}
+
+	if (priv->options.parse_pes) {
+		if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
+			pes_parse_packet(header, payload, payload_len, priv);
+		else {
+			es_dentry = pes_get_dentry(header, FS_ES_FIFO_NAME, priv);
+			if (! es_dentry) {
+				dprintf("es_dentry = NULL");
+				return -ENOENT;
+			}
+			ret = pes_append_to_fifo(es_dentry, false, payload, payload_len);
+			if (ret < 0)
+				dprintf("Error writing to the ES FIFO: %d", ret);
+		}
+	}
+
+	pes_dentry = pes_get_dentry(header, FS_PES_FIFO_NAME, priv);
+	if (! pes_dentry) {
+		dprintf("dentry = NULL");
+		return -ENOENT;
+	}
+	ret = pes_append_to_fifo(pes_dentry, true, payload, payload_len);
+	if (ret < 0)
+		dprintf("Error writing to the PES FIFO: %d", ret);
 
 	return ret;
 }

@@ -30,6 +30,8 @@
 #include "demuxfs.h"
 #include "byteops.h"
 #include "buffer.h"
+#include "ts.h"
+#include "tables/pes.h"
 
 struct buffer *buffer_create(size_t size, bool pes_data)
 {
@@ -90,10 +92,9 @@ int buffer_append(struct buffer *buffer, const char *buf, size_t size)
 		}
 		to_write = size;
 	} else {
+		to_write = size;
 		if ((buffer->current_size + size > MAX_SECTION_SIZE) && ! buffer->holds_pes_data)
 			to_write = MAX_SECTION_SIZE - buffer->current_size;
-		else
-			to_write = size;
 		if (buffer->current_size + to_write > buffer->max_size) {
 			char *ptr = (char *) realloc(buffer->data, buffer->current_size + to_write);
 			if (! ptr) {
@@ -133,21 +134,53 @@ bool buffer_contains_full_psi_section(struct buffer *buffer)
 
 bool buffer_contains_full_pes_section(struct buffer *buffer)
 {
-	uint16_t section_length;
+	uint16_t packet_length;
 
 	if (! buffer || ! buffer->data || buffer->current_size < 6)
 		return false;
 
-	section_length = CONVERT_TO_16(buffer->data[4], buffer->data[5]);
-	if (buffer->current_size < (section_length + 6 - 1))
+	packet_length = CONVERT_TO_16(buffer->data[4], buffer->data[5]);
+	if (buffer->current_size < (packet_length + 6 - 1))
 		return false;
 
-	buffer->current_size = section_length + 6;
+	buffer->current_size = packet_length + 6;
 	return true;
+}
+
+bool buffer_unbounded(struct buffer *buffer)
+{
+	int stream_type;
+	uint8_t stream_id;
+	uint16_t packet_length;
+
+	if (buffer->pes_unbounded_data)
+		return true;
+
+	if (buffer->holds_pes_data && buffer->current_size > 6) {
+		stream_id = buffer->data[3];
+		stream_type = pes_identify_stream_id(stream_id);
+		packet_length = CONVERT_TO_16(buffer->data[4], buffer->data[5]);
+		if (packet_length == 0 && stream_type == PES_VIDEO_STREAM) {
+			buffer->pes_unbounded_data = true;
+			return buffer->pes_unbounded_data;
+		} else if (packet_length == 0) {
+			TS_WARNING("unbounded buffer size in non-video stream with stream_id %#x", 
+				stream_id);
+		}
+	}
+	return false;
 }
 
 void buffer_reset_size(struct buffer *buffer)
 {
 	if (buffer)
 		buffer->current_size = 0;
+}
+
+void buffer_reset_full(struct buffer *buffer)
+{
+	if (buffer) {
+		buffer->current_size = 0;
+		buffer->pes_unbounded_data = false;
+	}
 }

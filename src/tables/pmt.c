@@ -132,8 +132,13 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 		CREATE_SYMLINK(streams_dir, dirname, es);
 	}
 
-	/* Create a FIFO which will contain this PES contents */
+	/* Create a FIFO which will contain this stream's PES contents */
 	CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
+	
+	if (priv->options.parse_pes) {
+		/* Create a FIFO which will contain this stream's ES contents */
+		CREATE_FIFO((*subdir), FS_ES_FIFO_NAME);
+	}
 
 	struct formatted_descriptor f;
 	snprintf(stream_type, sizeof(stream_type), "%s [%#x]",
