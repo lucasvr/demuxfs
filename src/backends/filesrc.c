@@ -33,8 +33,9 @@
 struct input_parser {
 	char *filesrc;
 	FILE *fp;
-	char packet[TS_PACKET_SIZE];
+	char *packet;
 	bool packet_valid;
+	uint8_t packet_size;
 	bool fileloop;
 	bool parse_pes;
 	char *standard;
@@ -86,6 +87,27 @@ static int filesrc_parse_opts(void *priv, const char *arg, int key, struct fuse_
 	return 1;
 }
 
+static bool search_sync_byte(struct input_parser *p, uint8_t packet_size)
+{
+	int attempts = 5;
+	char data1, data2;
+	long offset = ftell(p->fp);
+
+	while (attempts > 0 && ! feof(p->fp)) {
+		fread(&data1, 1, sizeof(char), p->fp);
+		fseek(p->fp, packet_size-1, SEEK_CUR);
+		fread(&data2, 1, sizeof(char), p->fp);
+		if (data1 != TS_SYNC_BYTE || data2 != TS_SYNC_BYTE) {
+			rewind(p->fp);
+			return false;
+		}
+		fseek(p->fp, -1, SEEK_CUR);
+		attempts--;
+	}
+	fseek(p->fp, offset, SEEK_SET);
+	return true;
+}
+
 /**
  * filesrc_create_parser: backend's create() method.
  */
@@ -110,16 +132,14 @@ int filesrc_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		free(p);
 		return -1;
 	}
+
+	/* Search for 188, 204 and 208-byte packets */
+	uint8_t packet_size[] = { 188, 204, 208 };
 	bool found_sync_byte = false;
-	while (! feof(p->fp)) {
-		long off = ftell(p->fp);
-		char data1, data2;
-		fread(&data1, 1, sizeof(char), p->fp);
-		fseek(p->fp, sizeof(p->packet)-1, SEEK_CUR);
-		fread(&data2, 1, sizeof(char), p->fp);
-		if (data1 == TS_SYNC_BYTE && data2 == data1) {
-			fseek(p->fp, off, SEEK_SET);
-			found_sync_byte = true;
+	for (int i=0; i<sizeof(packet_size)/sizeof(uint8_t); ++i) {
+		found_sync_byte = search_sync_byte(p, packet_size[i]);
+		if (found_sync_byte) {
+			p->packet_size = packet_size[i];
 			break;
 		}
 	}
@@ -129,6 +149,7 @@ int filesrc_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		free(p);
 		return -1;
 	}
+	p->packet = (char *) malloc(p->packet_size * sizeof(char));
 
 	/* Propagate user-defined options back to priv->options */
 	if (! p->standard || ! strcasecmp(p->standard, "SBTVD"))
@@ -146,6 +167,8 @@ int filesrc_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		return -1;
 	}
 	priv->options.parse_pes = p->parse_pes;
+	priv->options.packet_size = p->packet_size;
+	priv->options.packet_error_correction_bytes = p->packet_size - 188;
 
 	priv->parser = p;
 	return 0;
@@ -156,6 +179,7 @@ int filesrc_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
  */
 int filesrc_destroy_parser(struct demuxfs_data *priv)
 {
+	free(priv->parser->packet);
 	fclose(priv->parser->fp);
     free(priv->parser);
 	return 0;
@@ -167,7 +191,7 @@ int filesrc_destroy_parser(struct demuxfs_data *priv)
 int filesrc_read_packet(struct demuxfs_data *priv)
 {
 	struct input_parser *p = priv->parser;
-	size_t n = fread(p->packet, sizeof(p->packet), 1, p->fp);
+	size_t n = fread(p->packet, p->packet_size, 1, p->fp);
 	if (n <= 0 && feof(p->fp)) {
 		p->packet_valid = false;
 		if (p->fileloop) {

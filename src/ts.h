@@ -5,8 +5,6 @@
 #define TS_ERROR(x...)   dprintf(x)
 
 #define TS_SYNC_BYTE             0x47
-#define TS_PACKET_SIZE           188
-#define TS_PACKET_PAYLOAD_SIZE   184
 #define TS_MAX_SECTION_LENGTH    0x03FD
 #define TS_LAST_TABLE_ID         0xBF
 

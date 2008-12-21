@@ -148,15 +148,15 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 		/* Adaptation field followed by payload */
 		uint8_t adaptation_field_length = payload[0];
 		payload_start += 1 + adaptation_field_length;
-		if ((payload_start - payload) > TS_PACKET_SIZE) {
+		if ((payload_start - payload) > priv->options.packet_size) {
 			TS_WARNING("adaptation_field length is bigger than a TS packet: %d", 
 					adaptation_field_length);
 			return -ENOBUFS;
 		}
 		/* TODO: parse adaptation field */
 	}
-	
-	payload_end = payload + TS_PACKET_SIZE - 1 - 4;
+	struct user_options *opt = &priv->options;
+	payload_end = payload + opt->packet_size - 1 - opt->packet_error_correction_bytes;
 
 	if (ts_is_psi_packet(header->pid, priv)) {
 		const char *start = payload_start;
