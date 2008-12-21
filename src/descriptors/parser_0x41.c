@@ -31,6 +31,8 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "tables/psi.h"
+#include "tables/pat.h"
 
 struct formatted_descriptor {
 	uint16_t service_id;
@@ -88,16 +90,9 @@ int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, 
 {
 	uint8_t i;
 	char buf[64];
-	struct dentry *dentry, *subdir, *pat_programs;
+	struct dentry *dentry, *subdir;
 	struct formatted_descriptor f;
 	
-	snprintf(buf, sizeof(buf), "/%s/%s/%s", FS_PAT_NAME, FS_CURRENT_NAME, FS_PROGRAMS_NAME);
-	pat_programs = fsutils_get_dentry(priv->root, buf);
-	if (! pat_programs) {
-		TS_WARNING("%s doesn't exit", buf);
-		return -1;
-	}
-
 	dentry = CREATE_DIRECTORY(parent, "SERVICE_LIST");
 
 	for (i=0; i<len; i+=3) {
@@ -111,8 +106,7 @@ int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, 
 		CREATE_FILE_NUMBER(subdir, &f, service_id);
 		CREATE_FILE_STRING(subdir, &f, service_type, XATTR_FORMAT_STRING_AND_NUMBER);
 		
-		sprintf(buf, "%#04x", f.service_id);
-		if (! fsutils_get_child(pat_programs, buf))
+		if (! pat_announces_service(f.service_id, priv))
 			TS_WARNING("service_id %#x not declared by the PAT", f.service_id);
 	}
     return 0;

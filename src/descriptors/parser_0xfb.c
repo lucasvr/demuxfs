@@ -31,6 +31,8 @@
 #include "byteops.h"
 #include "xattr.h"
 #include "ts.h"
+#include "tables/psi.h"
+#include "tables/pat.h"
 
 struct formatted_descriptor {
 	uint16_t service_id;
@@ -40,16 +42,8 @@ struct formatted_descriptor {
 int descriptor_0xfb_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
 	uint8_t i;
-	char buf[64];
-	struct dentry *dentry, *subdir, *pat_programs;
+	struct dentry *dentry, *subdir;
 
-	snprintf(buf, sizeof(buf), "/%s/%s/%s", FS_PAT_NAME, FS_CURRENT_NAME, FS_PROGRAMS_NAME);
-	pat_programs = fsutils_get_dentry(priv->root, buf);
-	if (! pat_programs) {
-		TS_WARNING("/PAT/Programs doesn't exit");
-		return -1;
-	}	
-	
 	dentry = CREATE_DIRECTORY(parent, "PARTIAL_RECEPTION");
 	for (i=0; i<len; i+=2) {
 		char buf[32];
@@ -60,8 +54,7 @@ int descriptor_0xfb_parser(const char *payload, int len, struct dentry *parent, 
 		subdir = CREATE_DIRECTORY(dentry, buf);
 		CREATE_FILE_NUMBER(subdir, &f, service_id);
 
-		sprintf(buf, "%#04x", f.service_id);
-		if (! fsutils_get_child(pat_programs, buf))
+		if (! pat_announces_service(f.service_id, priv))
 			TS_WARNING("service_id %#x not declared by the PAT", f.service_id);
 	}
     return 0;

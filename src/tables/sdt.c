@@ -39,6 +39,7 @@
 #include "tables/psi.h"
 #include "tables/sdt.h"
 #include "tables/pes.h"
+#include "tables/pat.h"
 
 static void sdt_check_header(struct sdt_table *sdt)
 {
@@ -148,6 +149,9 @@ int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		CREATE_FILE_NUMBER(service_dentry, si, running_status);
 		CREATE_FILE_NUMBER(service_dentry, si, free_ca_mode);
 		CREATE_FILE_NUMBER(service_dentry, si, descriptors_loop_length);
+
+		if (! pat_announces_service(si->service_id, priv))
+			TS_WARNING("service_id %#x not declared by the PAT", si->service_id);
 
 		uint32_t n = 0;
 		while (n < si->descriptors_loop_length) {

@@ -31,6 +31,8 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "tables/psi.h"
+#include "tables/pat.h"
 
 struct transmission_type_data {
 	uint8_t transmission_type_info;
@@ -49,22 +51,13 @@ struct formatted_descriptor {
 int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
 	struct formatted_descriptor f;
-	struct dentry *pat_programs;
 	uint8_t offset, i, j;
-	char buf[64];
 
 	if (len < 2) {
 		TS_WARNING("cannot parse descriptor %#x: contents smaller than 2 bytes (%d)", 0xfe, len);
 		return -1;
 	}
 	
-	snprintf(buf, sizeof(buf), "/%s/%s/%s", FS_PAT_NAME, FS_CURRENT_NAME, FS_PROGRAMS_NAME);
-	pat_programs = fsutils_get_dentry(priv->root, buf);
-	if (! pat_programs) {
-		TS_WARNING("%s doesn't exit", buf);
-		return -1;
-	}
-
 	f.remote_control_key_id = payload[0];
 	f.length_of_ts_name = payload[1] >> 2;
 	f.transmission_type_count = payload[1] & 0x03;
@@ -82,8 +75,8 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 	offset = 2 + f.length_of_ts_name;
 	for (i=0; i<f.transmission_type_count; ++i) {
 		struct transmission_type_data t;
-		char transmission_name[32];
 		struct dentry *subdir, *service;
+		char transmission_name[32];
 		
 		sprintf(transmission_name, "TRANSMISSION_%02d", i);
 		subdir = CREATE_DIRECTORY(dentry, transmission_name);
@@ -95,6 +88,8 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 		CREATE_FILE_NUMBER(subdir, &t, num_of_service);
 
 		for (j=0; j<t.num_of_service; j++) {
+			char buf[64];
+
 			t.service_id = CONVERT_TO_16(payload[offset], payload[offset+1]);
 			offset += 2;
 
@@ -102,8 +97,7 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 			service = CREATE_DIRECTORY(subdir, buf);
 			CREATE_FILE_NUMBER(service, &t, service_id);
 
-			sprintf(buf, "%#04x", t.service_id);
-			if (! fsutils_get_child(pat_programs, buf))
+			if (! pat_announces_service(t.service_id, priv))
 				TS_WARNING("service_id %#x not declared by the PAT", t.service_id);
 		}
 	}
