@@ -35,7 +35,23 @@
 #include "tables/pmt.h"
 #include "tables/nit.h"
 
-/* PAT stuff */
+bool pat_announces_service(uint16_t service_id, struct demuxfs_data *priv)
+{
+	struct dentry *pat_programs;
+	char buf[PATH_MAX];
+
+	snprintf(buf, sizeof(buf), "/%s/%s/%s", FS_PAT_NAME, FS_CURRENT_NAME, FS_PROGRAMS_NAME);
+	pat_programs = fsutils_get_dentry(priv->root, buf);
+	if (! pat_programs) {
+		TS_WARNING("%s doesn't exit", buf);
+		return false;
+	}
+
+	snprintf(buf, sizeof(buf), "%#04x", service_id);
+	return fsutils_get_child(pat_programs, buf) ? true : false;
+}
+
+/* PAT private stuff */
 static void pat_populate(struct pat_table *pat, struct dentry *parent, 
 		struct demuxfs_data *priv)
 {
