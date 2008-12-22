@@ -28,6 +28,19 @@ PKG_CHECK_MODULES([FUSE_MODULE],
 FUSE_LIBS=`$PKG_CONFIG --libs fuse`
 FUSE_CFLAGS=`$PKG_CONFIG --cflags fuse`
 
+dnl
+dnl Check for FFMPEG (optional)
+dnl
+ffmpeg_found=
+AC_MSG_CHECKING([ffmpeg])
+PKG_CHECK_MODULES([LIBAVCODEC_MODULE], [libavcodec >= 52.7.0], ffmpeg_found="yes", )
+if test ! -z "${ffmpeg_found}"
+then
+	FFMPEG_LIBS=`$PKG_CONFIG --libs libavcodec`
+	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavcodec`
+	CFLAGS="${CFLAGS} -DUSE_FFMPEG"
+fi
+AM_CONDITIONAL(USE_FFMPEG, test "${ffmpeg_found}" = "yes")
 
 dnl
 dnl Check for CE2110 headers (optional)
@@ -136,8 +149,8 @@ AM_CONDITIONAL(USE_CE2110_GST, test "${backend}" = "ce2110-gst")
 dnl
 dnl Update flags
 dnl
-CFLAGS="${CFLAGS} ${FUSE_CFLAGS} -ggdb -O0 -Wall -std=c99"
-LDFLAGS="${LDFLAGS} ${FUSE_LIBS}"
+CFLAGS="${CFLAGS} ${FUSE_CFLAGS} ${FFMPEG_CFLAGS} -ggdb -O0 -Wall -std=c99"
+LDFLAGS="${LDFLAGS} ${FUSE_LIBS} ${FFMPEG_LIBS}"
 
 
 dnl

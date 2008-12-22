@@ -62,6 +62,8 @@ struct dentry {
 	uint32_t refcount;
 	/* Contents from FIFO files */
 	struct fifo *fifo;
+	/* Borrowed PES dentry, used by snapshot dentries */
+	struct dentry *borrowed_pes_dentry;
 	/* File contents */
 	char *contents;
 	size_t size;
