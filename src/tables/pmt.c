@@ -133,13 +133,18 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 	}
 
 	/* Create a FIFO which will contain this stream's PES contents */
-	CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
-	
+	struct dentry *pes_dentry = CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
+
 	if (priv->options.parse_pes) {
 		/* Create a FIFO which will contain this stream's ES contents */
 		CREATE_FIFO((*subdir), FS_ES_FIFO_NAME);
 	}
-
+#ifdef USE_FFMPEG
+	if (stream_type_is_video(stream->stream_type_identifier)) {
+		/* Create a file named snapshot.pgm */
+		CREATE_SNAPSHOT_FILE((*subdir), FS_VIDEO_SNAPSHOT_NAME, pes_dentry);
+	}
+#endif
 	struct formatted_descriptor f;
 	snprintf(stream_type, sizeof(stream_type), "%s [%#x]",
 			stream_type_to_string(stream->stream_type_identifier),

@@ -14,6 +14,7 @@
 #define FS_PRIMARY_NAME                 "Primary"
 #define FS_SECONDARY_NAME               "Secondary"
 
+#define FS_VIDEO_SNAPSHOT_NAME          "snapshot.pgm"
 #define FS_STREAMS_NAME                 "Streams"
 #define FS_AUDIO_STREAMS_NAME           "AudioStreams"
 #define FS_VIDEO_STREAMS_NAME           "VideoStreams"
@@ -87,6 +88,16 @@ void fsutils_dispose_node(struct dentry *dentry);
 		_dentry->contents = strdup(target); \
 		_dentry->name = strdup(sname); \
 		_dentry->mode = S_IFLNK | 0777; \
+		CREATE_COMMON((parent),_dentry); \
+	 	_dentry; \
+	})
+
+#define CREATE_SNAPSHOT_FILE(parent,fname,pes_dentry) \
+	({ \
+		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+		_dentry->name = strdup(fname); \
+		_dentry->mode = S_IFREG | 0444; \
+	 	_dentry->borrowed_pes_dentry = pes_dentry; \
 		CREATE_COMMON((parent),_dentry); \
 	 	_dentry; \
 	})

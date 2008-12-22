@@ -33,6 +33,7 @@
 #include "hash.h"
 #include "fifo.h"
 #include "ts.h"
+#include "snapshot.h"
 #include "descriptors.h"
 
 /* Platform headers */
@@ -47,7 +48,7 @@ static int do_getattr(struct dentry *dentry, struct stat *stbuf)
 	memset(stbuf, 0, sizeof(struct stat));
 	stbuf->st_ino = dentry->inode;
 	stbuf->st_mode = dentry->mode;
-	stbuf->st_size = dentry->size;
+	stbuf->st_size = dentry->borrowed_pes_dentry ? 0xffffff : dentry->size;
 	stbuf->st_nlink = 1;
     stbuf->st_blksize = 128;
     stbuf->st_dev = DEMUXFS_SUPER_MAGIC;
@@ -96,6 +97,17 @@ static int demuxfs_open(const char *path, struct fuse_file_info *fi)
 #if FUSE_USE_VERSION >= 29
 		fi->nonseekable = 1;
 #endif
+	} else if (dentry->borrowed_pes_dentry) {
+		/* Need to borrow the PES dentry while the FIFO is read */
+		struct dentry *pes = dentry->borrowed_pes_dentry;
+		pthread_mutex_lock(&pes->mutex);
+		if (pes->refcount > 0) {
+			pthread_mutex_unlock(&pes->mutex);
+			ret = -EBUSY;
+			goto out;
+		}
+		pes->refcount++;
+		pthread_mutex_unlock(&pes->mutex);
 	}
 	dentry->refcount++;
 	fi->fh = DENTRY_TO_FILEHANDLE(dentry);
@@ -116,35 +128,98 @@ static int demuxfs_release(const char *path, struct fuse_file_info *fi)
 	dentry->refcount--;
 	if (dentry->fifo)
 		fifo_flush(dentry->fifo);
+	if (dentry->borrowed_pes_dentry) {
+		struct dentry *pes = dentry->borrowed_pes_dentry;
+		pthread_mutex_lock(&pes->mutex);
+		pes->refcount--;
+		pthread_mutex_unlock(&pes->mutex);
+		if (dentry->contents) {
+			/* The snapshot is valid until the file is closed */
+			free(dentry->contents);
+			dentry->contents = NULL;
+			dentry->size = 0;
+		}
+	}
 	pthread_mutex_unlock(&dentry->mutex);
 	return 0;
+}
+
+static int _read_from_fifo(struct dentry *dentry, char *buf, size_t size)
+{
+	int ret;
+	size_t n;
+
+	pthread_mutex_lock(&dentry->mutex);
+	while (fifo_empty(dentry->fifo)) {
+		pthread_mutex_unlock(&dentry->mutex);
+		ret = sem_wait(&dentry->semaphore);
+		if (ret < 0 && errno == EINTR)
+			return -EINTR;
+		pthread_mutex_lock(&dentry->mutex);
+	}
+	pthread_mutex_unlock(&dentry->mutex);
+
+	n = fifo_read(dentry->fifo, buf, size);
+	return n;
 }
 
 static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset, 
 		struct fuse_file_info *fi)
 {
+	int ret;
 	size_t read_size = 0;
 	struct dentry *dentry = FILEHANDLE_TO_DENTRY(fi->fh);
 	if (! dentry)
 		return -ENOENT;
 
 	if (dentry->fifo) {
-		int ret;
-		size_t n;
 		while (read_size < size) {
-			pthread_mutex_lock(&dentry->mutex);
-			while (fifo_empty(dentry->fifo)) {
-				pthread_mutex_unlock(&dentry->mutex);
-				ret = sem_wait(&dentry->semaphore);
-				if (ret < 0 && errno == EINTR)
-					goto out;
-				pthread_mutex_lock(&dentry->mutex);
-			}
-			pthread_mutex_unlock(&dentry->mutex);
-			n = fifo_read(dentry->fifo, buf+read_size, size-read_size);
-			read_size += n;
+			ret = _read_from_fifo(dentry, buf+read_size, size-read_size);
+			if (ret == -EINTR)
+				return 0;
+			read_size += ret;
 		}
-	} else if (dentry->contents) {
+		return read_size;
+	}
+	if (dentry->borrowed_pes_dentry) {
+		/* 
+		 * This is a snapshot file. We read from the FIFO lended to us
+		 * and pass that data to the software decoder which will fill
+		 * in the user buffer.
+		 */
+		if (! dentry->contents) {
+			struct dentry *pes = dentry->borrowed_pes_dentry;
+			char snapshot_buf[SNAPSHOT_BUFFER_SIZE];
+			struct snapshot_context *ctx;
+			
+			ctx = snapshot_init_video_context();
+			if (! ctx)
+				return -ENXIO;
+
+			while (true) {
+				read_size = 0;
+				memset(snapshot_buf+SNAPSHOT_INBUF_SIZE, 0, 
+						sizeof(snapshot_buf)-SNAPSHOT_INBUF_SIZE);
+				while (read_size < SNAPSHOT_INBUF_SIZE) {
+					ret = _read_from_fifo(pes, 
+							snapshot_buf+read_size, 
+							SNAPSHOT_INBUF_SIZE-read_size);
+					if (ret < 0) {
+						snapshot_destroy_video_context(ctx);
+						return -EIO;
+					}
+					read_size += ret;
+				}
+				ret = snapshot_save_video_frame(snapshot_buf, read_size, ctx);
+				if (ret == 0)
+					break;
+			}
+			dentry->contents = ctx->contents;
+			dentry->size = ctx->contents_size;
+			snapshot_destroy_video_context(ctx);
+		}
+	}
+	if (dentry->contents) {
 		/* Lockless access */
 		read_size = (dentry->size > size) ? size : dentry->size;
 		memcpy(buf, dentry->contents, read_size);
@@ -152,7 +227,6 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 		dprintf("Error: dentry for '%s' doesn't have any contents set", path);
 		return -ENOTSUP;
 	}
-out:
 	return read_size;
 }
 
@@ -390,6 +464,10 @@ static void * demuxfs_init(struct fuse_conn_info *conn)
 {
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
 
+#ifdef USE_FFMPEG
+	avcodec_init();
+	avcodec_register_all();
+#endif
 	priv->table = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->psi_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->pes_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
