@@ -451,7 +451,7 @@ static int pes_append_to_fifo(struct dentry *dentry, bool pes,
 	/* Do not feed the FIFO if no process wants to read from it */
 	if (dentry->refcount > 0) {
 		if (fifo_flushed(dentry->fifo)) {
-			if (! (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01) && pes)
+			if (pes && !(payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01))
 				append = false;
 		}
 		if (append) {
