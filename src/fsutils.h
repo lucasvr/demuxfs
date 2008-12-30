@@ -8,6 +8,7 @@
 #define FS_NIT_NAME                     "NIT"
 #define FS_EIT_NAME                     "EIT"
 #define FS_SDT_NAME                     "SDT"
+#define FS_TOT_NAME                     "TOT"
 
 #define FS_PROGRAMS_NAME                "Programs"
 #define FS_CURRENT_NAME                 "Current"
@@ -60,8 +61,9 @@ void fsutils_dispose_node(struct dentry *dentry);
 
 #define CREATE_FILE_NUMBER(parent,header,member) \
 	({ \
+	 	uint64_t member64 = (uint64_t) (header)->member; \
 		struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-		asprintf(&_dentry->contents, "%#04x", (header)->member); \
+		asprintf(&_dentry->contents, "%#04llx", member64); \
 		_dentry->name = strdup(#member); \
 		_dentry->size = strlen(_dentry->contents); \
 		_dentry->mode = S_IFREG | 0444; \
