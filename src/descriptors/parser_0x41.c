@@ -34,6 +34,7 @@
 #include "tables/psi.h"
 #include "tables/pat.h"
 #include "descriptors/services.h"
+#include "descriptors/descriptors.h"
 
 struct formatted_descriptor {
 	uint16_t service_id;
@@ -47,6 +48,9 @@ int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, 
 	char buf[64];
 	struct dentry *dentry, *subdir;
 	struct formatted_descriptor f;
+	
+	if (! descriptor_is_parseable(parent, 0x41, 3, len))
+		return -ENODATA;
 	
 	dentry = CREATE_DIRECTORY(parent, "SERVICE_LIST");
 

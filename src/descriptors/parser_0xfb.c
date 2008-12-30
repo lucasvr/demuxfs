@@ -33,6 +33,7 @@
 #include "ts.h"
 #include "tables/psi.h"
 #include "tables/pat.h"
+#include "descriptors.h"
 
 struct formatted_descriptor {
 	uint16_t service_id;
@@ -43,6 +44,9 @@ int descriptor_0xfb_parser(const char *payload, int len, struct dentry *parent, 
 {
 	uint8_t i;
 	struct dentry *dentry, *subdir;
+
+	if (! descriptor_is_parseable(parent, 0xfb, 2, len))
+		return -ENODATA;
 
 	dentry = CREATE_DIRECTORY(parent, "PARTIAL_RECEPTION");
 	for (i=0; i<len; i+=2) {

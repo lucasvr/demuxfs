@@ -8,6 +8,7 @@ struct descriptor {
 };
 
 /* Function prototypes */
+bool descriptor_is_parseable(struct dentry *dentry, uint8_t tag, int expected, int found);
 struct descriptor *descriptors_init(struct demuxfs_data *priv);
 void descriptors_destroy(struct descriptor *descriptor_list);
 struct descriptor *descriptors_find(uint8_t tag, struct demuxfs_data *priv);
