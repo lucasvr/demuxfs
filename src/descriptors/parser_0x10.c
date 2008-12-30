@@ -31,6 +31,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
 
 struct smoothing_buffer_descriptor {
 	uint8_t reserved_1;
@@ -44,11 +45,8 @@ int descriptor_0x10_parser(const char *payload, int len, struct dentry *parent, 
 {
 	struct dentry *subdir = CREATE_DIRECTORY(parent, "SMOOTHING_BUFFER");
 
-	if (len != 6) {
-		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)",
-				0x10, 6, len);
+	if (! descriptor_is_parseable(parent, 0x10, 6, len))
 		return -ENODATA;
-	}
 
 	struct smoothing_buffer_descriptor s;
 	s.reserved_1 = (payload[0] >> 6) & 0x03;

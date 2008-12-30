@@ -33,6 +33,7 @@
 #include "stream_type.h"
 #include "tables/psi.h"
 #include "tables/pmt.h"
+#include "descriptors.h"
 
 struct stream_identifier_descriptor {
 	uint8_t component_tag;
@@ -51,6 +52,9 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 	struct stream_identifier_descriptor s;
 	uint8_t stream_type = 0;
 	bool wrong_tag = false;
+
+	if (! descriptor_is_parseable(parent, 0x52, 1, len))
+		return -ENODATA;
 
 	if (! priv->shared_data)
 		TS_WARNING("STREAM_IDENTIFIER_DESCRIPTOR found outside the PMT");

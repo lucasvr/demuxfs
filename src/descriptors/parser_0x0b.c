@@ -30,6 +30,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
 
 struct system_clock_descriptor {
 	uint8_t external_clock_reference_indicator:1;
@@ -42,13 +43,8 @@ struct system_clock_descriptor {
 /* SYSTEM_CLOCK_DESCRIPTOR parser */
 int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *subdir = CREATE_DIRECTORY(parent, "SYSTEM_CLOCK");
-
-	if (len != 2) {
-		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)", 
-			0x0b, 2, len);
+	if (! descriptor_is_parseable(parent, 0x0b, 2, len))
 		return -ENODATA;
-	}
 
 	struct system_clock_descriptor s;
 	s.external_clock_reference_indicator = (payload[0] >> 7) & 0x01;
@@ -57,6 +53,7 @@ int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, 
 	s.clock_accuracy_exponent = (payload[1] >> 5) & 0x07;
 	s.reserved_2 = payload[1] & 0x1f;
 
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "SYSTEM_CLOCK");
 	CREATE_FILE_NUMBER(subdir, &s, external_clock_reference_indicator);
 	//CREATE_FILE_NUMBER(subdir, &s, reserved_1);
 	CREATE_FILE_NUMBER(subdir, &s, clock_accuracy_integer);

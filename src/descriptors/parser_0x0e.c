@@ -30,6 +30,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
 
 struct maximum_bitrate_descriptor {
 	uint32_t max_bitrate;
@@ -38,11 +39,8 @@ struct maximum_bitrate_descriptor {
 /* MAXIMUM_BITRATE_DESCRIPTOR parser */
 int descriptor_0x0e_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	if (len != 3) {
-		TS_WARNING("Tag %#x could not be parsed: descriptor size mismatch (expected %d bytes, found %d)",
-				0x0e, 3, len);
+	if (! descriptor_is_parseable(parent, 0x0e, 3, len))
 		return -ENODATA;
-	}
 
 	struct maximum_bitrate_descriptor m;
 	m.max_bitrate = ((payload[0] << 16) | (payload[1] << 8) | payload[2]) & 0x00ffffff;

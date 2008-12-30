@@ -30,6 +30,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
 
 struct formatted_descriptor {
 	char broadcasting_flag[64];
@@ -47,10 +48,8 @@ int descriptor_0xfe_parser(const char *payload, int len, struct dentry *parent,
 	uint16_t bflag, bid;
 	int i;
 	
-	if (len < 2) {
-		TS_WARNING("cannot parse descriptor %#x: contents smaller than 2 bytes (%d)", 0xfe, len);
-		return -1;
-	}
+	if (! descriptor_is_parseable(parent, 0xfe, 2, len))
+		return -ENODATA;
 
 	dentry = CREATE_DIRECTORY(parent, "SYSTEM_MANAGEMENT");
 

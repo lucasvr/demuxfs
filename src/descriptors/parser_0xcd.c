@@ -33,6 +33,7 @@
 #include "ts.h"
 #include "tables/psi.h"
 #include "tables/pat.h"
+#include "descriptors.h"
 
 struct transmission_type_data {
 	uint8_t transmission_type_info;
@@ -53,10 +54,8 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 	struct formatted_descriptor f;
 	uint8_t offset, i, j;
 
-	if (len < 2) {
-		TS_WARNING("cannot parse descriptor %#x: contents smaller than 2 bytes (%d)", 0xfe, len);
-		return -1;
-	}
+	if (! descriptor_is_parseable(parent, 0xcd, 2, len))
+		return -ENODATA;
 	
 	f.remote_control_key_id = payload[0];
 	f.length_of_ts_name = payload[1] >> 2;
