@@ -48,7 +48,7 @@ int descriptor_0x55_parser(const char *payload, int len, struct dentry *parent, 
 
 		struct parental_rating_descriptor p;
 		memset(&p, 0, sizeof(p));
-		sprintf(p.country_code, "%c%c%c (0x%x%x%x)", 
+		sprintf(p.country_code, "%c%c%c [0x%x%x%x]", 
 				payload[i], payload[i+1], payload[i+2],
 				payload[i], payload[i+1], payload[i+2]);
 		p.rating = payload[i+3];
