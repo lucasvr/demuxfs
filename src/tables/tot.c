@@ -42,7 +42,7 @@
 #include "tables/pat.h"
 
 static void tot_create_directory(const struct ts_header *header, struct tot_table *tot, 
-		struct dentry **version_dentry, struct demuxfs_data *priv)
+		struct demuxfs_data *priv)
 {
 	char pathname[PATH_MAX];
 
@@ -57,22 +57,20 @@ static void tot_create_directory(const struct ts_header *header, struct tot_tabl
 	tot->dentry->mode = S_IFDIR | 0555;
 	CREATE_COMMON(tot_dir, tot->dentry);
 	
-	/* Create the versioned dir and update the Current symlink */
-	*version_dentry = fsutils_create_version_dir(tot->dentry, tot->version_number);
-
 	/* PSI header */
-	CREATE_FILE_NUMBER(*version_dentry, tot, table_id);
-	CREATE_FILE_NUMBER(*version_dentry, tot, section_syntax_indicator);
-	CREATE_FILE_NUMBER(*version_dentry, tot, section_length);
+	CREATE_FILE_NUMBER(tot->dentry, tot, table_id);
+	CREATE_FILE_NUMBER(tot->dentry, tot, section_syntax_indicator);
+	CREATE_FILE_NUMBER(tot->dentry, tot, section_length);
 
 	/* TOT members */
-	CREATE_FILE_NUMBER(*version_dentry, tot, utc3_time);
-	CREATE_FILE_NUMBER(*version_dentry, tot, descriptors_loop_length);
+	CREATE_FILE_NUMBER(tot->dentry, tot, utc3_time);
+	CREATE_FILE_NUMBER(tot->dentry, tot, descriptors_loop_length);
 }
 
 int tot_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
+	int num_descriptors;
 	struct tot_table *current_tot = NULL;
 	struct tot_table *tot = (struct tot_table *) calloc(1, sizeof(struct tot_table));
 	assert(tot);
@@ -91,26 +89,23 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	tot->dentry->inode = TS_PACKET_HASH_KEY(header, tot);
 	
 	/* Parse TOT specific bits */
-	tot->utc3_time = CONVERT_TO_40(payload[3], payload[4], payload[5], payload[6], payload[7]);
+	tot->utc3_time = CONVERT_TO_40(payload[3], payload[4], payload[5], payload[6], payload[7]) & 0xffffffffff;
 	tot->reserved_4 = payload[8] >> 4;
 	tot->descriptors_loop_length = CONVERT_TO_16(payload[8], payload[9]) & 0x0fff;
+	num_descriptors = descriptors_count(&payload[10], tot->descriptors_loop_length);
 
-	current_tot = hashtable_get(priv->table, tot->dentry->inode); // XXX: como fica qdo temos 2 versoes da TOT na hash?
+	current_tot = hashtable_get(priv->table, tot->dentry->inode);
+	dprintf("*** TOT parser: pid=%#x, table_id=%#x, current_tot=%p, len=%d ***", 
+		header->pid, tot->table_id, current_tot, payload_len);
 	
-	dprintf("*** TOT parser: pid=%#x, table_id=%#x, current_tot=%p, tot->version_number=%#x, len=%d ***", 
-			header->pid, tot->table_id, current_tot, tot->version_number, payload_len);
-
 	if (! current_tot) {
-		struct dentry *version_dentry = NULL;
-		tot_create_directory(header, tot, &version_dentry, priv);
+		tot_create_directory(header, tot, priv);
+		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
 		hashtable_add(priv->table, tot->dentry->inode, tot);
 	} else {
-		struct dentry *utc_dentry = fsutils_get_child(current_tot->dentry, "utc3_time");
-		if (utc_dentry) {
-			pthread_mutex_lock(&utc_dentry->mutex);
-			memcpy(utc_dentry->contents, &tot->utc3_time, sizeof(tot->utc3_time));
-			pthread_mutex_unlock(&utc_dentry->mutex);
-		}
+		tot->dentry = current_tot->dentry;
+		CREATE_FILE_NUMBER(tot->dentry, tot, utc3_time);
+		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
 	}
 	
 	return 0;
