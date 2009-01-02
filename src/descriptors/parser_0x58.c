@@ -28,12 +28,48 @@
  */
 #include "demuxfs.h"
 #include "fsutils.h"
+#include "byteops.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
+
+struct formatted_descriptor {
+	char     country_code[16];
+	uint8_t  country_region_id:6;
+	uint8_t  reserved:1;
+	uint8_t  local_time_offset_polarity:1;
+	uint16_t local_time_offset;
+	uint64_t time_of_change;
+	uint16_t next_time_offset;
+};
 
 /* LOCAL_TIME_OFFSET_DESCRIPTOR parser */
 int descriptor_0x58_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
-}
+	struct formatted_descriptor f;
 
+	if (! descriptor_is_parseable(parent, 0x58, 13, len))
+		return -ENODATA;
+
+	memset(&f, 0, sizeof(f));
+	sprintf(f.country_code, "%c%c%c [0x%x%x%x]",
+		payload[0], payload[1], payload[2],
+		payload[0], payload[1], payload[2]);
+
+	f.country_region_id = payload[3] >> 2;
+	f.reserved = (payload[3] >> 6) & 0x01;
+	f.local_time_offset_polarity = (payload[3] >> 7) & 0x01;
+	f.local_time_offset = CONVERT_TO_16(payload[4], payload[5]);
+	f.time_of_change = CONVERT_TO_40(payload[6], payload[7], payload[8], payload[9], payload[10]) & 0xffffffffff;
+	f.next_time_offset = CONVERT_TO_16(payload[11], payload[12]);
+	
+	struct dentry *dentry = CREATE_DIRECTORY(parent, "LOCAL_TIME_OFFSET");
+	CREATE_FILE_STRING(dentry, &f, country_code, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_NUMBER(dentry, &f, country_region_id);
+	CREATE_FILE_NUMBER(dentry, &f, local_time_offset_polarity);
+	CREATE_FILE_NUMBER(dentry, &f, local_time_offset);
+	CREATE_FILE_NUMBER(dentry, &f, time_of_change);
+	CREATE_FILE_NUMBER(dentry, &f, next_time_offset);
+
+    return 0;
+}
