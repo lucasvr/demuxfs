@@ -220,9 +220,10 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 		}
 	}
 	if (dentry->contents) {
-		/* Lockless access */
+		pthread_mutex_lock(&dentry->mutex);
 		read_size = (dentry->size > size) ? size : dentry->size;
 		memcpy(buf, dentry->contents, read_size);
+		pthread_mutex_unlock(&dentry->mutex);
 	} else {
 		dprintf("Error: dentry for '%s' doesn't have any contents set", path);
 		return -ENOTSUP;
