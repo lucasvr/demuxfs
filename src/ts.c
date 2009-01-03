@@ -40,6 +40,7 @@
 #include "tables/nit.h"
 #include "tables/pes.h"
 #include "tables/sdt.h"
+#include "tables/sdtt.h"
 #include "tables/tot.h"
 
 void ts_dump_header(const struct ts_header *header)
@@ -109,6 +110,8 @@ static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_
 		return sdt_parse;
 	else if (table_id == TS_TOT_TABLE_ID)
 		return tot_parse;
+	else if (table_id == TS_SDTT_TABLE_ID)
+		return sdtt_parse;
 	//else if (table_id == TS_TDT_TABLE_ID)
 	//	dprintf("TS carries a TDT table");
 	//else if ((table_id >= TS_EIT_FIRST_TABLE_ID && table_id <= TS_EIT_LAST_TABLE_ID) || pid == TS_EIT1_PID)
