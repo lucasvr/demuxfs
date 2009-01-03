@@ -8,6 +8,7 @@
 #define FS_NIT_NAME                     "NIT"
 #define FS_EIT_NAME                     "EIT"
 #define FS_SDT_NAME                     "SDT"
+#define FS_SDTT_NAME                    "SDTT"
 #define FS_TOT_NAME                     "TOT"
 
 #define FS_PROGRAMS_NAME                "Programs"
