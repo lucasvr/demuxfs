@@ -85,27 +85,34 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	tot->reserved_2               = (payload[1] >> 4) & 0x03;
 	tot->section_length           = ((payload[1] << 8) | payload[2]) & 0x0fff;
 	
-	/* Set hash key and check if there's already one version of this table in the hash */
-	tot->dentry->inode = TS_PACKET_HASH_KEY(header, tot);
-	
 	/* Parse TOT specific bits */
 	tot->utc3_time = CONVERT_TO_40(payload[3], payload[4], payload[5], payload[6], payload[7]) & 0xffffffffff;
 	tot->reserved_4 = payload[8] >> 4;
 	tot->descriptors_loop_length = CONVERT_TO_16(payload[8], payload[9]) & 0x0fff;
 	num_descriptors = descriptors_count(&payload[10], tot->descriptors_loop_length);
 
+	/* Set hash key and check if there's already one version of this table in the hash */
+	tot->dentry->inode = TS_PACKET_HASH_KEY(header, tot);
 	current_tot = hashtable_get(priv->table, tot->dentry->inode);
+	
 	dprintf("*** TOT parser: pid=%#x, table_id=%#x, current_tot=%p, len=%d ***", 
 		header->pid, tot->table_id, current_tot, payload_len);
 	
-	if (! current_tot) {
+	if (current_tot) {
+		current_tot->section_length = tot->section_length;
+		current_tot->utc3_time = tot->utc3_time;
+		current_tot->descriptors_loop_length = tot->descriptors_loop_length;
+
+		free(tot->dentry);
+		free(tot);
+
+		tot = current_tot;
+		CREATE_FILE_NUMBER(tot->dentry, tot, utc3_time);
+		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
+	} else {
 		tot_create_directory(header, tot, priv);
 		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
 		hashtable_add(priv->table, tot->dentry->inode, tot);
-	} else {
-		tot->dentry = current_tot->dentry;
-		CREATE_FILE_NUMBER(tot->dentry, tot, utc3_time);
-		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
 	}
 	
 	return 0;
