@@ -27,6 +27,7 @@
 #define FS_OBJECT_CAROUSEL_STREAMS_NAME "ObjectCarouselStreams"
 #define FS_DATA_CAROUSEL_STREAMS_NAME   "DataCarouselStreams"
 #define FS_EVENT_MESSAGE_STREAMS_NAME   "EventMessageStreams"
+#define FS_MPE_STREAMS_NAME             "MPEStreams"
 #define FS_RESERVED_STREAMS_NAME        "ReservedStreams"
 
 char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size);
