@@ -99,7 +99,6 @@ static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_
 	parse_function_t parse_function;
 	uint16_t pid = header->pid;
 
-
 	if (table_id == TS_PAT_TABLE_ID)
 		return pat_parse;
 	else if (table_id == TS_PMT_TABLE_ID)
@@ -161,7 +160,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 	}
 	struct user_options *opt = &priv->options;
 	payload_end = payload + opt->packet_size - 1 - opt->packet_error_correction_bytes;
-
+	
 	if (ts_is_psi_packet(header->pid, priv)) {
 		const char *start = payload_start;
 		const char *end = payload_end;
@@ -200,7 +199,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			buffer_append(buffer, start, end - start + 1);
 			if (buffer_contains_full_psi_section(buffer) || pointer_field > 0) {
 				pointer_field = 0;
-				table_id = start[0];
+				table_id = buffer->data[0];
 				if ((parse_function = ts_get_psi_parser(header, table_id, priv)))
 					/* Invoke the PSI parser for this packet */
 					ret = parse_function(header, buffer->data, buffer->current_size, priv);
