@@ -120,7 +120,7 @@ struct pes_other {
  *
  * TODO: verify offset against @payload_len so that we never go out of bounds in @payload.
  */
-static int pes_parse_other(const char *payload, uint32_t payload_len, struct demuxfs_data *priv)
+static int pes_parse_other_data(const char *payload, uint32_t payload_len, struct demuxfs_data *priv)
 {
 	int offset;
 	struct pes_other other;
@@ -355,7 +355,6 @@ struct pes_header {
 static int pes_parse_packet(const struct ts_header *header, const char *payload, 
 		uint32_t payload_len, struct demuxfs_data *priv)
 {
-	int ret = 0;
 	struct pes_header pes;
 	struct dentry *es_dentry;
 	
@@ -384,7 +383,7 @@ static int pes_parse_packet(const struct ts_header *header, const char *payload,
 		stream_id != PES_PROGRAM_STREAM_DIRECTORY &&
 		stream_id != PES_DSMCC_STREAM &&
 		stream_id != PES_H222_1_TYPE_E) {
-		index = pes_parse_other(payload, payload_len, priv);
+		index = pes_parse_other_data(payload, payload_len, priv);
 	} else if (stream_id == PES_PROGRAM_STREAM_MAP ||
 		stream_id != PES_PADDING_STREAM ||
 		stream_id != PES_PRIVATE_STREAM_2 ||
@@ -443,7 +442,7 @@ static int pes_append_to_fifo(struct dentry *dentry, bool pes,
 	bool append = true;
 
 	if (payload_len == 0) {
-		dprintf("refusing to write 0 bytes of data");
+		dprintf("refusing to write 0 bytes of data to %s FIFO", pes ? "PES" : "ES");
 		return 0;
 	}
 
@@ -460,11 +459,12 @@ static int pes_append_to_fifo(struct dentry *dentry, bool pes,
 		}
 	}
 	pthread_mutex_unlock(&dentry->mutex);
+	if (ret < 0)
+		dprintf("Error writing to the %s FIFO: %d", pes ? "PES" : "ES", ret);
 	return ret;
 }
 
-/* Packetized Elementary Stream parser */
-int pes_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
+static int pes_parse_audio_video(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
 	struct dentry *es_dentry, *pes_dentry;
@@ -480,13 +480,9 @@ int pes_parse(const struct ts_header *header, const char *payload, uint32_t payl
 			pes_parse_packet(header, payload, payload_len, priv);
 		else {
 			es_dentry = pes_get_dentry(header, FS_ES_FIFO_NAME, priv);
-			if (! es_dentry) {
-				dprintf("es_dentry = NULL");
+			if (! es_dentry)
 				return -ENOENT;
-			}
 			ret = pes_append_to_fifo(es_dentry, false, payload, payload_len);
-			if (ret < 0)
-				dprintf("Error writing to the ES FIFO: %d", ret);
 		}
 	}
 
@@ -496,8 +492,49 @@ int pes_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return -ENOENT;
 	}
 	ret = pes_append_to_fifo(pes_dentry, true, payload, payload_len);
-	if (ret < 0)
-		dprintf("Error writing to the PES FIFO: %d", ret);
 
 	return ret;
+}
+
+int pes_parse_audio(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv)
+{
+	return pes_parse_audio_video(header, payload, payload_len, priv);
+}
+
+int pes_parse_video(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv)
+{
+	return pes_parse_audio_video(header, payload, payload_len, priv);
+}
+
+int pes_parse_data(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv)
+{
+	struct dentry *es_dentry;
+	int ret;
+
+	if (payload_len < 6) {
+		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
+		return -1;
+	}
+	if (priv->options.parse_pes) {
+		if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
+			pes_parse_packet(header, payload, payload_len, priv);
+		else {
+			es_dentry = pes_get_dentry(header, FS_ES_FIFO_NAME, priv);
+			if (! es_dentry) {
+				dprintf("es_dentry = NULL");
+				return -ENOENT;
+			}
+			ret = pes_append_to_fifo(es_dentry, false, payload, payload_len);
+		}
+	}
+	return ret;
+}
+
+int pes_parse_other(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv)
+{
+	return pes_parse_data(header, payload, payload_len, priv);
 }

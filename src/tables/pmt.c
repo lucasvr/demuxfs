@@ -54,18 +54,8 @@ static void pmt_check_header(struct pmt_table *pmt)
 static void pmt_populate(struct pmt_table *pmt, struct dentry *parent, 
 		struct demuxfs_data *priv)
 {
-	//CREATE_FILE_NUMBER(parent, pmt, reserved_4);
 	CREATE_FILE_NUMBER(parent, pmt, pcr_pid);
-	//CREATE_FILE_NUMBER(parent, pmt, reserved_5);
 	CREATE_FILE_NUMBER(parent, pmt, program_information_length);
-}
-
-static struct dentry *test_and_create_directory(struct dentry *parent, const char *name)
-{
-	struct dentry *dentry = fsutils_get_child(parent, (char *) name);
-	if (! dentry)
-		dentry = CREATE_DIRECTORY(parent, name);
-	return dentry;
 }
 
 static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descriptor_info,
@@ -73,8 +63,7 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 {
 	uint8_t tag = descriptor_info[0];
 	uint8_t component_tag = descriptor_info[2];
-	bool is_primary = false;
-	bool is_secondary = false;
+	bool is_primary = false, is_secondary = false;
 	struct dentry *parent = NULL;
 	const char *streams_name = FS_RESERVED_STREAMS_NAME;
 	char dirname[16], stream_type[256], es_path[PATH_MAX], *es;
@@ -100,8 +89,17 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 			is_reserved = true;
 		if (! is_primary && ! is_reserved)
 			is_secondary = true;
+	} else if (stream_type_is_data_carousel(stream->stream_type_identifier)) {
+		streams_name = FS_DATA_CAROUSEL_STREAMS_NAME;
+	} else if (stream_type_is_event_message(stream->stream_type_identifier)) {
+		streams_name = FS_EVENT_MESSAGE_STREAMS_NAME;
+	} else if (stream_type_is_mpe(stream->stream_type_identifier)) {
+		streams_name = FS_MPE_STREAMS_NAME;
+	} else if (stream_type_is_object_carousel(stream->stream_type_identifier)) {
+		streams_name = FS_OBJECT_CAROUSEL_STREAMS_NAME;
 	}
-	parent = test_and_create_directory(version_dentry, streams_name);
+
+	parent = CREATE_DIRECTORY(version_dentry, streams_name);
 
 	/* Create a directory with this stream's PID number in /PMT/<pid>/Current/<streams_name>/ */
 	sprintf(dirname, "%#4x", stream->elementary_stream_pid);
@@ -110,21 +108,16 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 	/* Create a 'Primary' symlink pointing to <streams_name> if it happens to be the primary component */
 	if (is_primary)
 		CREATE_SYMLINK(parent, FS_PRIMARY_NAME, dirname);
+	else if (is_secondary && ! fsutils_get_child(parent, FS_SECONDARY_NAME))
+		CREATE_SYMLINK(parent, FS_SECONDARY_NAME, dirname);
 	else if (is_secondary) {
-		struct dentry *secondary = fsutils_get_child(parent, FS_SECONDARY_NAME);
-		if (! secondary)
-			CREATE_SYMLINK(parent, FS_SECONDARY_NAME, dirname);
-		else {
-			/* TODO: The descriptor with the lowest component_tag will become the secondary stream */
-		}
+		/* TODO: The descriptor with the lowest component_tag will become the secondary stream */
 	}
 
 	/* Create a symlink in /Streams pointing to this new directory */
 	es = fsutils_path_walk((*subdir), es_path, sizeof(es_path));
 	if (es) {
-		struct dentry *streams_dir = fsutils_get_child(priv->root, FS_STREAMS_NAME);
-		if (! streams_dir)
-			streams_dir = CREATE_DIRECTORY(priv->root, FS_STREAMS_NAME);
+		struct dentry *streams_dir = CREATE_DIRECTORY(priv->root, FS_STREAMS_NAME);
 		if (es > es_path + 2) {
 			*(--es) = '.';
 			*(--es) = '.';
@@ -133,32 +126,42 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 	}
 
 	/* Create a FIFO which will contain this stream's PES contents */
-	struct dentry *pes_dentry = CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
-
+	if (stream_type_is_audio(stream->stream_type_identifier) ||
+		stream_type_is_video(stream->stream_type_identifier)) {
+		struct dentry *pes_dentry = CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
+#ifdef USE_FFMPEG
+		if (stream_type_is_video(stream->stream_type_identifier)) {
+			/* Create a file named snapshot.pgm */
+			CREATE_SNAPSHOT_FILE((*subdir), FS_VIDEO_SNAPSHOT_NAME, pes_dentry);
+		}
+#endif
+	}
 	if (priv->options.parse_pes) {
 		/* Create a FIFO which will contain this stream's ES contents */
 		CREATE_FIFO((*subdir), FS_ES_FIFO_NAME);
 	}
-#ifdef USE_FFMPEG
-	if (stream_type_is_video(stream->stream_type_identifier)) {
-		/* Create a file named snapshot.pgm */
-		CREATE_SNAPSHOT_FILE((*subdir), FS_VIDEO_SNAPSHOT_NAME, pes_dentry);
-	}
-#endif
+
 	struct formatted_descriptor f;
 	snprintf(stream_type, sizeof(stream_type), "%s [%#x]",
 			stream_type_to_string(stream->stream_type_identifier),
 			stream->stream_type_identifier);
 	f.stream_type_identifier = stream_type;
 	CREATE_FILE_STRING((*subdir), &f, stream_type_identifier, XATTR_FORMAT_STRING_AND_NUMBER);
-
-	//CREATE_FILE_NUMBER((*subdir), stream, reserved_1);
-	//CREATE_FILE_NUMBER((*subdir), stream, reserved_2);
 	CREATE_FILE_NUMBER((*subdir), stream, elementary_stream_pid);
 	CREATE_FILE_NUMBER((*subdir), stream, es_information_length);
 	
 	/* Start parsing this PES PID from now on */
-	hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse);
+	if (stream_type_is_data_carousel(stream->stream_type_identifier) ||
+		stream_type_is_event_message(stream->stream_type_identifier) ||
+		stream_type_is_mpe(stream->stream_type_identifier) ||
+		stream_type_is_object_carousel(stream->stream_type_identifier))
+		hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_data);
+	else if (stream_type_is_audio(stream->stream_type_identifier))
+		hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_audio);
+	else if (stream_type_is_video(stream->stream_type_identifier))
+		hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_video);
+	else
+		hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_other);
 }
 
 static void pmt_create_directory(const struct ts_header *header, struct pmt_table *pmt, 

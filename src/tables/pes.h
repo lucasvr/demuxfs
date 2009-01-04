@@ -34,7 +34,13 @@ enum {
 };
 
 int pes_identify_stream_id(uint8_t stream_id);
-int pes_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
+int pes_parse_audio(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv);
+int pes_parse_video(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv);
+int pes_parse_data(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv);
+int pes_parse_other(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
 
 #endif /* __es_h */
