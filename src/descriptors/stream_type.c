@@ -51,6 +51,35 @@ bool stream_type_is_audio(uint8_t stream_type)
 	}
 }
 
+bool stream_type_is_data_carousel(uint8_t stream_type)
+{
+	return stream_type == 0x0b || stream_type == 0x0d;
+}
+
+bool stream_type_is_event_message(uint8_t stream_type)
+{
+	return stream_type == 0x0c || stream_type == 0x0d;
+}
+
+bool stream_type_is_mpe(uint8_t stream_type)
+{
+	return stream_type == 0x0a;
+}
+
+bool stream_type_is_object_carousel(uint8_t stream_type)
+{
+	switch (stream_type) {
+		case 0x06:
+		case 0x0a:
+		case 0x0c:
+		case 0x0d:
+		case 0x7e:
+			return true;
+		default:
+			return false;
+	}
+}
+
 const char *stream_type_to_string(uint8_t stream_type)
 {
 	static const char *table[0xff+1];
@@ -70,7 +99,7 @@ const char *stream_type_to_string(uint8_t stream_type)
 		table[0x0A] = "ISO 13818-6 type A - DSM CC (Multi-protocol Encapsulation)";
 		table[0x0B] = "ISO 13818-6 type B - DSM CC (DSM-CC U-N Messages)";
 		table[0x0C] = "ISO 13818-6 type C - DSM CC (DSM-CC Stream Descriptors)";
-		table[0x0D] = "ISO 13818-6 type D - DSM CC (DSM-CC Sections - anytype, including private data)";
+		table[0x0D] = "ISO 13818-6 type D - DSM CC (DSM-CC Sections - any type, including private data)";
 		table[0x0E] = "ITU-T Rec. H.222.0|ISO/IEC 13818-1 auxiliary - DSM CC";
 		table[0x0F] = "ISO/IEC 13818-7 Audio with ADTS transport syntax (AAC)";
 		table[0x10] = "ISO/IEC 14496-2 Visual";
