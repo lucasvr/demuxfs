@@ -43,11 +43,14 @@ struct buffer *buffer_create(size_t size, bool pes_data)
 	}
 
 	buffer = (struct buffer *) malloc(sizeof(struct buffer));
-	if (! buffer)
+	if (! buffer) {
+		perror("malloc");
 		return NULL;
+	}
 
 	buffer->data = (char *) malloc(sizeof(char) * size);
 	if (! buffer->data) {
+		perror("malloc");
 		free(buffer);
 		return NULL;
 	}
