@@ -93,7 +93,7 @@ static void pat_create_directory(struct pat_table *pat, struct demuxfs_data *pri
 	psi_populate((void **) &pat, version_dentry);
 	pat_populate(pat, version_dentry, priv);
 
-	hashtable_add(priv->table, pat->dentry->inode, pat);
+	hashtable_add(priv->psi_tables, pat->dentry->inode, pat);
 }
 
 int pat_parse(const struct ts_header *header, const char *payload, uint32_t payload_len, 
@@ -116,7 +116,7 @@ int pat_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/* Set hash key and check if there's already one version of this table in the hash */
 	pat->dentry->inode = TS_PACKET_HASH_KEY(header, pat);
-	current_pat = hashtable_get(priv->table, pat->dentry->inode);
+	current_pat = hashtable_get(priv->psi_tables, pat->dentry->inode);
 
 	/* Check whether we should keep processing this packet or not */
 	if (! pat->current_next_indicator || (current_pat && current_pat->version_number == pat->version_number)) {

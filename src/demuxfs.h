@@ -115,8 +115,10 @@ struct user_options {
 };
 
 struct demuxfs_data {
-	/* "table" holds PSI structures (ie: PAT, PMT, NIT..) */
-	struct hash_table *table;
+	/* "psi_tables" holds PSI structures (ie: PAT, PMT, NIT..) */
+	struct hash_table *psi_tables;
+	/* "pes_tables" holds structures from PES packets that we're parsing */
+	struct hash_table *pes_tables;
 	/* "psi_parsers" holds pointers to parsers of known PSI PIDs */
 	struct hash_table *psi_parsers;
 	/* "pes_parsers" holds pointers to parsers of known PES PIDs */

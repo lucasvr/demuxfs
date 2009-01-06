@@ -99,7 +99,7 @@ int sdtt_parse(const struct ts_header *header, const char *payload, uint32_t pay
 	
 	/* Set hash key and check if there's already one version of this table in the hash */
 	sdtt->dentry->inode = TS_PACKET_HASH_KEY(header, sdtt);
-	current_sdtt = hashtable_get(priv->table, sdtt->dentry->inode); // XXX: como fica qdo temos 2 versoes da SDTT na hash?
+	current_sdtt = hashtable_get(priv->psi_tables, sdtt->dentry->inode); // XXX: como fica qdo temos 2 versoes da SDTT na hash?
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! sdtt->current_next_indicator || (current_sdtt && current_sdtt->version_number == sdtt->version_number)) {
@@ -214,7 +214,7 @@ int sdtt_parse(const struct ts_header *header, const char *payload, uint32_t pay
 		descriptors_parse(&payload[index], c->_num_descriptors, subdir, priv);
 	}
 
-	hashtable_add(priv->table, sdtt->dentry->inode, sdtt);
+	hashtable_add(priv->psi_tables, sdtt->dentry->inode, sdtt);
 
 	return 0;
 }
