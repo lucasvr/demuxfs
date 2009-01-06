@@ -58,13 +58,8 @@ static void sdtt_check_header(struct sdtt_table *sdtt)
 static void sdtt_create_directory(const struct ts_header *header, struct sdtt_table *sdtt, 
 		struct dentry **version_dentry, struct demuxfs_data *priv)
 {
-	char pathname[PATH_MAX];
-
 	/* Create a directory named "SDTT" at the root filesystem if it doesn't exist yet */
-	sprintf(pathname, "/%s", FS_SDTT_NAME);
-	struct dentry *sdtt_dir = fsutils_get_dentry(priv->root, pathname);
-	if (! sdtt_dir)
-		sdtt_dir = CREATE_DIRECTORY(priv->root, FS_SDTT_NAME);
+	struct dentry *sdtt_dir = CREATE_DIRECTORY(priv->root, FS_SDTT_NAME);
 
 	/* Create a directory named "<sdtt_pid>" and populate it with files */
 	asprintf(&sdtt->dentry->name, "%#04x", header->pid);
