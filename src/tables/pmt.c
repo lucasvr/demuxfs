@@ -167,13 +167,8 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 static void pmt_create_directory(const struct ts_header *header, struct pmt_table *pmt, 
 		struct dentry **version_dentry, struct demuxfs_data *priv)
 {
-	char pathname[PATH_MAX];
-
 	/* Create a directory named "PMT" at the root filesystem if it doesn't exist yet */
-	sprintf(pathname, "/%s", FS_PMT_NAME);
-	struct dentry *pmt_dir = fsutils_get_dentry(priv->root, pathname);
-	if (! pmt_dir)
-		pmt_dir = CREATE_DIRECTORY(priv->root, FS_PMT_NAME);
+	struct dentry *pmt_dir = CREATE_DIRECTORY(priv->root, FS_PMT_NAME);
 
 	/* Create a directory named "<pmt_pid>" and populate it with files */
 	asprintf(&pmt->dentry->name, "%#04x", header->pid);
