@@ -96,10 +96,13 @@ static bool ts_is_pes_packet(uint16_t pid, struct demuxfs_data *priv)
 static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_t table_id,
 		struct demuxfs_data *priv)
 {
-	parse_function_t parse_function;
 	uint16_t pid = header->pid;
+	parse_function_t parse_function;
+	parse_function = (parse_function_t) hashtable_get(priv->psi_parsers, pid);
 
-	if (table_id == TS_PAT_TABLE_ID)
+	if (parse_function)
+		return parse_function;
+	else if (table_id == TS_PAT_TABLE_ID)
 		return pat_parse;
 	else if (table_id == TS_PMT_TABLE_ID)
 		return pmt_parse;
@@ -115,10 +118,9 @@ static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_
 	//	dprintf("TS carries a TDT table");
 	//else if ((table_id >= TS_EIT_FIRST_TABLE_ID && table_id <= TS_EIT_LAST_TABLE_ID) || pid == TS_EIT1_PID)
 	//	return eit_parse;
-	else if ((parse_function = (parse_function_t) hashtable_get(priv->psi_parsers, pid)))
-		return parse_function;
 	else if ((pid == TS_NULL_PID) && (header->payload_unit_start_indicator != 0))
 		TS_WARNING("NULL packet has payload_unit_start_indicator != 0");
+
     return NULL;
 }
 
@@ -196,14 +198,16 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				hashtable_add(priv->packet_buffer, header->pid, buffer);
 			}
 
-			buffer_append(buffer, start, end - start + 1);
-			if (buffer_contains_full_psi_section(buffer) || pointer_field > 0) {
-				pointer_field = 0;
-				table_id = buffer->data[0];
-				if ((parse_function = ts_get_psi_parser(header, table_id, priv)))
-					/* Invoke the PSI parser for this packet */
-					ret = parse_function(header, buffer->data, buffer->current_size, priv);
-				buffer_reset_size(buffer);
+			if (buffer) {
+				buffer_append(buffer, start, end - start + 1);
+				if (buffer_contains_full_psi_section(buffer) || pointer_field > 0) {
+					pointer_field = 0;
+					table_id = buffer->data[0];
+					if ((parse_function = ts_get_psi_parser(header, table_id, priv)))
+						/* Invoke the PSI parser for this packet */
+						ret = parse_function(header, buffer->data, buffer->current_size, priv);
+					buffer_reset_size(buffer);
+				}
 			}
 			
 			if (! header->payload_unit_start_indicator || ((end + 1) > payload_end))

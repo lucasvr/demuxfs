@@ -511,8 +511,15 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 int pes_parse_data(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
+	dprintf("table_id = %#x, pusi = %d", payload[0], header->payload_unit_start_indicator);
+	return 0;
+}
+
+int pes_parse_other(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv)
+{
 	struct dentry *es_dentry;
-	int ret;
+	int ret = 0;
 
 	if (payload_len < 6) {
 		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
@@ -531,10 +538,4 @@ int pes_parse_data(const struct ts_header *header, const char *payload, uint32_t
 		}
 	}
 	return ret;
-}
-
-int pes_parse_other(const struct ts_header *header, const char *payload, uint32_t payload_len,
-		struct demuxfs_data *priv)
-{
-	return pes_parse_data(header, payload, payload_len, priv);
 }
