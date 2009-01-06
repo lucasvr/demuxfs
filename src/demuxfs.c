@@ -455,7 +455,8 @@ static void demuxfs_destroy(void *data)
 	descriptors_destroy(priv->ts_descriptors);
 	hashtable_destroy(priv->psi_parsers, NULL);
 	hashtable_destroy(priv->pes_parsers, NULL);
-	hashtable_destroy(priv->table, (hashtable_free_function_t) free);
+	hashtable_destroy(priv->psi_tables, (hashtable_free_function_t) free);
+	hashtable_destroy(priv->pes_tables, (hashtable_free_function_t) free);
 	hashtable_destroy(priv->packet_buffer, (hashtable_free_function_t) buffer_destroy);
 	fsutils_dispose_tree(priv->root);
 }
@@ -468,7 +469,8 @@ static void * demuxfs_init(struct fuse_conn_info *conn)
 	avcodec_init();
 	avcodec_register_all();
 #endif
-	priv->table = hashtable_new(DEMUXFS_MAX_PIDS);
+	priv->psi_tables = hashtable_new(DEMUXFS_MAX_PIDS);
+	priv->pes_tables = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->psi_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->pes_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->packet_buffer = hashtable_new(DEMUXFS_MAX_PIDS);

@@ -68,7 +68,7 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/* Set hash key and check if there's already one version of this table in the hash */
 	nit->dentry->inode = TS_PACKET_HASH_KEY(header, nit);
-	current_nit = hashtable_get(priv->table, nit->dentry->inode);
+	current_nit = hashtable_get(priv->psi_tables, nit->dentry->inode);
 
 	/* Check whether we should keep processing this packet or not */
 	if (! nit->current_next_indicator || (current_nit && current_nit->version_number == nit->version_number)) {
@@ -122,6 +122,6 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		offset += 6 + ts_data.transport_descriptors_length;
 	}
 
-	hashtable_add(priv->table, nit->dentry->inode, nit);
+	hashtable_add(priv->psi_tables, nit->dentry->inode, nit);
 	return 0;
 }

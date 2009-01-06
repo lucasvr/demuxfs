@@ -93,7 +93,7 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/* Set hash key and check if there's already one version of this table in the hash */
 	tot->dentry->inode = TS_PACKET_HASH_KEY(header, tot);
-	current_tot = hashtable_get(priv->table, tot->dentry->inode);
+	current_tot = hashtable_get(priv->psi_tables, tot->dentry->inode);
 	
 	dprintf("*** TOT parser: pid=%#x, table_id=%#x, current_tot=%p, len=%d ***", 
 		header->pid, tot->table_id, current_tot, payload_len);
@@ -112,7 +112,7 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	} else {
 		tot_create_directory(header, tot, priv);
 		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
-		hashtable_add(priv->table, tot->dentry->inode, tot);
+		hashtable_add(priv->psi_tables, tot->dentry->inode, tot);
 	}
 	
 	return 0;
