@@ -147,6 +147,31 @@ void fsutils_dispose_tree(struct dentry *dentry)
 	fsutils_dispose_node(dentry);
 }
 
+/**
+ * Migrate children from 'source' to 'target'. Children whose dentry names
+ * are already contained within 'target' are skipped. The moved dentries will
+ * no longer be available in source's child list.
+ * @source: source dentry
+ * @target: target dentry
+ */
+void fsutils_migrate_children(struct dentry *source, struct dentry *target)
+{
+	struct dentry *ptr_source, *ptr_target, *aux;
+
+	list_for_each_entry_safe(ptr_source, aux, &source->children, list) {
+		bool already_exists = false;
+		list_for_each_entry(ptr_target, &target->children, list)
+			if (! strcmp(ptr_target->name, ptr_source->name)) {
+				already_exists = true;
+				break;
+			}
+		if (! already_exists) {
+			list_del(&ptr_source->list);
+			list_add_tail(&ptr_source->list, &target->children);
+		}
+	}
+}
+
 #define TRUNCATE_STRING(end) do { if ((end)) *(end) = '\0'; } while(0)
 #define RESTORE_STRING(end)  do { if ((end)) *(end) =  '/'; } while(0)
 
