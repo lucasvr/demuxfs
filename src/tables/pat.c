@@ -145,6 +145,13 @@ int pat_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		pat->programs[i].pid = ((payload[offset+2] << 8) | payload[offset+3]) & 0x1fff;
 	}
 
+	if (current_pat) {
+		hashtable_del(priv->psi_tables, current_pat->dentry->inode);
+		fsutils_migrate_children(current_pat->dentry, pat->dentry);
+		fsutils_dispose_tree(current_pat->dentry);
+		free(current_pat);
+	}
 	pat_create_directory(pat, priv);
+
 	return 0;
 }
