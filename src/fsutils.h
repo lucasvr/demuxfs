@@ -38,6 +38,7 @@ struct dentry *fsutils_create_dentry(const char *path, mode_t mode);
 struct dentry * fsutils_create_version_dir(struct dentry *parent, int version);
 void fsutils_dispose_tree(struct dentry *dentry);
 void fsutils_dispose_node(struct dentry *dentry);
+void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 
 /* Macros to ease the creation of files and directories */
 #define CREATE_COMMON(_parent,_dentry) \
