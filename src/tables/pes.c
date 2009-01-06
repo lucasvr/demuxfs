@@ -30,6 +30,7 @@
 #include "fsutils.h"
 #include "byteops.h"
 #include "fifo.h"
+#include "hash.h"
 #include "ts.h"
 #include "tables/psi.h"
 #include "tables/pes.h"
@@ -417,20 +418,24 @@ static struct dentry *pes_get_dentry(const struct ts_header *header,
 {
 	struct dentry *slink, *dentry;
 	char pathname[PATH_MAX];
+	ino_t key = header->pid << 1 | (fifo_name == FS_ES_FIFO_NAME ? 0 : 1);
 
-	/* TODO: create a dedicated hash table for quick access to the dentries */
-	sprintf(pathname, "/%s/%#x", FS_STREAMS_NAME, header->pid);
-	slink = fsutils_get_dentry(priv->root, pathname);
-	if (! slink) {
-		dprintf("couldn't get a dentry for '%s'", pathname);
-		return NULL;
-	}
-
-	sprintf(pathname, "%s/%s", slink->contents, fifo_name);
-	dentry = fsutils_get_dentry(priv->root, pathname);
+	dentry = hashtable_get(priv->pes_tables, key);
 	if (! dentry) {
-		dprintf("couldn't get a dentry for '%s'", pathname);
-		return NULL;
+		sprintf(pathname, "/%s/%#x", FS_STREAMS_NAME, header->pid);
+		slink = fsutils_get_dentry(priv->root, pathname);
+		if (! slink) {
+			dprintf("couldn't get a dentry for '%s'", pathname);
+			return NULL;
+		}
+
+		sprintf(pathname, "%s/%s", slink->contents, fifo_name);
+		dentry = fsutils_get_dentry(priv->root, pathname);
+		if (! dentry) {
+			dprintf("couldn't get a dentry for '%s'", pathname);
+			return NULL;
+		}
+		hashtable_add(priv->pes_tables, key, dentry);
 	}
 	return dentry;
 }
