@@ -453,10 +453,10 @@ static void demuxfs_destroy(void *data)
 {
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
 	descriptors_destroy(priv->ts_descriptors);
-	hashtable_destroy(priv->psi_parsers, NULL);
 	hashtable_destroy(priv->pes_parsers, NULL);
+	hashtable_destroy(priv->psi_parsers, NULL);
+	hashtable_destroy(priv->pes_tables, NULL);
 	hashtable_destroy(priv->psi_tables, (hashtable_free_function_t) free);
-	hashtable_destroy(priv->pes_tables, (hashtable_free_function_t) free);
 	hashtable_destroy(priv->packet_buffer, (hashtable_free_function_t) buffer_destroy);
 	fsutils_dispose_tree(priv->root);
 }
