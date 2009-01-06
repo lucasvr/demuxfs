@@ -44,13 +44,8 @@
 static void tot_create_directory(const struct ts_header *header, struct tot_table *tot, 
 		struct demuxfs_data *priv)
 {
-	char pathname[PATH_MAX];
-
 	/* Create a directory named "TOT" at the root filesystem if it doesn't exist yet */
-	sprintf(pathname, "/%s", FS_TOT_NAME);
-	struct dentry *tot_dir = fsutils_get_dentry(priv->root, pathname);
-	if (! tot_dir)
-		tot_dir = CREATE_DIRECTORY(priv->root, FS_TOT_NAME);
+	struct dentry *tot_dir = CREATE_DIRECTORY(priv->root, FS_TOT_NAME);
 
 	/* Create a directory named "<tot_pid>" and populate it with files */
 	asprintf(&tot->dentry->name, "%#04x", header->pid);
