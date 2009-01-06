@@ -122,6 +122,13 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		offset += 6 + ts_data.transport_descriptors_length;
 	}
 
+	if (current_nit) {
+		hashtable_del(priv->psi_tables, current_nit->dentry->inode);
+		fsutils_migrate_children(current_nit->dentry, nit->dentry);
+		fsutils_dispose_tree(current_nit->dentry);
+		free(current_nit);
+	}
 	hashtable_add(priv->psi_tables, nit->dentry->inode, nit);
+
 	return 0;
 }

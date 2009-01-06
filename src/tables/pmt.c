@@ -208,7 +208,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	
 	/* Set hash key and check if there's already one version of this table in the hash */
 	pmt->dentry->inode = TS_PACKET_HASH_KEY(header, pmt);
-	current_pmt = hashtable_get(priv->psi_tables, pmt->dentry->inode); // XXX: como fica qdo temos 2 versoes da PMT na hash?
+	current_pmt = hashtable_get(priv->psi_tables, pmt->dentry->inode);
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! pmt->current_next_indicator || (current_pmt && current_pmt->version_number == pmt->version_number)) {
@@ -253,9 +253,14 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		offset += 5 + stream.es_information_length;
 		pmt->num_programs++;
 	}
-	
 	offset = 12 + pmt->program_information_length;
 
+	if (current_pmt) {
+		hashtable_del(priv->psi_tables, current_pmt->dentry->inode);
+		fsutils_migrate_children(current_pmt->dentry, pmt->dentry);
+		fsutils_dispose_tree(current_pmt->dentry);
+		free(current_pmt);
+	}
 	hashtable_add(priv->psi_tables, pmt->dentry->inode, pmt);
 
 	return 0;
