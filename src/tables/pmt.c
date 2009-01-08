@@ -131,7 +131,7 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 		struct dentry *pes_dentry = CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
 #ifdef USE_FFMPEG
 		if (stream_type_is_video(stream->stream_type_identifier)) {
-			/* Create a file named snapshot.pgm */
+			/* Create a file named snapshot.ppm */
 			CREATE_SNAPSHOT_FILE((*subdir), FS_VIDEO_SNAPSHOT_NAME, pes_dentry);
 		}
 #endif
