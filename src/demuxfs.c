@@ -198,8 +198,7 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 
 			while (true) {
 				read_size = 0;
-				memset(snapshot_buf+SNAPSHOT_INBUF_SIZE, 0, 
-						sizeof(snapshot_buf)-SNAPSHOT_INBUF_SIZE);
+				memset(snapshot_buf, 0, sizeof(snapshot_buf));
 				while (read_size < SNAPSHOT_INBUF_SIZE) {
 					ret = _read_from_fifo(pes, 
 							snapshot_buf+read_size, 
