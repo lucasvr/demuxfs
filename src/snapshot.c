@@ -31,16 +31,31 @@
 
 #ifdef USE_FFMPEG
 
-int save_pgm(const unsigned char *buf, int wrap, struct snapshot_context *ctx)
+static int save_ppm(struct snapshot_context *ctx)
 {
+    int y, out_size;
 	char header[128];
 	char *contents, *ptr;
 	int xsize = ctx->c->width;
 	int ysize = ctx->c->height;
-    int i, out_size;
+	struct SwsContext *img_convert_ctx;
+	AVFrame *rgb_picture;
 
-	snprintf(header, sizeof(header), "P5\n%d %d\n%d\n", xsize, ysize, 255);
-	out_size = strlen(header) + (ysize * xsize);
+	/* Convert the picture from YUV420P to RGB24 */
+    rgb_picture = avcodec_alloc_frame();
+    avpicture_alloc((AVPicture *) rgb_picture, PIX_FMT_RGB24, ctx->c->width, ctx->c->height);
+
+    img_convert_ctx = sws_getContext(
+		xsize, ysize, ctx->c->pix_fmt,
+		xsize, ysize, PIX_FMT_RGB24,
+		0, NULL, NULL, NULL);
+
+    sws_scale(img_convert_ctx, ctx->picture->data, ctx->picture->linesize, 0,
+        ysize, rgb_picture->data, rgb_picture->linesize);
+
+	/* Prepare the PPM header */
+	snprintf(header, sizeof(header), "P6\n%d %d\n%d\n", xsize, ysize, 255);
+	out_size = strlen(header) + (ysize * xsize * 3);
 	contents = malloc(out_size);
 	if (! contents) {
 		perror("malloc");
@@ -50,20 +65,53 @@ int save_pgm(const unsigned char *buf, int wrap, struct snapshot_context *ctx)
 	strcpy(contents, header);
 	ptr = &contents[strlen(header)];
 
-    for (i=0; i<ysize; ++i) {
-		memcpy(ptr, buf + i * wrap, xsize);
-		ptr += xsize;
+	int n = 0;
+    for (y=0; y<ysize; ++y) {
+		memcpy(ptr, rgb_picture->data[0] + y * rgb_picture->linesize[0], xsize * 3);
+		ptr += xsize * 3;
+		n += xsize * 3;
 	}
+
 	ctx->contents_size = out_size;
 	ctx->contents = contents;
 	return 0;
+}
+
+static void save_ppm_file(struct snapshot_context *ctx, int seq)
+{
+    int y, out_size;
+	char filename[128];
+	char *contents, *ptr;
+	int xsize = ctx->c->width;
+	int ysize = ctx->c->height;
+	struct SwsContext *img_convert_ctx;
+	AVFrame *rgb_picture;
+
+	/* Convert the picture from YUV420P to RGB24 */
+    rgb_picture = avcodec_alloc_frame();
+    avpicture_alloc((AVPicture *) rgb_picture, PIX_FMT_RGB24, ctx->c->width, ctx->c->height);
+
+    img_convert_ctx = sws_getContext(
+		xsize, ysize, ctx->c->pix_fmt,
+		xsize, ysize, PIX_FMT_RGB24,
+		0, NULL, NULL, NULL);
+
+    sws_scale(img_convert_ctx, ctx->picture->data, ctx->picture->linesize, 0,
+        ysize, rgb_picture->data, rgb_picture->linesize);
+
+	sprintf(filename, "/tmp/snapshot-%d.ppm", seq);
+	FILE *f=fopen(filename, "w");
+	fprintf(f,"P6\n%d %d\n255\n", xsize, ysize);
+	for(y=0; y<ysize; y++)
+		fwrite(rgb_picture->data[0] + y * rgb_picture->linesize[0], 1, xsize * 3, f);
+	fclose(f);
 }
 
 int snapshot_save_video_frame(const char *inbuf, size_t size, 
 		struct snapshot_context *ctx)
 {
 	uint8_t *inbuf_ptr = (uint8_t *) inbuf;
-	int got_picture = 0;
+	int got_picture = 0, i = 0;
     int len, ret = -1;
 
 	while (size > 0) {
@@ -71,17 +119,14 @@ int snapshot_save_video_frame(const char *inbuf, size_t size,
 		if (len < 0)
 			return len;
 		if (got_picture)
-			break;
+			save_ppm_file(ctx, i++);
 		size -= len;
 		inbuf_ptr += len;
     }
-
-    /* some codecs, such as MPEG, transmit the I and P frame with a
-       latency of one frame. You must do the following to have a
-       chance to get the last frame of the video */
-    len = avcodec_decode_video(ctx->c, ctx->picture, &got_picture, NULL, 0);
-    if (got_picture)
-        ret = save_pgm(ctx->picture->data[0], ctx->picture->linesize[0], ctx);
+	if (got_picture) {
+		ret = save_ppm(ctx);
+		save_ppm_file(ctx, i++);
+	}
 
 	return ret;
 }
