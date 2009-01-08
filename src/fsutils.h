@@ -150,6 +150,7 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	struct dentry *_dentry = fsutils_get_child(parent, fname); \
 	 	if (! _dentry) { \
 	 		_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+	 		_dentry->size = 0xffffffff; \
 	 		_dentry->name = strdup(fname); \
 	 		_dentry->mode = S_IFREG | 0777; \
 	 		_dentry->fifo = fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
