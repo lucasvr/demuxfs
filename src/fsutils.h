@@ -16,7 +16,7 @@
 #define FS_PRIMARY_NAME                 "Primary"
 #define FS_SECONDARY_NAME               "Secondary"
 
-#define FS_VIDEO_SNAPSHOT_NAME          "snapshot.pgm"
+#define FS_VIDEO_SNAPSHOT_NAME          "snapshot.ppm"
 #define FS_STREAMS_NAME                 "Streams"
 #define FS_AUDIO_STREAMS_NAME           "AudioStreams"
 #define FS_VIDEO_STREAMS_NAME           "VideoStreams"
@@ -53,7 +53,8 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
  		pthread_mutex_lock(&_dentry->mutex); \
  		if (_dentry->size != _new_size) { \
  			free(_dentry->contents); \
-			_dentry->contents = strdup(_new_contents); \
+			_dentry->contents = malloc(_new_size); \
+			memcpy(_dentry->contents, _new_contents, _new_size); \
  			_dentry->size = _new_size; \
  		} else \
  			memcpy(_dentry->contents, _new_contents, _dentry->size); \
@@ -68,7 +69,7 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 		_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 	 		_dentry->contents = malloc(_size); \
 	 		memcpy(_dentry->contents, (header)->member, _size); \
-			_dentry->name = strdup(#member); \
+			_dentry->name = strdup((char *) #member); \
 			_dentry->size = _size; \
 			_dentry->mode = S_IFREG | 0444; \
 			CREATE_COMMON((parent),_dentry); \
