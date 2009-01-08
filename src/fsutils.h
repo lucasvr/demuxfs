@@ -10,6 +10,8 @@
 #define FS_SDT_NAME                     "SDT"
 #define FS_SDTT_NAME                    "SDTT"
 #define FS_TOT_NAME                     "TOT"
+#define FS_DII_NAME                     "DII"
+#define FS_DDB_NAME                     "DDB"
 
 #define FS_PROGRAMS_NAME                "Programs"
 #define FS_CURRENT_NAME                 "Current"

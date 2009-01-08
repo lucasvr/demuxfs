@@ -38,6 +38,8 @@
  */
 #define TS_PAT_TABLE_ID                 0x00
 #define TS_PMT_TABLE_ID                 0x02
+#define TS_DII_TABLE_ID                 0x3b
+#define TS_DDB_TABLE_ID                 0x3c
 #define TS_NIT_TABLE_ID                 0x40
 #define TS_SDT_TABLE_ID                 0x42
 #define TS_EIT_P_F_TABLE_ID             0x4e

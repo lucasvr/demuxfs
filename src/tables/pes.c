@@ -34,6 +34,8 @@
 #include "ts.h"
 #include "tables/psi.h"
 #include "tables/pes.h"
+#include "tables/dii.h"
+#include "tables/ddb.h"
 
 #if 0
 struct program_stream_pack_header { /* mpeg2.pdf, table 2-33, pg 73 */
@@ -369,13 +371,17 @@ static int pes_parse_packet(const struct ts_header *header, const char *payload,
 	pes.stream_id = payload[3];
 	pes.pes_packet_length = CONVERT_TO_16(payload[4],payload[5]);
 
+	uint32_t index = 6;
+	int stream_id = pes_identify_stream_id(pes.stream_id);
+
 	if (pes.pes_packet_length == 0) {
-		/* cannot parse this packet any further */
+		if (stream_id == PES_VIDEO_STREAM) {
+			es_dentry->fifo->flushed = false;
+			return pes_append_to_fifo(es_dentry, false, &payload[index], payload_len - index);
+		}
 		return 0;
 	}
 
-	uint32_t index = 6;
-	int stream_id = pes_identify_stream_id(pes.stream_id);
 	if (stream_id != PES_PROGRAM_STREAM_MAP &&
 		stream_id != PES_PADDING_STREAM &&
 		stream_id != PES_PRIVATE_STREAM_2 &&
@@ -485,8 +491,10 @@ static int pes_parse_audio_video(const struct ts_header *header, const char *pay
 			pes_parse_packet(header, payload, payload_len, priv);
 		else {
 			es_dentry = pes_get_dentry(header, FS_ES_FIFO_NAME, priv);
-			if (! es_dentry)
+			if (! es_dentry) {
+				dprintf("es_dentry = NULL");
 				return -ENOENT;
+			}
 			ret = pes_append_to_fifo(es_dentry, false, payload, payload_len);
 		}
 	}
@@ -516,31 +524,18 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 int pes_parse_data(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
-	dprintf("table_id = %#x, pusi = %d", payload[0], header->payload_unit_start_indicator);
+	uint8_t table_id = payload[0];
+
+	if (table_id == TS_DII_TABLE_ID)
+		return dii_parse(header, payload, payload_len, priv);
+	else if (table_id == TS_DDB_TABLE_ID)
+		return ddb_parse(header, payload, payload_len, priv);
+
 	return 0;
 }
 
 int pes_parse_other(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
-	struct dentry *es_dentry;
-	int ret = 0;
-
-	if (payload_len < 6) {
-		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
-		return -1;
-	}
-	if (priv->options.parse_pes) {
-		if (payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01)
-			pes_parse_packet(header, payload, payload_len, priv);
-		else {
-			es_dentry = pes_get_dentry(header, FS_ES_FIFO_NAME, priv);
-			if (! es_dentry) {
-				dprintf("es_dentry = NULL");
-				return -ENOENT;
-			}
-			ret = pes_append_to_fifo(es_dentry, false, payload, payload_len);
-		}
-	}
-	return ret;
+	return 0;
 }
