@@ -4,9 +4,10 @@
 #ifdef USE_FFMPEG
 
 #include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
 #include <libavutil/mathematics.h>
 
-#define SNAPSHOT_INBUF_SIZE 4096
+#define SNAPSHOT_INBUF_SIZE (256*1024)
 #define SNAPSHOT_BUFFER_SIZE (SNAPSHOT_INBUF_SIZE + FF_INPUT_BUFFER_PADDING_SIZE)
 
 struct snapshot_context {
@@ -35,7 +36,7 @@ int snapshot_save_video_frame(const char *inbuf, size_t size, struct snapshot_co
 
 #else
 
-#define SNAPSHOT_INBUF_SIZE 4096
+#define SNAPSHOT_INBUF_SIZE (256*1024)
 #define SNAPSHOT_BUFFER_SIZE (SNAPSHOT_INBUF_SIZE + 8)
 
 struct snapshot_context {
