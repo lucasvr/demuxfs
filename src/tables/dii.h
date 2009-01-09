@@ -1,45 +1,6 @@
 #ifndef __dii_h
 #define __dii_h
 
-struct dsmcc_sub_descriptor {
-	uint8_t sub_descriptor_type;
-	uint8_t sub_descriptor_length;
-	uint8_t *additional_information;
-};
-
-struct dsmcc_descriptor_entry {
-	uint8_t descriptor_type;
-	uint8_t descriptor_length;
-	uint8_t specifier_type;
-	uint8_t specifier_data[3];
-	uint16_t model;
-	uint16_t version;
-	uint8_t sub_descriptor_count;
-	struct dsmcc_sub_descriptor *sub_descriptors;
-};
-
-struct dsmcc_compatibility_descriptor {
-	uint16_t compatibility_descriptor_length;
-	uint16_t descriptor_count;
-	struct dsmcc_descriptor_entry *descriptors;
-};
-
-struct dsmcc_adaptation_header {
-	uint8_t adaptation_type;
-	uint8_t *adaptation_data_bytes; // adaptation_length bytes
-};
-
-struct dsmcc_message_header {
-	uint8_t protocol_discriminator;
-	uint8_t dsmcc_type;
-	uint16_t message_id;
-	uint32_t transaction_id;
-	uint8_t reserved;
-	uint8_t adaptation_length;
-	uint16_t message_length;
-	struct dsmcc_adaptation_header dsmcc_adaptation_header;
-};
-
 /**
  * DII - Download Info Indication
  */
