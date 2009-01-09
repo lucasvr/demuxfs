@@ -104,30 +104,26 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return 0;
 	}
 
-	/* Parse DII specific bits */
-	struct dentry *version_dentry = NULL;
-	dii_create_directory(header, dii, &version_dentry, priv);
-
 	/** DSM-CC Message Header */
 	struct dsmcc_message_header *msg_header = &dii->dsmcc_message_header;
 	int j = dsmcc_parse_message_header(msg_header, payload, 8);
+
+	if (msg_header->protocol_discriminator != 0x11 ||
+		msg_header->dsmcc_type != 0x03 ||
+		msg_header->message_id != 0x1002) {
+		free(dii->dentry);
+		free(dii);
+		return 0;
+	}
+
+	/** At this point we know for sure that this is a DII table */ 
+	struct dentry *version_dentry = NULL;
+	dii_create_directory(header, dii, &version_dentry, priv);
+
 	dsmcc_create_message_header_dentries(msg_header, version_dentry);
 	j += msg_header->adaptation_length;
 
-	if (msg_header->protocol_discriminator != 0x11) {
-		TS_WARNING("protocol_discriminator != 0x11 (%#x)", msg_header->protocol_discriminator);
-		goto out;
-	}
-	if (msg_header->dsmcc_type != 0x03) {
-		TS_WARNING("dsmcc_type != 0x03 (%#x)", msg_header->dsmcc_type);
-		goto out;
-	}
-	if (msg_header->message_id != 0x1002) {
-		TS_WARNING("message_id != 0x1002 (%#x)", msg_header->message_id);
-		goto out;
-	}
-
-	/** DII bits */
+	/** Parse DII bits */
 	dii->download_id = CONVERT_TO_32(payload[j], payload[j+1], payload[j+2], payload[j+3]);
 	dii->block_size = CONVERT_TO_16(payload[j+4], payload[j+5]);
 	dii->window_size = payload[j+6];
