@@ -423,7 +423,7 @@ static int pes_parse_packet(const struct ts_header *header, const char *payload,
 static struct dentry *pes_get_dentry(const struct ts_header *header, 
 		const char *fifo_name, struct demuxfs_data *priv)
 {
-	struct dentry *slink, *dentry;
+	struct dentry *slink, *dentry = NULL;
 	char pathname[PATH_MAX];
 	ino_t key = header->pid << 1 | (fifo_name == FS_ES_FIFO_NAME ? 0 : 1);
 
@@ -462,7 +462,9 @@ static int pes_append_to_fifo(struct dentry *dentry, bool pes,
 	/* Do not feed the FIFO if no process wants to read from it */
 	if (dentry->refcount > 0) {
 		if (fifo_flushed(dentry->fifo)) {
-			if (pes && !(payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01))
+			if (! pes && !(payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x00 && payload[3] == 0x01))
+				append = false;
+			else if (pes && !(payload[0] == 0x00 && payload[1] == 0x00 && payload[2] == 0x01))
 				append = false;
 		}
 		if (append) {
