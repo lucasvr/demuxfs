@@ -48,6 +48,11 @@ struct buffer *buffer_create(size_t size, bool pes_data)
 		return NULL;
 	}
 
+	if (size == 0 && pes_data == true) {
+		size = MAX_SECTION_SIZE;
+		buffer->pes_unbounded_data = true;
+	}
+
 	buffer->data = (char *) malloc(sizeof(char) * size);
 	if (! buffer->data) {
 		perror("malloc");
@@ -142,11 +147,13 @@ bool buffer_contains_full_pes_section(struct buffer *buffer)
 	if (! buffer || ! buffer->data || buffer->current_size < 6)
 		return false;
 
-	packet_length = CONVERT_TO_16(buffer->data[4], buffer->data[5]);
-	if (buffer->current_size < (packet_length + 6 - 1))
-		return false;
+	if (! buffer->pes_unbounded_data) {
+		packet_length = CONVERT_TO_16(buffer->data[4], buffer->data[5]);
+		if (buffer->current_size < (packet_length + 6 - 1))
+			return false;
+		buffer->current_size = packet_length + 6;
+	}
 
-	buffer->current_size = packet_length + 6;
 	return true;
 }
 
