@@ -234,19 +234,10 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			if (! buffer)
 				return 0;
 			hashtable_add(priv->packet_buffer, header->pid, buffer);
-		} else if (header->payload_unit_start_indicator && buffer_unbounded(buffer)) {
-			/* 
-			 * This is a new payload unit, and the previous unit had unbounded size.
-			 * We need to reset the unbounded flag and let the next call to 
-			 * buffer_contains_full_pes_section() below detect if this new 
-			 * payload is also unbounded or not.
-			 */
-			buffer_reset_full(buffer);
 		}
 
 		buffer_append(buffer, payload_start, payload_end - payload_start + 1);
-		if (buffer_contains_full_pes_section(buffer) || 
-			(buffer_unbounded(buffer) && ! header->payload_unit_start_indicator)) {
+		if (buffer_contains_full_pes_section(buffer)) {
 			/* Invoke the PES parser for this packet */
 			if ((parse_function = (parse_function_t) hashtable_get(priv->pes_parsers, header->pid)))
 				ret = parse_function(header, buffer->data, buffer->current_size, priv);
