@@ -67,6 +67,19 @@ void hashtable_destroy(struct hash_table *table, hashtable_free_function_t free_
 	free(table);
 }
 
+void hashtable_invalidate_contents(struct hash_table *table)
+{
+	int i;
+	pthread_mutex_destroy(&table->mutex);
+	for (i=0; i<table->size; ++i) {
+		struct hash_item *item = table->items[i];
+		if (item) {
+			item->data = NULL;
+			table->items[i] = NULL;
+		}
+	}
+}
+
 void *hashtable_get(struct hash_table *table, ino_t key)
 {
 	int index = key % table->size;

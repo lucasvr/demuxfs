@@ -16,6 +16,7 @@ typedef void (*hashtable_free_function_t)(void *data);
 
 struct hash_table *hashtable_new(int size);
 void hashtable_destroy(struct hash_table *table, hashtable_free_function_t free_function);
+void hashtable_invalidate_contents(struct hash_table *table);
 void *hashtable_get(struct hash_table *table, ino_t key);
 bool hashtable_add(struct hash_table *table, ino_t key, void *data);
 bool hashtable_del(struct hash_table *table, ino_t key);
