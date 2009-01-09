@@ -154,13 +154,20 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 	if (stream_type_is_data_carousel(stream->stream_type_identifier) ||
 		stream_type_is_event_message(stream->stream_type_identifier) ||
 		stream_type_is_mpe(stream->stream_type_identifier) ||
-		stream_type_is_object_carousel(stream->stream_type_identifier))
-		hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, pes_parse_data);
-	else if (stream_type_is_audio(stream->stream_type_identifier))
-		hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_audio);
-	else if (stream_type_is_video(stream->stream_type_identifier))
-		hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_video);
-	else
+		stream_type_is_object_carousel(stream->stream_type_identifier)) {
+		/* Assign this to the PES data parser */
+		if (! hashtable_get(priv->psi_parsers, stream->elementary_stream_pid))
+			hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, pes_parse_data);
+	} else if (stream_type_is_audio(stream->stream_type_identifier)) {
+		/* Assign this to the PES audio parser */
+		if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid))
+			hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_audio);
+	} else if (stream_type_is_video(stream->stream_type_identifier)) {
+		/* Assign this to the PES video parser */
+		if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid))
+			hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_video);
+	} else if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid))
+		/* Assign this to the PES generic parser */
 		hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_other);
 }
 
