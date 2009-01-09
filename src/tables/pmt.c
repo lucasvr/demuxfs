@@ -204,7 +204,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	if (ret < 0) {
 		free(pmt->dentry);
 		free(pmt);
-		return ret;
+		return 0;
 	}
 	pmt_check_header(pmt);
 	
@@ -262,6 +262,8 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		fsutils_migrate_children(current_pmt->dentry, pmt->dentry);
 		fsutils_dispose_tree(current_pmt->dentry);
 		free(current_pmt);
+		/* Invalidate all items from the PES hash table */
+		hashtable_invalidate_contents(priv->pes_tables);
 	}
 	hashtable_add(priv->psi_tables, pmt->dentry->inode, pmt);
 
