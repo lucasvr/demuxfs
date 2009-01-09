@@ -36,54 +36,11 @@
 #include "descriptors.h"
 #include "stream_type.h"
 #include "component_tag.h"
+#include "tables/dsmcc.h"
 #include "tables/psi.h"
 #include "tables/dii.h"
 #include "tables/pes.h"
 #include "tables/pat.h"
-
-void dsmcc_create_message_header_dentries(struct dsmcc_message_header *msg_header, struct dentry *parent)
-{
-	CREATE_FILE_NUMBER(parent, msg_header, protocol_discriminator);
-	CREATE_FILE_NUMBER(parent, msg_header, dsmcc_type);
-	CREATE_FILE_NUMBER(parent, msg_header, message_id);
-	CREATE_FILE_NUMBER(parent, msg_header, transaction_id);
-	CREATE_FILE_NUMBER(parent, msg_header, adaptation_length);
-	CREATE_FILE_NUMBER(parent, msg_header, message_length);
-	if (msg_header->adaptation_length) {
-		struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
-		CREATE_FILE_NUMBER(parent, adaptation_header, adaptation_type);
-		CREATE_FILE_BIN(parent, adaptation_header, adaptation_data_bytes, msg_header->adaptation_length);
-	}
-}
-
-void dsmcc_create_compatibility_descriptor_dentries(struct dsmcc_compatibility_descriptor *cd, struct dentry *parent)
-{
-	CREATE_FILE_NUMBER(parent, cd, compatibility_descriptor_length);
-	CREATE_FILE_NUMBER(parent, cd, descriptor_count);
-	for (uint16_t i=0; i<cd->descriptor_count; ++i) {
-		char dir_name[64];
-		sprintf(dir_name, "descriptor_%02d", i+1);
-		struct dentry *subdir = CREATE_DIRECTORY(parent, dir_name);
-
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, descriptor_type);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, descriptor_length);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, specifier_type);
-		CREATE_FILE_BIN(subdir, cd->descriptors, specifier_data, 3);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, model);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, version);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, sub_descriptor_count);
-		for (uint8_t k=0; k<cd->descriptors->sub_descriptor_count; ++k) {
-			sprintf(dir_name, "sub_descriptor_%02d", k+1);
-			struct dentry *dentry = CREATE_DIRECTORY(subdir, dir_name);
-
-			struct dsmcc_sub_descriptor *sub = &cd->descriptors->sub_descriptors[k];
-			CREATE_FILE_NUMBER(dentry, sub, sub_descriptor_type);
-			CREATE_FILE_NUMBER(dentry, sub, sub_descriptor_length);
-			if (sub->sub_descriptor_length)
-				CREATE_FILE_BIN(dentry, sub, additional_information, sub->sub_descriptor_length);
-		}
-	}
-}
 
 static void dii_check_header(struct dii_table *dii)
 {
@@ -153,23 +110,9 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/** DSM-CC Message Header */
 	struct dsmcc_message_header *msg_header = &dii->dsmcc_message_header;
-	msg_header->protocol_discriminator = payload[8];
-	msg_header->dsmcc_type = payload[9];
-	msg_header->message_id = CONVERT_TO_16(payload[10], payload[11]);
-	msg_header->transaction_id = CONVERT_TO_32(payload[12], payload[13], payload[14], payload[15]);
-	msg_header->reserved = payload[16];
-	msg_header->adaptation_length = payload[17];
-	msg_header->message_length = CONVERT_TO_16(payload[18], payload[19]);
-
-	if (msg_header->adaptation_length) {
-		struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
-		adaptation_header->adaptation_type = payload[20];
-		adaptation_header->adaptation_data_bytes = malloc(msg_header->adaptation_length);
-		for (uint8_t i=0; i<msg_header->adaptation_length; ++i)
-			adaptation_header->adaptation_data_bytes[i] = payload[21+i];
-	}
-
+	int j = dsmcc_parse_message_header(msg_header, payload, 8);
 	dsmcc_create_message_header_dentries(msg_header, version_dentry);
+	j += msg_header->adaptation_length;
 
 	if (msg_header->protocol_discriminator != 0x11) {
 		TS_WARNING("protocol_discriminator != 0x11 (%#x)", msg_header->protocol_discriminator);
@@ -183,8 +126,6 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		TS_WARNING("message_id != 0x1002 (%#x)", msg_header->message_id);
 		goto out;
 	}
-
-	int j = 20 + msg_header->adaptation_length;
 
 	/** DII bits */
 	dii->download_id = CONVERT_TO_32(payload[j], payload[j+1], payload[j+2], payload[j+3]);

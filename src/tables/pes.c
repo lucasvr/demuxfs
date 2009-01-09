@@ -32,6 +32,7 @@
 #include "fifo.h"
 #include "hash.h"
 #include "ts.h"
+#include "tables/dsmcc.h"
 #include "tables/psi.h"
 #include "tables/pes.h"
 #include "tables/dii.h"
