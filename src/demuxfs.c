@@ -93,6 +93,8 @@ static int demuxfs_open(const char *path, struct fuse_file_info *fi)
 			ret = -EBUSY;
 			goto out;
 		}
+		/* Make sure the FIFO is flushed */
+		fifo_flush(dentry->fifo);
 		fi->direct_io = 1;
 #if FUSE_USE_VERSION >= 29
 		fi->nonseekable = 1;
@@ -108,6 +110,9 @@ static int demuxfs_open(const char *path, struct fuse_file_info *fi)
 		}
 		pes->refcount++;
 		pthread_mutex_unlock(&pes->mutex);
+
+		/* Make sure the FIFO is flushed */
+		fifo_flush(pes->fifo);
 	}
 	dentry->refcount++;
 	fi->fh = DENTRY_TO_FILEHANDLE(dentry);
