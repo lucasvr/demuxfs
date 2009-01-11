@@ -36,8 +36,10 @@
 #include "descriptors.h"
 #include "stream_type.h"
 #include "component_tag.h"
+#include "tables/dsmcc.h"
 #include "tables/psi.h"
 #include "tables/ddb.h"
+#include "tables/dii.h"
 #include "tables/pes.h"
 #include "tables/pat.h"
 
@@ -99,7 +101,39 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Parse DDB specific bits */
 	struct dentry *version_dentry = NULL;
 	ddb_create_directory(header, ddb, &version_dentry, priv);
+	
+	/** DSM-CC Download Data Header */
+	struct dsmcc_download_data_header *data_header = &ddb->dsmcc_download_data_header;
+	int j = dsmcc_parse_download_data_header(data_header, payload, 8);
+	dsmcc_create_download_data_header_dentries(data_header, version_dentry);
+	j += data_header->adaptation_length;
+	
+	if (data_header->dsmcc_type != 0x03) {
+	//	TS_WARNING("dsmcc_type != 0x03 (%#x)", data_header->dsmcc_type);
+		goto out;
+	}
+	if (data_header->message_id != 0x1003) {
+	//	TS_WARNING("message_id != 0x1003 (%#x)", data_header->message_id);
+		goto out;
+	}
 
+	/** DDB bits */
+	ddb->module_id = CONVERT_TO_16(payload[j], payload[j+1]);
+	ddb->module_version = payload[j+2];
+	ddb->reserved = payload[j+3];
+	ddb->block_number = CONVERT_TO_16(payload[j+4], payload[j+5]);
+	CREATE_FILE_NUMBER(version_dentry, ddb, module_id);
+	CREATE_FILE_NUMBER(version_dentry, ddb, module_version);
+	CREATE_FILE_NUMBER(version_dentry, ddb, block_number);
+	ddb->_block_data_size = data_header->message_length - data_header->adaptation_length - 6;
+	if (ddb->_block_data_size) {
+		ddb->block_data_bytes = malloc(sizeof(char) * ddb->_block_data_size);
+		for (uint16_t i=0; i<ddb->_block_data_size; ++i)
+			ddb->block_data_bytes[i] = payload[j+6+i];
+		CREATE_FILE_BIN(version_dentry, ddb, block_data_bytes, ddb->_block_data_size);
+	}
+
+out:
 	if (current_ddb) {
 		hashtable_del(priv->psi_tables, current_ddb->dentry->inode);
 		fsutils_migrate_children(current_ddb->dentry, ddb->dentry);
