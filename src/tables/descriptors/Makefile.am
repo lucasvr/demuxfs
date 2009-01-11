@@ -97,4 +97,4 @@ parsers = \
 libdescriptors_la_SOURCES  = descriptors.c services.c component_tag.c stream_type.c $(parsers)
 libdescriptors_la_SOURCES += descriptors.h services.h component_tag.h stream_type.h
 
-AM_CPPFLAGS = -I. -I.. -I../backends
+AM_CPPFLAGS = -I. -I../.. -I../../backends
