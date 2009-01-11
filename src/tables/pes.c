@@ -32,11 +32,11 @@
 #include "fifo.h"
 #include "hash.h"
 #include "ts.h"
-#include "tables/dsmcc.h"
 #include "tables/psi.h"
 #include "tables/pes.h"
-#include "tables/dii.h"
-#include "tables/ddb.h"
+#include "dsm-cc/dsmcc.h"
+#include "dsm-cc/dii.h"
+#include "dsm-cc/ddb.h"
 
 #if 0
 struct program_stream_pack_header { /* mpeg2.pdf, table 2-33, pg 73 */

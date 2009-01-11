@@ -33,14 +33,9 @@
 #include "hash.h"
 #include "fifo.h"
 #include "ts.h"
-#include "descriptors.h"
-#include "stream_type.h"
-#include "component_tag.h"
-#include "tables/dsmcc.h"
 #include "tables/psi.h"
-#include "tables/dii.h"
-#include "tables/pes.h"
-#include "tables/pat.h"
+#include "dsm-cc/dsmcc.h"
+#include "dsm-cc/dii.h"
 
 static void dii_check_header(struct dii_table *dii)
 {

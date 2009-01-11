@@ -162,6 +162,7 @@ AC_CONFIG_FILES([
     src/Makefile
 	src/backends/Makefile
 	src/descriptors/Makefile
+	src/dsm-cc/Makefile
 	src/tables/Makefile
 ])
 AC_OUTPUT
