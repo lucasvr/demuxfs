@@ -10,10 +10,13 @@ struct ddb_table {
 	/* common PSI header */
 	PSI_HEADER();
 	/* DDB specific bits */
-	uint16_t original_network_id;
-	uint8_t reserved_future_use;
-	struct ddb_service_info *_services;
-	uint32_t _number_of_services;
+	struct dsmcc_download_data_header dsmcc_download_data_header;
+	uint16_t module_id;
+	uint8_t module_version;
+	uint8_t reserved;
+	uint16_t block_number;
+	uint16_t _block_data_size;
+	char *block_data_bytes;
 	uint32_t crc;
 } __attribute__((__packed__));
 
