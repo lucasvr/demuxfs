@@ -8,4 +8,4 @@ demuxfs_DEPENDENCIES = backends/libbackends.la descriptors/libdescriptors.la tab
 demuxfs_LDADD = backends/libbackends.la descriptors/libdescriptors.la tables/libtables.la
 demuxfs_CPPFLAGS = -I backends -I descriptors
 
-SUBDIRS = backends descriptors tables
+SUBDIRS = backends descriptors dsm-cc tables

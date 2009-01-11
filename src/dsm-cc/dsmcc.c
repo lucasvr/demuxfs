@@ -33,7 +33,7 @@
 #include "hash.h"
 #include "fifo.h"
 #include "ts.h"
-#include "tables/dsmcc.h"
+#include "dsm-cc/dsmcc.h"
 
 void dsmcc_create_download_data_header_dentries(struct dsmcc_download_data_header *data_header, struct dentry *parent)
 {
