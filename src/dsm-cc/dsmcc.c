@@ -33,7 +33,10 @@
 #include "hash.h"
 #include "fifo.h"
 #include "ts.h"
+#include "tables/psi.h"
 #include "dsm-cc/dsmcc.h"
+#include "dsm-cc/dii.h"
+#include "dsm-cc/ddb.h"
 
 void dsmcc_create_download_data_header_dentries(struct dsmcc_download_data_header *data_header, struct dentry *parent)
 {
@@ -63,6 +66,8 @@ void dsmcc_create_message_header_dentries(struct dsmcc_message_header *msg_heade
 		CREATE_FILE_NUMBER(parent, adaptation_header, adaptation_type);
 		CREATE_FILE_BIN(parent, adaptation_header, adaptation_data_bytes, msg_header->adaptation_length);
 	}
+	if ((msg_header->transaction_id & 0x80000000) != 0x80000000)
+		TS_WARNING("transaction_id originator != '10' (%#x)", msg_header->transaction_id);
 }
 
 void dsmcc_create_compatibility_descriptor_dentries(struct dsmcc_compatibility_descriptor *cd, struct dentry *parent)
@@ -92,6 +97,43 @@ void dsmcc_create_compatibility_descriptor_dentries(struct dsmcc_compatibility_d
 				CREATE_FILE_BIN(dentry, sub, additional_information, sub->sub_descriptor_length);
 		}
 	}
+}
+
+int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd,
+		const char *payload, int index)
+{
+	int i = index;
+	cd->compatibility_descriptor_length = CONVERT_TO_16(payload[i], payload[i+1]);
+	cd->descriptor_count = CONVERT_TO_16(payload[i+2], payload[i+3]);
+	i += 4;
+	if (cd->descriptor_count)
+		cd->descriptors = calloc(cd->descriptor_count, sizeof(struct dsmcc_descriptor_entry));
+	for (uint16_t n=0; n<cd->descriptor_count; ++n) {
+		cd->descriptors->descriptor_type = payload[i];
+		cd->descriptors->descriptor_length = payload[i+1];
+		cd->descriptors->specifier_type = payload[i+2];
+		cd->descriptors->specifier_data[0] = payload[i+3];
+		cd->descriptors->specifier_data[1] = payload[i+4];
+		cd->descriptors->specifier_data[2] = payload[i+5];
+		cd->descriptors->model = CONVERT_TO_16(payload[i+6], payload[i+7]);
+		cd->descriptors->version = CONVERT_TO_16(payload[i+8], payload[i+9]);
+		cd->descriptors->sub_descriptor_count = payload[i+10];
+		if (cd->descriptors->sub_descriptor_count)
+			cd->descriptors->sub_descriptors = calloc(cd->descriptors->sub_descriptor_count, 
+					sizeof(struct dsmcc_sub_descriptor));
+		i += 11;
+		for (uint8_t k=0; k<cd->descriptors->sub_descriptor_count; ++k) {
+			struct dsmcc_sub_descriptor *sub = &cd->descriptors->sub_descriptors[k];
+			sub->sub_descriptor_type = payload[i];
+			sub->sub_descriptor_length = payload[i+1];
+			if (sub->sub_descriptor_length)
+				sub->additional_information = malloc(sub->sub_descriptor_length);
+			for (uint8_t l=0; l<sub->sub_descriptor_length; ++l)
+				sub->additional_information[l] = payload[i+2+l];
+			i += 2 + sub->sub_descriptor_length;
+		}
+	}
+	return i;
 }
 
 int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, 
@@ -137,3 +179,17 @@ int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_hea
 	}
 	return i+12;
 }
+
+int dsmcc_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
+		struct demuxfs_data *priv)
+{
+	uint8_t table_id = payload[0];
+
+	if (table_id == TS_DII_TABLE_ID)
+		return dii_parse(header, payload, payload_len, priv);
+	else if (table_id == TS_DDB_TABLE_ID)
+		return ddb_parse(header, payload, payload_len, priv);
+
+	return 0;
+}
+

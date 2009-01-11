@@ -524,19 +524,6 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 	return pes_parse_audio_video(header, payload, payload_len, priv);
 }
 
-int pes_parse_data(const struct ts_header *header, const char *payload, uint32_t payload_len,
-		struct demuxfs_data *priv)
-{
-	uint8_t table_id = payload[0];
-
-	if (table_id == TS_DII_TABLE_ID)
-		return dii_parse(header, payload, payload_len, priv);
-	else if (table_id == TS_DDB_TABLE_ID)
-		return ddb_parse(header, payload, payload_len, priv);
-
-	return 0;
-}
-
 int pes_parse_other(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
