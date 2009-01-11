@@ -30,7 +30,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
-#include "descriptors/services.h"
+#include "services.h"
 
 struct formatted_descriptor {
 	uint8_t _service_type;

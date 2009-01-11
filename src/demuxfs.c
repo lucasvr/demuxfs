@@ -34,7 +34,7 @@
 #include "fifo.h"
 #include "ts.h"
 #include "snapshot.h"
-#include "descriptors.h"
+#include "tables/descriptors/descriptors.h"
 
 /* Platform headers */
 #include "backends/filesrc.h"

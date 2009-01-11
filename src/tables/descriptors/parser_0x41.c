@@ -33,8 +33,8 @@
 #include "ts.h"
 #include "tables/psi.h"
 #include "tables/pat.h"
-#include "descriptors/services.h"
-#include "descriptors/descriptors.h"
+#include "services.h"
+#include "descriptors.h"
 
 struct formatted_descriptor {
 	uint16_t service_id;
