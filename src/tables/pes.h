@@ -38,8 +38,6 @@ int pes_parse_audio(const struct ts_header *header, const char *payload, uint32_
 		struct demuxfs_data *priv);
 int pes_parse_video(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
-int pes_parse_data(const struct ts_header *header, const char *payload, uint32_t payload_len,
-		struct demuxfs_data *priv);
 int pes_parse_other(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
 
