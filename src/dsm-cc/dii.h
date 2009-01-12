@@ -9,7 +9,7 @@ struct dii_module {
 	uint32_t module_size;
 	uint8_t module_version;
 	uint8_t module_info_length;
-	uint8_t *module_info_bytes;
+	char *module_info_bytes;
 };
 
 struct dii_table {
@@ -29,7 +29,7 @@ struct dii_table {
 	uint16_t number_of_modules;
 	struct dii_module *modules;
 	uint16_t private_data_length;
-	uint8_t *private_data_bytes;
+	char *private_data_bytes;
 	uint32_t crc;
 } __attribute__((__packed__));
 
