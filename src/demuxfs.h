@@ -106,6 +106,7 @@ enum transmission_type {
 };
 
 struct descriptor;
+struct dsmcc_descriptor;
 
 struct user_options {
 	bool parse_pes;
@@ -127,6 +128,8 @@ struct demuxfs_data {
 	struct hash_table *packet_buffer;
 	/* "ts_descriptors" holds descriptor tags and the tables that they're allowed to be in */
 	struct descriptor *ts_descriptors;
+	/* "dsmcc_descriptors" holds DSM-CC descriptor tags and their parsers */
+	struct dsmcc_descriptor *dsmcc_descriptors;
 	/* The root dentry ("/") */
 	struct dentry *root;
 	/* Backend specific data */
