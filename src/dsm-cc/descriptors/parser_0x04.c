@@ -28,12 +28,24 @@
  */
 #include "demuxfs.h"
 #include "fsutils.h"
+#include "byteops.h"
 #include "xattr.h"
 #include "ts.h"
+
+struct formatted_descriptor {
+	uint8_t position;
+	uint16_t module_id;
+};
 
 /* MODULE_LINK_DESCRIPTOR parser */
 int dsmcc_descriptor_0x04_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "MODULE_LINK");
+	struct formatted_descriptor f;
+	f.position = payload[0];
+	f.module_id = CONVERT_TO_16(payload[1], payload[2]);
+	CREATE_FILE_NUMBER(subdir, &f, position);
+	CREATE_FILE_NUMBER(subdir, &f, module_id);
+    return 0;
 }
 

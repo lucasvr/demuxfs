@@ -31,9 +31,17 @@
 #include "xattr.h"
 #include "ts.h"
 
+struct formatted_descriptor {
+	uint8_t location_tag;
+};
+
 /* LOCATION_DESCRIPTOR parser */
 int dsmcc_descriptor_0x06_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "LOCATION");
+	struct formatted_descriptor f;
+	f.location_tag = payload[0];
+	CREATE_FILE_NUMBER(subdir, &f, location_tag);
+    return 0;
 }
 
