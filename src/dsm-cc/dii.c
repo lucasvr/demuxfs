@@ -127,7 +127,7 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 		CREATE_FILE_NUMBER(subdir, mod, module_info_length);
 		if (mod->module_info_length) {
 			uint8_t len;
-			uint8_t offset = 0;
+			uint16_t offset = 0;
 			while (offset < mod->module_info_length) {
 				len = dsmcc_descriptors_parse(&mod->module_info_bytes[offset], 1, subdir, priv);
 				offset += len + 2;
@@ -136,14 +136,16 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 	}
 
 	CREATE_FILE_NUMBER(parent, dii, private_data_length);
+#if 0
 	if (dii->private_data_length) {
 		uint8_t len;
-		uint8_t offset = 0;
+		uint16_t offset = 0;
 		while (offset < dii->private_data_length) {
 			len = dsmcc_descriptors_parse(&dii->private_data_bytes[offset], 1, parent, priv);
-			offset += len ? len+1 : 2;
+			offset += len + 2;
 		}
 	}
+#endif
 }
 
 int dii_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
