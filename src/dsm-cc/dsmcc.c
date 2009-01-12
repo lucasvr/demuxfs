@@ -102,20 +102,17 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 		const char *payload, int index)
 {
 	int i = index;
+
 	cd->compatibility_descriptor_length = CONVERT_TO_16(payload[i], payload[i+1]);
-	cd->descriptor_count = CONVERT_TO_16(payload[i+2], payload[i+3]);
-	
-	/* Set return value */
-	index = i + 2 + cd->compatibility_descriptor_length + 1;
-
-	if (! cd->compatibility_descriptor_length) {
+	if (cd->compatibility_descriptor_length < 2) {
 		cd->descriptor_count = 0;
-		return index;
+		return index + cd->compatibility_descriptor_length + 1;
 	}
-
+	
+	cd->descriptor_count = CONVERT_TO_16(payload[i+2], payload[i+3]);
+	i += 4;
 	if (cd->descriptor_count)
 		cd->descriptors = calloc(cd->descriptor_count, sizeof(struct dsmcc_descriptor_entry));
-	i += 4;
 	for (uint16_t n=0; n<cd->descriptor_count; ++n) {
 		cd->descriptors[n].descriptor_type = payload[i];
 		cd->descriptors[n].descriptor_length = payload[i+1];
@@ -129,6 +126,7 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 		if (cd->descriptors[n].sub_descriptor_count)
 			cd->descriptors[n].sub_descriptors = calloc(cd->descriptors[n].sub_descriptor_count, 
 					sizeof(struct dsmcc_sub_descriptor));
+		
 		i += 11;
 		for (uint8_t k=0; k<cd->descriptors[n].sub_descriptor_count; ++k) {
 			struct dsmcc_sub_descriptor *sub = &cd->descriptors[n].sub_descriptors[k];
@@ -143,7 +141,7 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 			}
 		}
 	}
-	return index;
+	return i;
 }
 
 int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, 
@@ -161,11 +159,10 @@ int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header,
 
 	if (msg_header->adaptation_length) {
 		struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
-		adaptation_header->adaptation_type = payload[i];
+		adaptation_header->adaptation_type = payload[i++];
 		adaptation_header->adaptation_data_bytes = malloc(msg_header->adaptation_length);
-		for (uint8_t j=0; j<msg_header->adaptation_length; ++j)
-			adaptation_header->adaptation_data_bytes[j] = payload[i+1+j];
-		i += 1 + msg_header->adaptation_length;
+		for (uint8_t j=0; j<msg_header->adaptation_length; ++j, ++i)
+			adaptation_header->adaptation_data_bytes[j] = payload[i+j];
 	}
 	return i;
 }
