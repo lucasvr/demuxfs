@@ -79,18 +79,17 @@ void dsmcc_create_compatibility_descriptor_dentries(struct dsmcc_compatibility_d
 		sprintf(dir_name, "descriptor_%02d", i+1);
 		struct dentry *subdir = CREATE_DIRECTORY(parent, dir_name);
 
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, descriptor_type);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, descriptor_length);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, specifier_type);
-		CREATE_FILE_BIN(subdir, cd->descriptors, specifier_data, 3);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, model);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, version);
-		CREATE_FILE_NUMBER(subdir, cd->descriptors, sub_descriptor_count);
-		for (uint8_t k=0; k<cd->descriptors->sub_descriptor_count; ++k) {
+		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], descriptor_type);
+		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], descriptor_length);
+		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], specifier_type);
+		CREATE_FILE_BIN(subdir, &cd->descriptors[i], specifier_data, 3);
+		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], model);
+		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], version);
+		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], sub_descriptor_count);
+		for (uint8_t k=0; k<cd->descriptors[i].sub_descriptor_count; ++k) {
 			sprintf(dir_name, "sub_descriptor_%02d", k+1);
 			struct dentry *dentry = CREATE_DIRECTORY(subdir, dir_name);
-
-			struct dsmcc_sub_descriptor *sub = &cd->descriptors->sub_descriptors[k];
+			struct dsmcc_sub_descriptor *sub = &cd->descriptors[i].sub_descriptors[k];
 			CREATE_FILE_NUMBER(dentry, sub, sub_descriptor_type);
 			CREATE_FILE_NUMBER(dentry, sub, sub_descriptor_length);
 			if (sub->sub_descriptor_length)
@@ -105,35 +104,46 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 	int i = index;
 	cd->compatibility_descriptor_length = CONVERT_TO_16(payload[i], payload[i+1]);
 	cd->descriptor_count = CONVERT_TO_16(payload[i+2], payload[i+3]);
-	i += 4;
+	
+	/* Set return value */
+	index = i + 2 + cd->compatibility_descriptor_length + 1;
+
+	if (! cd->compatibility_descriptor_length) {
+		cd->descriptor_count = 0;
+		return index;
+	}
+
 	if (cd->descriptor_count)
 		cd->descriptors = calloc(cd->descriptor_count, sizeof(struct dsmcc_descriptor_entry));
+	i += 4;
 	for (uint16_t n=0; n<cd->descriptor_count; ++n) {
-		cd->descriptors->descriptor_type = payload[i];
-		cd->descriptors->descriptor_length = payload[i+1];
-		cd->descriptors->specifier_type = payload[i+2];
-		cd->descriptors->specifier_data[0] = payload[i+3];
-		cd->descriptors->specifier_data[1] = payload[i+4];
-		cd->descriptors->specifier_data[2] = payload[i+5];
-		cd->descriptors->model = CONVERT_TO_16(payload[i+6], payload[i+7]);
-		cd->descriptors->version = CONVERT_TO_16(payload[i+8], payload[i+9]);
-		cd->descriptors->sub_descriptor_count = payload[i+10];
-		if (cd->descriptors->sub_descriptor_count)
-			cd->descriptors->sub_descriptors = calloc(cd->descriptors->sub_descriptor_count, 
+		cd->descriptors[n].descriptor_type = payload[i];
+		cd->descriptors[n].descriptor_length = payload[i+1];
+		cd->descriptors[n].specifier_type = payload[i+2];
+		cd->descriptors[n].specifier_data[0] = payload[i+3];
+		cd->descriptors[n].specifier_data[1] = payload[i+4];
+		cd->descriptors[n].specifier_data[2] = payload[i+5];
+		cd->descriptors[n].model = CONVERT_TO_16(payload[i+6], payload[i+7]);
+		cd->descriptors[n].version = CONVERT_TO_16(payload[i+8], payload[i+9]);
+		cd->descriptors[n].sub_descriptor_count = payload[i+10];
+		if (cd->descriptors[n].sub_descriptor_count)
+			cd->descriptors[n].sub_descriptors = calloc(cd->descriptors[n].sub_descriptor_count, 
 					sizeof(struct dsmcc_sub_descriptor));
 		i += 11;
-		for (uint8_t k=0; k<cd->descriptors->sub_descriptor_count; ++k) {
-			struct dsmcc_sub_descriptor *sub = &cd->descriptors->sub_descriptors[k];
+		for (uint8_t k=0; k<cd->descriptors[n].sub_descriptor_count; ++k) {
+			struct dsmcc_sub_descriptor *sub = &cd->descriptors[n].sub_descriptors[k];
 			sub->sub_descriptor_type = payload[i];
 			sub->sub_descriptor_length = payload[i+1];
+			i += 2;
 			if (sub->sub_descriptor_length)
 				sub->additional_information = malloc(sub->sub_descriptor_length);
-			for (uint8_t l=0; l<sub->sub_descriptor_length; ++l)
+			for (uint8_t l=0; l<sub->sub_descriptor_length; ++l) {
 				sub->additional_information[l] = payload[i+2+l];
-			i += 2 + sub->sub_descriptor_length;
+				i++;
+			}
 		}
 	}
-	return i;
+	return index;
 }
 
 int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, 
@@ -147,15 +157,17 @@ int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header,
 	msg_header->reserved = payload[i+8];
 	msg_header->adaptation_length = payload[i+9];
 	msg_header->message_length = CONVERT_TO_16(payload[i+10], payload[i+11]);
+	i += 12;
 
 	if (msg_header->adaptation_length) {
 		struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
-		adaptation_header->adaptation_type = payload[i+12];
+		adaptation_header->adaptation_type = payload[i];
 		adaptation_header->adaptation_data_bytes = malloc(msg_header->adaptation_length);
 		for (uint8_t j=0; j<msg_header->adaptation_length; ++j)
-			adaptation_header->adaptation_data_bytes[j] = payload[i+13+j];
+			adaptation_header->adaptation_data_bytes[j] = payload[i+1+j];
+		i += 1 + msg_header->adaptation_length;
 	}
-	return i+12;
+	return i;
 }
 
 int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_header,
