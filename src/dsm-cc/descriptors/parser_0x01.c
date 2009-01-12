@@ -43,7 +43,7 @@ int dsmcc_descriptor_0x01_parser(const char *payload, int len, struct dentry *pa
 
 	f.text_char = malloc(len+1);
 	memcpy(f.text_char, payload, len);
-	f.text_char[len] = 0;
+	f.text_char[len] = '\0';
 	CREATE_FILE_STRING(subdir, &f, text_char, XATTR_FORMAT_STRING);
 
 	return 0;

@@ -31,9 +31,21 @@
 #include "xattr.h"
 #include "ts.h"
 
+struct formatted_descriptor {
+	char *text_char;
+};
+
 /* NAME_DESCRIPTOR parser */
 int dsmcc_descriptor_0x02_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct formatted_descriptor f;
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "NAME");
+
+	f.text_char = malloc(len+1);
+	memcpy(f.text_char, payload, len);
+	f.text_char[len] = '\0';
+	CREATE_FILE_STRING(subdir, &f, text_char, XATTR_FORMAT_STRING);
+
+	return 0;
 }
 

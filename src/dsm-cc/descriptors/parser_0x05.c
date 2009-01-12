@@ -28,12 +28,21 @@
  */
 #include "demuxfs.h"
 #include "fsutils.h"
+#include "byteops.h"
 #include "xattr.h"
 #include "ts.h"
+
+struct formatted_descriptor {
+	uint32_t crc_32;
+};
 
 /* CRC32_DESCRIPTOR parser */
 int dsmcc_descriptor_0x05_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "CRC32");
+	struct formatted_descriptor f;
+	f.crc_32 = CONVERT_TO_32(payload[0], payload[1], payload[2], payload[3]);
+	CREATE_FILE_NUMBER(subdir, &f, crc_32);
+    return 0;
 }
 

@@ -28,12 +28,24 @@
  */
 #include "demuxfs.h"
 #include "fsutils.h"
+#include "byteops.h"
 #include "xattr.h"
 #include "ts.h"
+
+struct formatted_descriptor {
+	uint8_t compression_type;
+	uint32_t original_size;
+};
 
 /* COMPRESSION_TYPE_DESCRIPTOR parser */
 int dsmcc_descriptor_0xc2_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "COMPRESSION_TYPE");
+	struct formatted_descriptor f;
+	f.compression_type = payload[0];
+	f.original_size = CONVERT_TO_16(payload[1], payload[2]);
+	CREATE_FILE_NUMBER(subdir, &f, compression_type);
+	CREATE_FILE_NUMBER(subdir, &f, original_size);
+    return 0;
 }
 
