@@ -32,13 +32,47 @@
 #include "xattr.h"
 #include "hash.h"
 #include "fifo.h"
+#include "list.h"
 #include "ts.h"
 #include "tables/psi.h"
 #include "dsm-cc/dsmcc.h"
 #include "dsm-cc/dii.h"
+#include "dsm-cc/descriptors/descriptors.h"
+
+static void __attribute__((unused)) dii_free(struct dii_table *dii)
+{
+	/* Free DSM-CC compatibility descriptors */
+	struct dsmcc_compatibility_descriptor *cd = &dii->compatibility_descriptor;
+	if (cd->descriptor_count) {
+		for (uint16_t i=0; i<cd->descriptor_count; ++i) {
+			for (uint8_t j=0; j<cd->descriptors[i].sub_descriptor_count; ++j) {
+				struct dsmcc_sub_descriptor *sub = &cd->descriptors[i].sub_descriptors[j];
+				if (sub->sub_descriptor_length)
+					free(sub->additional_information);
+			}
+			if (cd->descriptor_count)
+				free(cd->descriptors[i].sub_descriptors);
+		}
+		free(cd->descriptors);
+	}
+	/* Free DSM-CC message header */
+	struct dsmcc_message_header *msg_header = &dii->dsmcc_message_header;
+	struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
+	if (adaptation_header->adaptation_data_bytes)
+		free(adaptation_header->adaptation_data_bytes);
+	/* Free the dentry and its subtree */
+	if (dii->dentry && dii->dentry->name)
+		fsutils_dispose_tree(dii->dentry);
+	/* Free the dii table structure */
+	free(dii);
+}
 
 static void dii_check_header(struct dii_table *dii)
 {
+	if (dii->section_syntax_indicator != 1)
+		TS_WARNING("section_syntax_indicator != 1 (0)");
+	if (dii->section_length > 4093)
+		TS_WARNING("section_length exceeds 4093 bytes (%d)", dii->section_length);
 }
 
 static void dii_create_directory(const struct ts_header *header, struct dii_table *dii, 
@@ -53,17 +87,76 @@ static void dii_create_directory(const struct ts_header *header, struct dii_tabl
 	CREATE_COMMON(dii_dir, dii->dentry);
 
 	/* Create the versioned dir and update the Current symlink */
-	*version_dentry = fsutils_create_version_dir(dii->dentry, dii->version_number);
+	*version_dentry = fsutils_create_version_dir(dii->dentry, dii->download_id);
 
 	psi_populate((void **) &dii, *version_dentry);
-	//dii_populate(dii, *version_dentry, priv);
+}
+
+static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, struct demuxfs_data *priv)
+{
+	struct dsmcc_message_header *msg_header = &dii->dsmcc_message_header;
+	struct dsmcc_compatibility_descriptor *cd = &dii->compatibility_descriptor;
+
+	dsmcc_create_message_header_dentries(msg_header, parent);
+	dsmcc_create_compatibility_descriptor_dentries(cd, parent);
+
+	CREATE_FILE_NUMBER(parent, dii, download_id);
+	CREATE_FILE_NUMBER(parent, dii, block_size);
+	CREATE_FILE_NUMBER(parent, dii, window_size);
+	CREATE_FILE_NUMBER(parent, dii, ack_period);
+	CREATE_FILE_NUMBER(parent, dii, t_c_download_window);
+	CREATE_FILE_NUMBER(parent, dii, t_c_download_scenario);
+
+	if (dii->window_size != 0)
+		TS_WARNING("window_size != 0 (%d)", dii->window_size);
+	if (dii->ack_period != 0)
+		TS_WARNING("ack_period != 0 (%d)", dii->ack_period);
+	if (dii->t_c_download_window != 0)
+		TS_WARNING("t_c_download_window != 0 (%d)", dii->t_c_download_window);
+	
+	CREATE_FILE_NUMBER(parent, dii, number_of_modules);
+	for (uint16_t i=0; i<dii->number_of_modules; ++i) {
+		char dir_name[64];
+		sprintf(dir_name, "module_%02d", i+1);
+		struct dentry *subdir = CREATE_DIRECTORY(parent, dir_name);
+		
+		struct dii_module *mod = &dii->modules[i];
+		CREATE_FILE_NUMBER(subdir, mod, module_id);
+		CREATE_FILE_NUMBER(subdir, mod, module_size);
+		CREATE_FILE_NUMBER(subdir, mod, module_version);
+		CREATE_FILE_NUMBER(subdir, mod, module_info_length);
+		if (mod->module_info_length) {
+			uint8_t len;
+			uint8_t offset = 0;
+			while (offset < mod->module_info_length) {
+				len = dsmcc_descriptors_parse(&mod->module_info_bytes[offset], 1, subdir, priv);
+				offset += len + 2;
+			}
+		}
+	}
+
+	CREATE_FILE_NUMBER(parent, dii, private_data_length);
+	if (dii->private_data_length) {
+		uint8_t len;
+		uint8_t offset = 0;
+		while (offset < dii->private_data_length) {
+			len = dsmcc_descriptors_parse(&dii->private_data_bytes[offset], 1, parent, priv);
+			offset += len ? len+1 : 2;
+		}
+	}
 }
 
 int dii_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
-	struct dii_table *current_dii = NULL;
-	struct dii_table *dii = (struct dii_table *) calloc(1, sizeof(struct dii_table));
+	struct dii_table *dii, *current_dii = NULL;
+	
+	if (payload_len < 20) {
+		dprintf("payload is too small (%d)", payload_len);
+		return 0;
+	}
+	
+	dii = (struct dii_table *) calloc(1, sizeof(struct dii_table));
 	assert(dii);
 
 	dii->dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
@@ -78,31 +171,11 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	}
 	dii_check_header(dii);
 
-	/* Set hash key and check if there's already one version of this table in the hash */
-	dii->dentry->inode = TS_PACKET_HASH_KEY(header, dii);
-	current_dii = hashtable_get(priv->psi_tables, dii->dentry->inode);
-
-	/* Check whether we should keep processing this packet or not */
-	if (! dii->current_next_indicator || (current_dii && current_dii->version_number == dii->version_number)) {
-		free(dii->dentry);
-		free(dii);
-		return 0;
-	}
-
-	dprintf("*** DII parser: pid=%#x, table_id=%#x, current_dii=%p, dii->version_number=%#x, len=%d ***", 
-			header->pid, dii->table_id, current_dii, dii->version_number, payload_len);
-
-	if (payload_len < 20) {
-		dprintf("payload is too small");
-		free(dii->dentry);
-		free(dii);
-		return 0;
-	}
-
 	/** DSM-CC Message Header */
 	struct dsmcc_message_header *msg_header = &dii->dsmcc_message_header;
 	int j = dsmcc_parse_message_header(msg_header, payload, 8);
-
+	
+	/* Check whether we should keep processing this packet or not */
 	if (msg_header->protocol_discriminator != 0x11 ||
 		msg_header->dsmcc_type != 0x03 ||
 		msg_header->message_id != 0x1002) {
@@ -112,11 +185,16 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	}
 
 	/** At this point we know for sure that this is a DII table */ 
-	struct dentry *version_dentry = NULL;
-	dii_create_directory(header, dii, &version_dentry, priv);
+	dii->dentry->inode = TS_PACKET_HASH_KEY(header, dii);
+	current_dii = hashtable_get(priv->psi_tables, dii->dentry->inode);
+	if (! dii->current_next_indicator || (current_dii && current_dii->version_number == dii->version_number)) {
+		free(dii->dentry);
+		free(dii);
+		return 0;
+	}
 
-	dsmcc_create_message_header_dentries(msg_header, version_dentry);
-	j += msg_header->adaptation_length;
+	dprintf("*** DII parser: pid=%#x, table_id=%#x, dii->version_number=%#x, transaction_nr=%#x ***", 
+			header->pid, dii->table_id, dii->version_number, msg_header->transaction_id & ~0x80000000);
 
 	/** Parse DII bits */
 	dii->download_id = CONVERT_TO_32(payload[j], payload[j+1], payload[j+2], payload[j+3]);
@@ -126,63 +204,23 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	dii->t_c_download_window = CONVERT_TO_32(payload[j+8], payload[j+9], payload[j+10], payload[j+11]);
 	dii->t_c_download_scenario = CONVERT_TO_32(payload[j+12], payload[j+13], payload[j+14], payload[j+15]);
 
-	CREATE_FILE_NUMBER(version_dentry, dii, download_id);
-	CREATE_FILE_NUMBER(version_dentry, dii, block_size);
-	CREATE_FILE_NUMBER(version_dentry, dii, window_size);
-	CREATE_FILE_NUMBER(version_dentry, dii, ack_period);
-	CREATE_FILE_NUMBER(version_dentry, dii, t_c_download_window);
-	CREATE_FILE_NUMBER(version_dentry, dii, t_c_download_scenario);
-
-	if (dii->block_size == 0)
-		goto out;
+	if (dii->block_size == 0) {
+		free(dii->dentry);
+		free(dii);
+		return 0;
+	}
 
 	/** DSM-CC Compatibility Descriptor */
 	struct dsmcc_compatibility_descriptor *cd = &dii->compatibility_descriptor;
-	cd->compatibility_descriptor_length = CONVERT_TO_16(payload[j+16], payload[j+17]);
-	cd->descriptor_count = CONVERT_TO_16(payload[j+18], payload[j+19]);
-	j += 20;
-	if (cd->descriptor_count)
-		cd->descriptors = calloc(cd->descriptor_count, sizeof(struct dsmcc_descriptor_entry));
-	for (uint16_t i=0; i<cd->descriptor_count; ++i) {
-		cd->descriptors->descriptor_type = payload[j];
-		cd->descriptors->descriptor_length = payload[j+1];
-		cd->descriptors->specifier_type = payload[j+2];
-		cd->descriptors->specifier_data[0] = payload[j+3];
-		cd->descriptors->specifier_data[1] = payload[j+4];
-		cd->descriptors->specifier_data[2] = payload[j+5];
-		cd->descriptors->model = CONVERT_TO_16(payload[j+6], payload[j+7]);
-		cd->descriptors->version = CONVERT_TO_16(payload[j+8], payload[j+9]);
-		cd->descriptors->sub_descriptor_count = payload[j+10];
-		if (cd->descriptors->sub_descriptor_count)
-			cd->descriptors->sub_descriptors = calloc(cd->descriptors->sub_descriptor_count, 
-					sizeof(struct dsmcc_sub_descriptor));
-		j += 11;
-		for (uint8_t k=0; k<cd->descriptors->sub_descriptor_count; ++k) {
-			struct dsmcc_sub_descriptor *sub = &cd->descriptors->sub_descriptors[k];
-			sub->sub_descriptor_type = payload[j];
-			sub->sub_descriptor_length = payload[j+1];
-			if (sub->sub_descriptor_length)
-				sub->additional_information = malloc(sub->sub_descriptor_length);
-			for (uint8_t l=0; l<sub->sub_descriptor_length; ++l)
-				sub->additional_information[l] = payload[j+2+l];
-			j += 2 + sub->sub_descriptor_length;
-		}
-	}
-	dsmcc_create_compatibility_descriptor_dentries(cd, version_dentry);
+	j = dsmcc_parse_compatibility_descriptors(cd, payload, j+16);
 	
 	/** DII bits */
 	dii->number_of_modules = CONVERT_TO_16(payload[j], payload[j+1]);
-	CREATE_FILE_NUMBER(version_dentry, dii, number_of_modules);
 	j += 2;
-
 	if (dii->number_of_modules)
 		dii->modules = calloc(dii->number_of_modules, sizeof(struct dii_module));
 	for (uint16_t i=0; i<dii->number_of_modules; ++i) {
-		char dir_name[64];
-		sprintf(dir_name, "module_%02d", i+1);
 		struct dii_module *mod = &dii->modules[i];
-		struct dentry *subdir = CREATE_DIRECTORY(version_dentry, dir_name);
-
 		mod->module_id = CONVERT_TO_16(payload[j], payload[j+1]);
 		mod->module_size = CONVERT_TO_32(payload[j+2], payload[j+3], payload[j+4], payload[j+5]);
 		mod->module_version = payload[j+6];
@@ -191,14 +229,6 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 			mod->module_info_bytes = malloc(mod->module_info_length);
 		for (uint8_t k=0; k<mod->module_info_length; ++k)
 			mod->module_info_bytes[k] = payload[j+8+k];
-
-		CREATE_FILE_NUMBER(subdir, mod, module_id);
-		CREATE_FILE_NUMBER(subdir, mod, module_size);
-		CREATE_FILE_NUMBER(subdir, mod, module_version);
-		CREATE_FILE_NUMBER(subdir, mod, module_info_length);
-		if (mod->module_info_length)
-			CREATE_FILE_BIN(subdir, mod, module_info_bytes, mod->module_info_length);
-
 		j += 8 + mod->module_info_length;
 	}
 	
@@ -208,20 +238,13 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	for (uint16_t i=0; i<dii->private_data_length; ++i)
 		dii->private_data_bytes[i] = payload[j+2+i];
 
-	CREATE_FILE_NUMBER(version_dentry, dii, private_data_length);
-	if (dii->private_data_length)
-		CREATE_FILE_BIN(version_dentry, dii, private_data_bytes, dii->private_data_length);
-
 	j += 2 + dii->private_data_length;
 	
-	if (dii->window_size != 0)
-		TS_WARNING("dii->window_size != 0 (%#x)", dii->window_size);
-	if (dii->ack_period != 0)
-		TS_WARNING("dii->ack_period != 0 (%#x)", dii->ack_period);
-	if (dii->t_c_download_window != 0)
-		TS_WARNING("dii->t_c_download_window != 0 (%#x)", dii->t_c_download_window);
+	/* Create filesystem entries for this table */
+	struct dentry *version_dentry = NULL;
+	dii_create_directory(header, dii, &version_dentry, priv);
+	dii_create_dentries(version_dentry, dii, priv);
 
-out:
 	if (current_dii) {
 		hashtable_del(priv->psi_tables, current_dii->dentry->inode);
 		fsutils_migrate_children(current_dii->dentry, dii->dentry);
