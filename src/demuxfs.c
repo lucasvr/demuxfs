@@ -35,6 +35,7 @@
 #include "ts.h"
 #include "snapshot.h"
 #include "tables/descriptors/descriptors.h"
+#include "dsm-cc/descriptors/descriptors.h"
 
 /* Platform headers */
 #include "backends/filesrc.h"
@@ -457,6 +458,7 @@ static void demuxfs_destroy(void *data)
 {
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
 	descriptors_destroy(priv->ts_descriptors);
+	dsmcc_descriptors_destroy(priv->dsmcc_descriptors);
 	hashtable_destroy(priv->pes_parsers, NULL);
 	hashtable_destroy(priv->psi_parsers, NULL);
 	hashtable_destroy(priv->pes_tables, NULL);
@@ -479,6 +481,7 @@ static void * demuxfs_init(struct fuse_conn_info *conn)
 	priv->pes_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->packet_buffer = hashtable_new(DEMUXFS_MAX_PIDS);
 	priv->ts_descriptors = descriptors_init(priv);
+	priv->dsmcc_descriptors = dsmcc_descriptors_init(priv);
 	priv->root = create_rootfs("/");
 
 	pthread_t tid;
