@@ -109,7 +109,7 @@ int pat_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	if (ret < 0) {
 		free(pat->dentry);
 		free(pat);
-		return ret;
+		return 0;
 	}
 
 	/* Set hash key and check if there's already one version of this table in the hash */
