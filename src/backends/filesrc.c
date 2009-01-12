@@ -39,6 +39,7 @@ struct input_parser {
 	bool fileloop;
 	bool parse_pes;
 	char *standard;
+	char *tmpdir;
     struct ts_status ts_status;
 };
 
@@ -51,7 +52,8 @@ static void filesrc_usage(void)
 			"    -o filesrc=FILE        transport stream input file\n"
 			"    -o fileloop=1|0        loop back on EOF (default: 0)\n"
 			"    -o parse_pes=1|0       parse PES packets (default: 0)\n"
-			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC (default: SBTVD)\n\n");
+			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC (default: SBTVD)\n"
+			"    -o tmpdir=DIR          temporary directory in which to store DSM-CC files (default: /tmp)\n\n");
 }
 
 #define FILESRC_OPT(templ,offset,value) { templ, offsetof(struct input_parser, offset), value }
@@ -63,6 +65,7 @@ static struct fuse_opt filesrc_opts[] = {
 	FILESRC_OPT("fileloop=%d",  fileloop, 0),
 	FILESRC_OPT("parse_pes=%d", parse_pes, 0),
 	FILESRC_OPT("standard=%s",  standard, 0),
+	FILESRC_OPT("tmpdir=%s",    tmpdir, 0),
 	FUSE_OPT_KEY("-h",          KEY_HELP),
 	FUSE_OPT_KEY("--help",      KEY_HELP),
 	FUSE_OPT_END
@@ -166,6 +169,7 @@ int filesrc_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		free(p);
 		return -1;
 	}
+	priv->options.tmpdir = p->tmpdir ? strdup(p->tmpdir) : strdup("/tmp");
 	priv->options.parse_pes = p->parse_pes;
 	priv->options.packet_size = p->packet_size;
 	priv->options.packet_error_correction_bytes = p->packet_size - 188;
