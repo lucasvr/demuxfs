@@ -178,6 +178,7 @@ int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_hea
 	data_header->reserved = payload[i+8];
 	data_header->adaptation_length = payload[i+9];
 	data_header->message_length = CONVERT_TO_16(payload[i+10], payload[i+11]);
+	i += 12;
 
 	if (data_header->adaptation_length) {
 		struct dsmcc_adaptation_header *adaptation_header = &data_header->dsmcc_adaptation_header;
@@ -186,7 +187,7 @@ int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_hea
 		for (uint16_t j=0; j<data_header->adaptation_length; ++j)
 			adaptation_header->adaptation_data_bytes[j] = payload[i+13+j];
 	}
-	return i+12;
+	return i + data_header->adaptation_length;
 }
 
 int dsmcc_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
