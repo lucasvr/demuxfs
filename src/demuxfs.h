@@ -113,6 +113,7 @@ struct user_options {
 	uint8_t packet_size;
 	uint8_t packet_error_correction_bytes;
 	enum transmission_type standard;
+	char *tmpdir;
 };
 
 struct demuxfs_data {
