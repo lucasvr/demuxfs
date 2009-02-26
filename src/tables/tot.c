@@ -47,8 +47,9 @@ static void tot_create_directory(const struct ts_header *header, struct tot_tabl
 	/* Create a directory named "TOT" at the root filesystem if it doesn't exist yet */
 	struct dentry *tot_dir = CREATE_DIRECTORY(priv->root, FS_TOT_NAME);
 
-	/* Create a directory named "<tot_pid>" and populate it with files */
-	asprintf(&tot->dentry->name, "%#04x", header->pid);
+	/* Create a directory named "Current" and populate it with files */
+	//asprintf(&tot->dentry->name, "%#04x", header->pid);
+	asprintf(&tot->dentry->name, FS_CURRENT_NAME);
 	tot->dentry->mode = S_IFDIR | 0555;
 	CREATE_COMMON(tot_dir, tot->dentry);
 	
@@ -90,8 +91,8 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	tot->dentry->inode = TS_PACKET_HASH_KEY(header, tot);
 	current_tot = hashtable_get(priv->psi_tables, tot->dentry->inode);
 	
-	dprintf("*** TOT parser: pid=%#x, table_id=%#x, current_tot=%p, len=%d ***", 
-		header->pid, tot->table_id, current_tot, payload_len);
+//	dprintf("*** TOT parser: pid=%#x, table_id=%#x, current_tot=%p, len=%d ***", 
+//		header->pid, tot->table_id, current_tot, payload_len);
 	
 	if (current_tot) {
 		current_tot->section_length = tot->section_length;
