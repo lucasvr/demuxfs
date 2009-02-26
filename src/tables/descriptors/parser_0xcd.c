@@ -77,7 +77,7 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 		struct dentry *subdir, *service;
 		char transmission_name[32];
 		
-		sprintf(transmission_name, "TRANSMISSION_%02d", i);
+		sprintf(transmission_name, "TRANSMISSION_%02d", i+1);
 		subdir = CREATE_DIRECTORY(dentry, transmission_name);
 
 		t.transmission_type_info = payload[offset];
