@@ -55,8 +55,9 @@ static void sdt_create_directory(const struct ts_header *header, struct sdt_tabl
 	/* Create a directory named "SDT" at the root filesystem if it doesn't exist yet */
 	struct dentry *sdt_dir = CREATE_DIRECTORY(priv->root, FS_SDT_NAME);
 
-	/* Create a directory named "<sdt_pid>" and populate it with files */
-	asprintf(&sdt->dentry->name, "%#04x", header->pid);
+	/* Create a directory named "Current" and populate it with files */
+	//asprintf(&sdt->dentry->name, "%#04x", header->pid);
+	asprintf(&sdt->dentry->name, FS_CURRENT_NAME);
 	sdt->dentry->mode = S_IFDIR | 0555;
 	CREATE_COMMON(sdt_dir, sdt->dentry);
 	
