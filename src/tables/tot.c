@@ -41,6 +41,72 @@
 #include "tables/pes.h"
 #include "tables/pat.h"
 
+static char *convert_string_from_utc(uint64_t utc)
+{
+    uint8_t hh, mm, ss;
+	uint8_t d = 0, y = 0, m = 0;
+
+	const uint8_t h_1 = (utc & 0xF00000) >> 20;
+	const uint8_t h_2 = (utc & 0x0F0000) >> 16;
+	hh = h_1*10 + h_2;
+
+	const uint8_t m_1 = (utc & 0x00F000) >> 12;
+	const uint8_t m_2 = (utc & 0x000F00) >> 8; 
+	mm = m_1*10 + m_2;
+
+	uint8_t s_1 = (utc & 0x0000F0) >> 4;
+	uint8_t s_2 = (utc & 0x00000F);
+	ss = s_1*10 + s_2;
+
+	const uint32_t mjd = utc >> 24;
+	if (mjd != 0) {
+		const uint32_t _y = (uint32_t)((mjd - 15078.2)/365.25);
+		const uint32_t _m = (uint32_t)((mjd - 14956.1 - (uint32_t)(_y * 365.25))/30.6001);
+		const uint32_t _d = mjd - 14956 - (uint32_t)(_y * 365.25) - (uint32_t)(_m * 30.6001);
+		const uint32_t _k = (_m == 14 || _m == 15)?1:0;
+
+		y = (uint8_t) _y + _k;
+		m = (uint8_t) _m - 1 - _k * 12;
+		d = (uint8_t) _d;
+	}
+    
+	char *ret = (char *) malloc(sizeof(char) * 80);
+	if (ret)
+		snprintf(ret, 80, "%04u-%02u-%02u %02u:%02u:%02u", y?y+1900:0, m, d, hh, mm, ss);
+    return ret;   
+}
+
+static void tot_create_ut3c_time(struct tot_table *tot)
+{
+	char *ret, *utc, raw_str[64];
+	struct tm tm;
+	memset(&tm, 0, sizeof(tm));
+
+	/* 1: convert from network time format to a formatted string */
+	utc = convert_string_from_utc(tot->_utc3_time);
+
+	/* 2: convert from formatted string to struct tm */
+	ret = strptime(utc, "%Y-%m-%d %H:%M:%S", &tm);
+	if (! ret) {
+		perror("strptime");
+		return;
+	}
+
+	/* 3: convert from struct tm to a human understandable string */
+	memset(tot->utc3_time, 0, sizeof(tot->utc3_time));
+	ret = asctime_r(&tm, tot->utc3_time);
+	if (! ret) {
+		perror("asctime_r");
+		return;
+	}
+
+	tot->utc3_time[strlen(tot->utc3_time)-1] = '\0';
+	snprintf(raw_str, sizeof(raw_str), " [%#0llx]", tot->_utc3_time);
+	strcat(tot->utc3_time, raw_str);
+
+	CREATE_FILE_STRING(tot->dentry, tot, utc3_time, XATTR_FORMAT_STRING_AND_NUMBER);
+}
+
 static void tot_create_directory(const struct ts_header *header, struct tot_table *tot, 
 		struct demuxfs_data *priv)
 {
@@ -59,8 +125,8 @@ static void tot_create_directory(const struct ts_header *header, struct tot_tabl
 	CREATE_FILE_NUMBER(tot->dentry, tot, section_length);
 
 	/* TOT members */
-	CREATE_FILE_NUMBER(tot->dentry, tot, utc3_time);
 	CREATE_FILE_NUMBER(tot->dentry, tot, descriptors_loop_length);
+	tot_create_ut3c_time(tot);
 }
 
 int tot_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
@@ -82,7 +148,7 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	tot->section_length           = ((payload[1] << 8) | payload[2]) & 0x0fff;
 	
 	/* Parse TOT specific bits */
-	tot->utc3_time = CONVERT_TO_40(payload[3], payload[4], payload[5], payload[6], payload[7]) & 0xffffffffff;
+	tot->_utc3_time = CONVERT_TO_40(payload[3], payload[4], payload[5], payload[6], payload[7]) & 0xffffffffff;
 	tot->reserved_4 = payload[8] >> 4;
 	tot->descriptors_loop_length = CONVERT_TO_16(payload[8], payload[9]) & 0x0fff;
 	num_descriptors = descriptors_count(&payload[10], tot->descriptors_loop_length);
@@ -96,14 +162,15 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	
 	if (current_tot) {
 		current_tot->section_length = tot->section_length;
-		current_tot->utc3_time = tot->utc3_time;
+		current_tot->_utc3_time = tot->_utc3_time;
 		current_tot->descriptors_loop_length = tot->descriptors_loop_length;
 
+	//	fs_dispose_tree(tot->dentry);
 		free(tot->dentry);
 		free(tot);
 
 		tot = current_tot;
-		CREATE_FILE_NUMBER(tot->dentry, tot, utc3_time);
+		tot_create_ut3c_time(tot);
 		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
 	} else {
 		tot_create_directory(header, tot, priv);
