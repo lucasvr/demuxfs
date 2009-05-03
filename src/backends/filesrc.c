@@ -28,6 +28,7 @@
  */
 #include "demuxfs.h"
 #include "filesrc.h"
+#include "fsutils.h"
 #include "ts.h"
 
 struct input_parser {
@@ -53,7 +54,8 @@ static void filesrc_usage(void)
 			"    -o fileloop=1|0        loop back on EOF (default: 0)\n"
 			"    -o parse_pes=1|0       parse PES packets (default: 0)\n"
 			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC (default: SBTVD)\n"
-			"    -o tmpdir=DIR          temporary directory in which to store DSM-CC files (default: /tmp)\n\n");
+			"    -o tmpdir=DIR          temporary directory in which to store DSM-CC files (default: %s)\n\n",
+			FS_DEFAULT_TMPDIR);
 }
 
 #define FILESRC_OPT(templ,offset,value) { templ, offsetof(struct input_parser, offset), value }
@@ -169,7 +171,7 @@ int filesrc_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		free(p);
 		return -1;
 	}
-	priv->options.tmpdir = p->tmpdir ? strdup(p->tmpdir) : strdup("/tmp");
+	priv->options.tmpdir = p->tmpdir ? strdup(p->tmpdir) : strdup(FS_DEFAULT_TMPDIR);
 	priv->options.parse_pes = p->parse_pes;
 	priv->options.packet_size = p->packet_size;
 	priv->options.packet_error_correction_bytes = p->packet_size - 188;

@@ -77,7 +77,7 @@ static int save_ppm(struct snapshot_context *ctx)
 	return 0;
 }
 
-static void save_ppm_file(struct snapshot_context *ctx, int seq)
+static void save_ppm_file(struct snapshot_context *ctx, int seq, struct demuxfs_data *priv)
 {
     int y, out_size;
 	char filename[128];
@@ -99,7 +99,7 @@ static void save_ppm_file(struct snapshot_context *ctx, int seq)
     sws_scale(img_convert_ctx, ctx->picture->data, ctx->picture->linesize, 0,
         ysize, rgb_picture->data, rgb_picture->linesize);
 
-	sprintf(filename, "/tmp/snapshot-%d.ppm", seq);
+	sprintf(filename, "%s/snapshot-%d.ppm", priv->options.tmpdir, seq);
 	FILE *f=fopen(filename, "w");
 	fprintf(f,"P6\n%d %d\n255\n", xsize, ysize);
 	for(y=0; y<ysize; y++)
@@ -108,7 +108,7 @@ static void save_ppm_file(struct snapshot_context *ctx, int seq)
 }
 
 int snapshot_save_video_frame(const char *inbuf, size_t size, 
-		struct snapshot_context *ctx)
+		struct snapshot_context *ctx, struct demuxfs_data *priv)
 {
 	uint8_t *inbuf_ptr = (uint8_t *) inbuf;
 	int got_picture = 0, i = 0;
@@ -119,13 +119,13 @@ int snapshot_save_video_frame(const char *inbuf, size_t size,
 		if (len < 0)
 			return len;
 		if (got_picture)
-			save_ppm_file(ctx, i++);
+			save_ppm_file(ctx, i++, priv);
 		size -= len;
 		inbuf_ptr += len;
     }
 	if (got_picture) {
 		ret = save_ppm(ctx);
-		save_ppm_file(ctx, i++);
+		save_ppm_file(ctx, i++, priv);
 	}
 
 	return ret;
