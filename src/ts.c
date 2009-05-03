@@ -45,6 +45,7 @@
 
 void ts_dump_header(const struct ts_header *header)
 {
+	fprintf(stdout, "--- ts header ---\n");
 	fprintf(stdout, "sync_byte=%#x\ntransport_error_indicator=%#x\n"
 			"payload_unit_start_indicator=%#x\ntransport_priority=%#x\n"
 			"pid=%#x\ntransport_scrambling_control=%#x\n"
@@ -53,6 +54,13 @@ void ts_dump_header(const struct ts_header *header)
 			header->payload_unit_start_indicator, header->transport_priority,
 			header->pid, header->transport_scrambling_control,
 			header->adaptation_field, header->continuity_counter);
+}
+
+void ts_dump_payload(const char *payload, int len)
+{
+	int size = CONVERT_TO_16(payload[1], payload[2]) & 0x0fff;
+	fprintf(stdout, "--- ts payload ---\n");
+	fprintf(stdout, "table_id=%#x\nsize=%#x (%d)\n", payload[0], size, size);
 }
 
 static bool ts_is_psi_packet(uint16_t pid, struct demuxfs_data *priv)
@@ -114,6 +122,8 @@ static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_
 		return tot_parse;
 	else if (table_id == TS_SDTT_TABLE_ID)
 		return sdtt_parse;
+	else if (table_id == TS_CDT_TABLE_ID)
+		dprintf("TS carries a CDT table");
 	//else if (table_id == TS_TDT_TABLE_ID)
 	//	dprintf("TS carries a TDT table");
 	//else if ((table_id >= TS_EIT_FIRST_TABLE_ID && table_id <= TS_EIT_LAST_TABLE_ID) || pid == TS_EIT1_PID)
@@ -163,13 +173,17 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 	struct user_options *opt = &priv->options;
 	payload_end = payload + opt->packet_size - 1 - opt->packet_error_correction_bytes;
 	
+	//ts_dump_header(header);
+	//ts_dump_payload(payload, payload_end-payload_start);
+
 	if (ts_is_psi_packet(header->pid, priv)) {
 		const char *start = payload_start;
 		const char *end = payload_end;
 		bool remnant_flag = false;
+		bool pusi = header->payload_unit_start_indicator;
 		uint8_t table_id;
 
-		if (header->payload_unit_start_indicator) {
+		if (pusi) {
 			/* The first byte of the payload carries the pointer_field */
 			pointer_field = payload_start[0];
 			start = payload_start + 1;
@@ -191,7 +205,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			remnant_flag = true;
 		}
 
-		while (true) {
+		while (start <= payload_end) {
 			struct buffer *buffer = hashtable_get(priv->packet_buffer, header->pid);
 			if (! buffer && ! remnant_flag) {
 				buffer = buffer_create(section_length + 3, false);
@@ -200,8 +214,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 
 			if (buffer) {
 				buffer_append(buffer, start, end - start + 1);
-				if (buffer_contains_full_psi_section(buffer) || pointer_field > 0) {
-					pointer_field = 0;
+				if (buffer_contains_full_psi_section(buffer)) {
 					table_id = buffer->data[0];
 					if ((parse_function = ts_get_psi_parser(header, table_id, priv)))
 						/* Invoke the PSI parser for this packet */
@@ -210,11 +223,12 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				}
 			}
 			
-			if (! header->payload_unit_start_indicator || ((end + 1) > payload_end))
+			if (! pusi || pointer_field == 0)
 				break;
 
 			start = end + 1;
 			if (((uint8_t) start[0]) == 0xff)
+				/* Stuffing packet */
 				break;
 
 			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
@@ -222,6 +236,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 					start + section_length + 2 :
 					payload_end;
 			remnant_flag = false;
+			pusi = false;
 		}
 	} else if (ts_is_pes_packet(header->pid, priv)) {
 		uint16_t size;
