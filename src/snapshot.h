@@ -32,7 +32,8 @@ void snapshot_destroy_video_context(struct snapshot_context *ctx);
  * @return a pointer to the decoded buffer or NULL on failure. The caller is responsible
  * from freeing it.
  */
-int snapshot_save_video_frame(const char *inbuf, size_t size, struct snapshot_context *ctx);
+int snapshot_save_video_frame(const char *inbuf, size_t size, 
+		struct snapshot_context *ctx, struct demuxfs_data *priv);
 
 #else
 
@@ -46,7 +47,7 @@ struct snapshot_context {
 
 #define snapshot_init_video_context() ({ NULL; })
 #define snapshot_destroy_video_context(ctx) do { ; } while(0)
-#define snapshot_save_video_frame(i,s,ctx) ({ 0; })
+#define snapshot_save_video_frame(i,s,ctx,priv) ({ 0; })
 
 #endif /* USE_FFMPEG */
 
