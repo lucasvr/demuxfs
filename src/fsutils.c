@@ -168,7 +168,8 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target)
 		if (! already_exists) {
 			list_del(&ptr_source->list);
 			list_add_tail(&ptr_source->list, &target->children);
-		}
+		} else if (S_ISDIR(ptr_target->mode) && S_ISDIR(ptr_source->mode))
+			fsutils_migrate_children(ptr_source, ptr_target);
 	}
 }
 
