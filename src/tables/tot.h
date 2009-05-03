@@ -10,9 +10,10 @@ struct tot_table {
 	/* common PSI header */
 	PSI_HEADER();
 	/* TOT specific bits */
-	uint64_t utc3_time;
+	char utc3_time[60];
+	uint64_t _utc3_time;
 	uint16_t reserved_4:4;
-	uint16_t descriptors_loop_length;
+	uint16_t descriptors_loop_length:12;
 	uint32_t crc;
 } __attribute__((__packed__));
 
