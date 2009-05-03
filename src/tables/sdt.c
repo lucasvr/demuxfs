@@ -52,15 +52,11 @@ static void sdt_check_header(struct sdt_table *sdt)
 static void sdt_create_directory(const struct ts_header *header, struct sdt_table *sdt, 
 		struct dentry **version_dentry, struct demuxfs_data *priv)
 {
-	/* Create a directory named "SDT" at the root filesystem if it doesn't exist yet */
-	struct dentry *sdt_dir = CREATE_DIRECTORY(priv->root, FS_SDT_NAME);
-
-	/* Create a directory named "Current" and populate it with files */
-	//asprintf(&sdt->dentry->name, "%#04x", header->pid);
-	asprintf(&sdt->dentry->name, FS_CURRENT_NAME);
+	/* Create a directory named "SDT" at the root filesystem */
+	sdt->dentry->name = strdup(FS_SDT_NAME);
 	sdt->dentry->mode = S_IFDIR | 0555;
-	CREATE_COMMON(sdt_dir, sdt->dentry);
-	
+	CREATE_COMMON(priv->root, sdt->dentry);
+
 	/* Create the versioned dir and update the Current symlink */
 	*version_dentry = fsutils_create_version_dir(sdt->dentry, sdt->version_number);
 
@@ -129,7 +125,7 @@ int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		struct dentry *service_dentry;
 		char subdir[32];
 
-		snprintf(subdir, sizeof(subdir), "%02d", j+1);
+		snprintf(subdir, sizeof(subdir), "Service_%02d", j+1);
 		service_dentry = CREATE_DIRECTORY(version_dentry, subdir);
 
 		si->service_id = CONVERT_TO_16(payload[i], payload[i+1]);
