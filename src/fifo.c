@@ -74,7 +74,7 @@ bool fifo_flushed(struct fifo *fifo)
 	return flushed;
 }
 
-bool fifo_empty(struct fifo *fifo)
+bool fifo_is_empty(struct fifo *fifo)
 {
 	bool empty;
 	pthread_mutex_lock(&fifo->head_mutex);
@@ -127,6 +127,7 @@ int fifo_append(struct fifo *fifo, const char *data, uint32_t size)
 	pthread_mutex_lock(&fifo->head_mutex);
 	if (fifo->num_elements+1 > fifo->max_elements) {
 		pthread_mutex_unlock(&fifo->head_mutex);
+		/* XXX: drop the oldest element instead? */
 		return -ENOBUFS;
 	}
 	fifo->num_elements++;

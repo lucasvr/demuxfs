@@ -40,13 +40,13 @@ void fifo_flush(struct fifo *fifo);
 void fifo_destroy(struct fifo *fifo);
 
 /**
- * fifo_empty - Tells if a FIFO is empty
+ * fifo_is_empty - Tells if a FIFO is empty
  *
  * @fifo: the FIFO.
  *
  * Returns true if the FIFO is empty or false if it's not.
  */
-bool fifo_empty(struct fifo *fifo);
+bool fifo_is_empty(struct fifo *fifo);
 
 /**
  * fifo_flushed - Tells if a FIFO is in a flushed state
