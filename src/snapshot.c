@@ -31,7 +31,7 @@
 
 #ifdef USE_FFMPEG
 
-static int save_ppm(struct snapshot_context *ctx)
+static int _update_frame(struct snapshot_context *ctx)
 {
     int y, out_size;
 	char header[128];
@@ -77,11 +77,10 @@ static int save_ppm(struct snapshot_context *ctx)
 	return 0;
 }
 
-static void save_ppm_file(struct snapshot_context *ctx, int seq, struct demuxfs_data *priv)
+static void _save_ppm_to_file(struct snapshot_context *ctx, int seq, struct demuxfs_data *priv)
 {
-    int y, out_size;
+    int y;
 	char filename[128];
-	char *contents, *ptr;
 	int xsize = ctx->c->width;
 	int ysize = ctx->c->height;
 	struct SwsContext *img_convert_ctx;
@@ -114,18 +113,20 @@ int snapshot_save_video_frame(const char *inbuf, size_t size,
 	int got_picture = 0, i = 0;
     int len, ret = -1;
 
-	while (size > 0) {
-		len = avcodec_decode_video(ctx->c, ctx->picture, &got_picture, inbuf_ptr, size);
-		if (len < 0)
-			return len;
-		if (got_picture)
-			save_ppm_file(ctx, i++, priv);
-		size -= len;
-		inbuf_ptr += len;
-    }
-	if (got_picture) {
-		ret = save_ppm(ctx);
-		save_ppm_file(ctx, i++, priv);
+	if (ctx) {
+		while (size > 0) {
+			len = avcodec_decode_video(ctx->c, ctx->picture, &got_picture, inbuf_ptr, size);
+			if (len < 0)
+				return len;
+			if (got_picture)
+				_save_ppm_to_file(ctx, i++, priv);
+			size -= len;
+			inbuf_ptr += len;
+		}
+		if (got_picture) {
+			ret = _update_frame(ctx);
+			_save_ppm_to_file(ctx, i++, priv);
+		}
 	}
 
 	return ret;
@@ -133,12 +134,12 @@ int snapshot_save_video_frame(const char *inbuf, size_t size,
 
 void snapshot_destroy_video_context(struct snapshot_context *ctx)
 {
-	if (ctx->c) {
+	if (ctx && ctx->c) {
 		avcodec_close(ctx->c);
 		av_free(ctx->c);
 		ctx->c = NULL;
 	}
-	if (ctx->picture) {
+	if (ctx && ctx->picture) {
 		av_free(ctx->picture);
 		ctx->picture = NULL;
 	}

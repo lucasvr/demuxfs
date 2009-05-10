@@ -29,8 +29,7 @@ void snapshot_destroy_video_context(struct snapshot_context *ctx);
  * bytes long.
  * @param size how many bytes are used in the input buffer.
  * @param out_size decoded buffer size in bytes.
- * @return a pointer to the decoded buffer or NULL on failure. The caller is responsible
- * from freeing it.
+ * @return 0 on success or a negative number on error.
  */
 int snapshot_save_video_frame(const char *inbuf, size_t size, 
 		struct snapshot_context *ctx, struct demuxfs_data *priv);
