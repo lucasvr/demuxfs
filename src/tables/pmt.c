@@ -32,6 +32,7 @@
 #include "hash.h"
 #include "fifo.h"
 #include "ts.h"
+#include "snapshot.h"
 #include "descriptors.h"
 #include "stream_type.h"
 #include "component_tag.h"
@@ -129,17 +130,31 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 	/* Create a FIFO which will contain this stream's PES contents */
 	if (stream_type_is_audio(stream->stream_type_identifier) ||
 		stream_type_is_video(stream->stream_type_identifier)) {
-		struct dentry *pes_dentry = CREATE_FIFO((*subdir), FS_PES_FIFO_NAME);
+		int obj_type = stream_type_is_video(stream->stream_type_identifier) ? 
+			OBJ_TYPE_VIDEO_FIFO : OBJ_TYPE_AUDIO_FIFO;
+
+		CREATE_FIFO((*subdir), obj_type, FS_PES_FIFO_NAME);
+
+		if (priv->options.parse_pes) {
+			/* Create a FIFO which will contain this stream's ES contents */
+			struct dentry *es_dentry = CREATE_FIFO((*subdir), obj_type, FS_ES_FIFO_NAME);
 #ifdef USE_FFMPEG
-		if (stream_type_is_video(stream->stream_type_identifier)) {
-			/* Create a file named snapshot.ppm */
-			CREATE_SNAPSHOT_FILE((*subdir), FS_VIDEO_SNAPSHOT_NAME, pes_dentry);
-		}
+			if (stream_type_is_video(stream->stream_type_identifier))
+				/* Create a file named snapshot.ppm */
+				CREATE_SNAPSHOT_FILE((*subdir), FS_VIDEO_SNAPSHOT_NAME, es_dentry);
 #endif
+		}
 	}
-	if (priv->options.parse_pes) {
-		/* Create a FIFO which will contain this stream's ES contents */
-		CREATE_FIFO((*subdir), FS_ES_FIFO_NAME);
+	if (stream_type_is_data_carousel(stream->stream_type_identifier) ||
+		stream_type_is_object_carousel(stream->stream_type_identifier)) {
+		char target[PATH_MAX];
+		if (0) {
+			sprintf(target, "../../../../../DDB/%#02x/Current/BIOP", stream->elementary_stream_pid);
+			struct dentry *biop_symlink = CREATE_SYMLINK(*subdir, "BIOP", target);
+		} else {
+			sprintf(target, "../../../../../DDB/%#02x/Current", stream->elementary_stream_pid);
+			struct dentry *biop_symlink = CREATE_SYMLINK(*subdir, "BIOP", target);
+		}
 	}
 
 	struct formatted_descriptor f;
