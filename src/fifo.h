@@ -49,13 +49,14 @@ void fifo_destroy(struct fifo *fifo);
 bool fifo_is_empty(struct fifo *fifo);
 
 /**
- * fifo_flushed - Tells if a FIFO is in a flushed state
+ * fifo_is_flushed - Tells if a FIFO is flushed, which means that
+ * the reader didn't receive any data since the FIFO was opened.
  *
- * @fifo: the FIFO
+ * @fifo: the FIFO.
  *
- * Returns true if the FIFO is in a flushed state of false if it's not.
+ * Returns true if the FIFO is flushed or false if it's not.
  */
-bool fifo_flushed(struct fifo *fifo);
+bool fifo_is_flushed(struct fifo *fifo);
 
 /**
  * fifo_read - Consumes data from a FIFO
