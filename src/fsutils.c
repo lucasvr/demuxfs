@@ -28,6 +28,7 @@
  */
 #include "demuxfs.h"
 #include "fsutils.h"
+#include "buffer.h"
 #include "xattr.h"
 #include "fifo.h"
 
@@ -114,8 +115,37 @@ static void _fsutils_dump_tree(struct dentry *dentry, int spaces)
 void fsutils_dispose_node(struct dentry *dentry)
 {
 	struct xattr *xattr, *aux;
-	if (dentry->fifo)
-		fifo_destroy(dentry->fifo);
+
+	if (dentry->priv) {
+		switch (dentry->obj_type) {
+			case OBJ_TYPE_SNAPSHOT: {
+				struct snapshot_priv *priv = (struct snapshot_priv *) dentry->priv;
+				priv->borrowed_es_dentry = NULL;
+				priv->snapshot_ctx = NULL;
+				free(priv);
+				break;
+			}
+			case OBJ_TYPE_FIFO: {
+				struct fifo_priv *priv = dentry->priv;
+				if (priv->fifo)
+					fifo_destroy(priv->fifo);
+				free(priv);
+				break;
+			}
+			case OBJ_TYPE_VIDEO_FIFO: {
+				struct video_fifo_priv *priv = (struct video_fifo_priv *) dentry->priv;
+				if (priv->fifo)
+					fifo_destroy(priv->fifo);
+				if (priv->pes_header)
+					free(priv->pes_header);
+				if (priv->es_buffer)
+					buffer_destroy(priv->es_buffer);
+				free(priv);
+				break;
+			}
+		}
+	}
+
 	if (dentry->contents)
 		free(dentry->contents);
 	list_for_each_entry_safe(xattr, aux, &dentry->xattrs, list)

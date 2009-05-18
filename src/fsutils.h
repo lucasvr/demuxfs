@@ -1,6 +1,8 @@
 #ifndef __fsutils_h
 #define __fsutils_h
 
+#define FS_DEFAULT_TMPDIR               "/tmp"
+
 #define FS_ES_FIFO_NAME                 "ES"
 #define FS_PES_FIFO_NAME                "PES"
 #define FS_PAT_NAME                     "PAT"
@@ -74,6 +76,7 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 			_dentry->name = strdup((char *) #member); \
 			_dentry->size = _size; \
 			_dentry->mode = S_IFREG | 0444; \
+	 		_dentry->obj_type = OBJ_TYPE_FILE; \
 			CREATE_COMMON((parent),_dentry); \
 			xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false); \
 	 	} \
@@ -96,6 +99,7 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 			_dentry->name = strdup(#member); \
 			_dentry->size = strlen(_dentry->contents); \
 			_dentry->mode = S_IFREG | 0444; \
+	 		_dentry->obj_type = OBJ_TYPE_FILE; \
 			CREATE_COMMON((parent),_dentry); \
 			xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_NUMBER, strlen(XATTR_FORMAT_NUMBER), false); \
 	 	} \
@@ -113,6 +117,7 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 			_dentry->name = strdup(#member); \
 			_dentry->size = strlen(_dentry->contents); \
 			_dentry->mode = S_IFREG | 0444; \
+	 		_dentry->obj_type = OBJ_TYPE_FILE; \
 			CREATE_COMMON((parent),_dentry); \
 			xattr_add(_dentry, XATTR_FORMAT, fmt, strlen(fmt), false); \
 	 	} \
@@ -126,26 +131,30 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 			struct dentry *_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 			_dentry->contents = strdup(target); \
 			_dentry->name = strdup(sname); \
+	 		_dentry->obj_type = OBJ_TYPE_SYMLINK; \
 			_dentry->mode = S_IFLNK | 0777; \
 			CREATE_COMMON((parent),_dentry); \
 	 	} \
 	 	_dentry; \
 	})
 
-#define CREATE_SNAPSHOT_FILE(parent,fname,pes_dentry) \
+#define CREATE_SNAPSHOT_FILE(parent,fname,es_dentry) \
 	({ \
 	 	struct dentry *_dentry = fsutils_get_child(parent, fname); \
 	 	if (! _dentry) { \
+	 		struct snapshot_priv *_priv = (struct snapshot_priv *) malloc(sizeof(struct snapshot_priv)); \
 			_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 			_dentry->name = strdup(fname); \
 			_dentry->mode = S_IFREG | 0444; \
-	 		_dentry->borrowed_pes_dentry = pes_dentry; \
+	 		_dentry->obj_type = OBJ_TYPE_SNAPSHOT; \
+	 		_priv->borrowed_es_dentry = es_dentry; \
+	 		_dentry->priv = _priv ; \
 			CREATE_COMMON((parent),_dentry); \
 	 	} \
 	 	_dentry; \
 	})
 
-#define CREATE_FIFO(parent,fname) \
+#define CREATE_FIFO(parent,ftype,fname) \
 	({ \
 	 	struct dentry *_dentry = fsutils_get_child(parent, fname); \
 	 	if (! _dentry) { \
@@ -153,7 +162,18 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 		_dentry->size = 0xffffffff; \
 	 		_dentry->name = strdup(fname); \
 	 		_dentry->mode = S_IFREG | 0777; \
-	 		_dentry->fifo = fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
+	 		_dentry->obj_type = ftype; \
+	 		if (ftype == OBJ_TYPE_FIFO) { \
+	 			struct fifo_priv *_priv = (struct fifo_priv *) malloc(sizeof(struct fifo_priv)); \
+	 			_priv->fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
+	 			_dentry->priv = _priv; \
+	 		} else if (ftype == OBJ_TYPE_VIDEO_FIFO) { \
+	 			struct video_fifo_priv *_priv = (struct video_fifo_priv *) malloc(sizeof(struct video_fifo_priv)); \
+	 			_priv->fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
+	 			_priv->es_buffer = NULL; \
+				_priv->pes_header = NULL; \
+	 			_dentry->priv = _priv; \
+	 		} \
 	 		CREATE_COMMON((parent),_dentry); \
 	 	} \
 	 	_dentry; \
@@ -166,6 +186,7 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 			_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 			_dentry->name = strdup(dname); \
 			_dentry->mode = S_IFDIR | 0555; \
+	 		_dentry->obj_type = OBJ_TYPE_DIR; \
 			CREATE_COMMON((parent),_dentry); \
 	 	} \
 	 	_dentry; \

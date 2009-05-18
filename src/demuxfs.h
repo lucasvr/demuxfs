@@ -23,6 +23,7 @@
 #include <fuse.h>
 
 #include "list.h"
+#include "priv.h"
 
 #define dprintf(x...) do { \
         fprintf(stderr, "%s:%s:%d ", __FILE__, __FUNCTION__, __LINE__); \
@@ -51,22 +52,39 @@ struct xattr {
 	struct list_head list;
 };
 
+enum {
+	OBJ_TYPE_FILE        = (1 << 0),
+	OBJ_TYPE_DIR         = (1 << 1),
+	OBJ_TYPE_SYMLINK     = (1 << 2),
+	OBJ_TYPE_FIFO        = (1 << 3),
+	OBJ_TYPE_AUDIO_FIFO  = (1 << 4) | OBJ_TYPE_FIFO,
+	OBJ_TYPE_VIDEO_FIFO  = (1 << 5) | OBJ_TYPE_FIFO,
+	OBJ_TYPE_SNAPSHOT    = (1 << 6),
+};
+
+#define DEMUXFS_IS_FILE(d)       (d->obj_type == OBJ_TYPE_FILE)
+#define DEMUXFS_IS_DIR(d)        (d->obj_type == OBJ_TYPE_DIR)
+#define DEMUXFS_IS_SYMLINK(d)    (d->obj_type == OBJ_TYPE_SYMLINK)
+#define DEMUXFS_IS_FIFO(d)       ((d->obj_type & OBJ_TYPE_FIFO) == OBJ_TYPE_FIFO)
+#define DEMUXFS_IS_AUDIO_FIFO(d) (d->obj_type == OBJ_TYPE_AUDIO_FIFO)
+#define DEMUXFS_IS_VIDEO_FIFO(d) (d->obj_type == OBJ_TYPE_VIDEO_FIFO)
+#define DEMUXFS_IS_SNAPSHOT(d)   (d->obj_type == OBJ_TYPE_SNAPSHOT)
+
 struct dentry {
-	/* The inode number, which is generated from the transport stream PID and the table_id */
+	/* The inode number, generated from the transport stream PID and the table_id */
 	ino_t inode;
 	/* File name */
 	char *name;
-	/* Mode (file, symlink, directory) */
+	/* UNIX mode (file, symlink, directory) */
 	mode_t mode;
-	/* Reference count to this dentry (used to mimic FIFO behavior in special files) */
+	/* DemuxFS object type (FIFO, snapshot, regular file, directory) */
+	int obj_type;
+	/* Reference count */
 	uint32_t refcount;
-	/* Contents from FIFO files */
-	struct fifo *fifo;
-	/* Borrowed PES dentry, used by snapshot dentries */
-	struct dentry *borrowed_pes_dentry;
 	/* File contents */
 	char *contents;
 	size_t size;
+
 	/* Extended attributes */
 	struct list_head xattrs;
 	/* Protection for concurrent access */
@@ -74,10 +92,13 @@ struct dentry {
 	sem_t semaphore;
 	/* Backpointer to parent */
 	struct dentry *parent;
-	/* List of children dentries, if this dentry happens to represent a directory */
+	/* List of children dentries, if any */
 	struct list_head children;
-	/* Private */
+	/* List in which this dentry is linked in */
 	struct list_head list;
+
+	/* Private data */
+	void *priv;
 };
 
 #if (__WORDSIZE == 64)
