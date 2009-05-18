@@ -89,8 +89,10 @@ static void tot_create_ut3c_time(struct tot_table *tot)
 	ret = strptime(utc, "%Y-%m-%d %H:%M:%S", &tm);
 	if (! ret) {
 		perror("strptime");
+		free(utc);
 		return;
 	}
+	free(utc);
 
 	/* 3: convert from struct tm to a human understandable string */
 	memset(tot->utc3_time, 0, sizeof(tot->utc3_time));
