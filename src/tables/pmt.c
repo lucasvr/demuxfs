@@ -141,7 +141,7 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 #ifdef USE_FFMPEG
 			if (stream_type_is_video(stream->stream_type_identifier))
 				/* Create a file named snapshot.ppm */
-				CREATE_SNAPSHOT_FILE((*subdir), FS_VIDEO_SNAPSHOT_NAME, es_dentry);
+				CREATE_SNAPSHOT_FILE((*subdir), FS_VIDEO_SNAPSHOT_NAME, es_dentry, priv);
 #endif
 		}
 	}
