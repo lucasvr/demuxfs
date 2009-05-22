@@ -136,10 +136,6 @@ void fsutils_dispose_node(struct dentry *dentry)
 				struct video_fifo_priv *priv = (struct video_fifo_priv *) dentry->priv;
 				if (priv->fifo)
 					fifo_destroy(priv->fifo);
-				if (priv->pes_header)
-					free(priv->pes_header);
-				if (priv->es_buffer)
-					buffer_destroy(priv->es_buffer);
 				free(priv);
 				break;
 			}
