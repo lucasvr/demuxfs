@@ -165,7 +165,7 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 		priv_data = (struct video_fifo_priv *) es_dentry->priv;
 
 		if (header->payload_unit_start_indicator) {
-			uint32_t offset = 0;
+			uint32_t n = 6, offset = 0;
 
 			/* Flush ES buffer */
 			priv_data->pes_packet_length = CONVERT_TO_16(payload[4], payload[5]);
@@ -178,8 +178,22 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 				offset = payload[8] + 9;
 			} else {
 				/* This is a MPEG-1 (11172-1) PES packet */
-				dprintf("TODO: implement MPEG-1 parser");
-				return -1;
+				while (n < payload_len && payload[n] == 0xff)
+					/* Skip padding byte */
+					n++;
+				if ((payload[n] & 0xC0) == 0x40)
+					/* Skip buffer scale/size */
+					n += 2;
+				if ((payload[n] & 0xF0) == 0x20)
+					/* Skip PTS */
+					n += 5;
+				else if ((payload[n] & 0xF0) == 0x30)
+					/* Skip PTS/DTS */
+					n += 10;
+				else
+					/* There's nothing we can do */
+					n++;
+				offset = n;
 			}
 
 			if (offset > payload_len) {
