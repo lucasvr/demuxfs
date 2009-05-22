@@ -201,6 +201,7 @@ int filesrc_read_packet(struct demuxfs_data *priv)
 	if (n <= 0 && feof(p->fp)) {
 		p->packet_valid = false;
 		if (p->fileloop) {
+			dprintf("Rewinding TS file");
 			rewind(p->fp);
 			return 0;
 		}
