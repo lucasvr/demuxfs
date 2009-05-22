@@ -7,11 +7,13 @@ struct fifo_priv {
 
 struct video_fifo_priv {
 	struct fifo *fifo; /* This needs to come first */
-	struct buffer *es_buffer;
-	struct pes_header *pes_header;
+	bool pes_packet_initialized;
+	uint32_t pes_packet_length;
+	uint32_t pes_packet_parsed_length;
 };
 
 struct snapshot_priv {
+	char *path_to_es;
 	struct dentry *borrowed_es_dentry;
 	struct snapshot_context *snapshot_ctx;
 };
