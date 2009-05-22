@@ -138,15 +138,25 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	_dentry; \
 	})
 
-#define CREATE_SNAPSHOT_FILE(parent,fname,es_dentry) \
+#define CREATE_SNAPSHOT_FILE(parent,fname,es_dentry,priv) \
 	({ \
 	 	struct dentry *_dentry = fsutils_get_child(parent, fname); \
 	 	if (! _dentry) { \
-	 		struct snapshot_priv *_priv = (struct snapshot_priv *) malloc(sizeof(struct snapshot_priv)); \
+	 		char path2es[PATH_MAX], *ptr, *start = NULL; \
+	 		struct snapshot_priv *_priv = (struct snapshot_priv *) calloc(1, sizeof(struct snapshot_priv)); \
 			_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 			_dentry->name = strdup(fname); \
 			_dentry->mode = S_IFREG | 0444; \
 	 		_dentry->obj_type = OBJ_TYPE_SNAPSHOT; \
+	 		ptr = fsutils_path_walk(es_dentry, path2es, sizeof(path2es)); \
+	 		if (ptr) { \
+	 			start = ptr - strlen(priv->mount_point); \
+	 			if (start < path2es) \
+	 				start = NULL; \
+	 			else  \
+	 				memcpy(start, priv->mount_point, strlen(priv->mount_point)); \
+	 		} \
+	 		_priv->path_to_es = start ? strdup(start) : NULL; \
 	 		_priv->borrowed_es_dentry = es_dentry; \
 	 		_dentry->priv = _priv ; \
 			CREATE_COMMON((parent),_dentry); \
@@ -164,14 +174,12 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 		_dentry->mode = S_IFREG | 0777; \
 	 		_dentry->obj_type = ftype; \
 	 		if (ftype == OBJ_TYPE_FIFO) { \
-	 			struct fifo_priv *_priv = (struct fifo_priv *) malloc(sizeof(struct fifo_priv)); \
+	 			struct fifo_priv *_priv = (struct fifo_priv *) calloc(1, sizeof(struct fifo_priv)); \
 	 			_priv->fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
 	 			_dentry->priv = _priv; \
 	 		} else if (ftype == OBJ_TYPE_VIDEO_FIFO) { \
-	 			struct video_fifo_priv *_priv = (struct video_fifo_priv *) malloc(sizeof(struct video_fifo_priv)); \
+	 			struct video_fifo_priv *_priv = (struct video_fifo_priv *) calloc(1, sizeof(struct video_fifo_priv)); \
 	 			_priv->fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
-	 			_priv->es_buffer = NULL; \
-				_priv->pes_header = NULL; \
 	 			_dentry->priv = _priv; \
 	 		} \
 	 		CREATE_COMMON((parent),_dentry); \
