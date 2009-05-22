@@ -134,6 +134,26 @@ static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_
     return NULL;
 }
 
+static bool continuity_counter_is_ok(const struct ts_header *header, struct buffer *buffer, bool psi)
+{
+	uint8_t last_cc = buffer->continuity_counter;
+	uint8_t this_cc = header->continuity_counter;
+	bool buf_empty = buffer_get_current_size(buffer) == 0;
+
+	if (last_cc == this_cc) {
+		TS_WARNING("%s continuity error on pid=%d: repeating last_counter", psi ? "PSI" : "PES", header->pid);
+		return false;
+	} else if (! buf_empty) {
+		if ((last_cc == 15 && this_cc != 0) || (this_cc && (this_cc - last_cc) != 1)) {
+			TS_WARNING("%s continuity error on pid=%d: last counter=%d, current counter=%d",
+					psi ? "PSI" : "PES", header->pid, last_cc, this_cc);
+			buffer_reset_size(buffer);
+			return false;
+		}
+	}
+	return true;
+}
+
 /**
  * ts_parse_packet - Parse a transport stream packet. Called by the backend's process() function.
  */
@@ -176,10 +196,12 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 	//ts_dump_header(header);
 	//ts_dump_payload(payload, payload_end-payload_start);
 
+	struct buffer *buffer = NULL;
+
 	if (ts_is_psi_packet(header->pid, priv)) {
 		const char *start = payload_start;
 		const char *end = payload_end;
-		bool remnant_flag = false;
+		bool is_new_packet = false;
 		bool pusi = header->payload_unit_start_indicator;
 		uint8_t table_id;
 
@@ -194,23 +216,26 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
 			if (pointer_field > 0) {
 				end = payload_start + pointer_field;
-				remnant_flag = true;
 			} else {
+				is_new_packet = true;
 				end = ((payload_start + 3 + section_length) <= payload_end) ?
 						payload_start + 3 + section_length : 
 						payload_end;
 			}
 		} else {
 			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
-			remnant_flag = true;
 		}
 
 		while (start <= payload_end) {
-			struct buffer *buffer = hashtable_get(priv->packet_buffer, header->pid);
-			if (! buffer && ! remnant_flag) {
+			buffer = hashtable_get(priv->packet_buffer, header->pid);
+			if (! buffer && is_new_packet) {
 				buffer = buffer_create(section_length + 3, false);
+				if (! buffer)
+					return 0;
+				buffer->continuity_counter = header->continuity_counter;
 				hashtable_add(priv->packet_buffer, header->pid, buffer);
-			}
+			} else if (buffer && ! continuity_counter_is_ok(header, buffer, true))
+				return 0;
 
 			if (buffer) {
 				buffer_append(buffer, start, end - start + 1);
@@ -232,15 +257,20 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				break;
 
 			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
+			if (section_length == 0)
+				/* Nothing to parse */
+				break;
+
 			end = ((start + section_length + 2) <= payload_end) ? 
 					start + section_length + 2 :
 					payload_end;
-			remnant_flag = false;
+
 			pusi = false;
+			is_new_packet = true;
 		}
 	} else if (ts_is_pes_packet(header->pid, priv)) {
 		uint16_t size;
-		struct buffer *buffer = hashtable_get(priv->packet_buffer, header->pid);
+		buffer = hashtable_get(priv->packet_buffer, header->pid);
 		if (! buffer) {
 			if (! header->payload_unit_start_indicator || (payload_end - payload_start <= 6))
 				return 0;
@@ -248,8 +278,10 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			buffer = buffer_create(size, true);
 			if (! buffer)
 				return 0;
+			buffer->continuity_counter = header->continuity_counter;
 			hashtable_add(priv->packet_buffer, header->pid, buffer);
-		}
+		} else if (buffer && ! continuity_counter_is_ok(header, buffer, false))
+			return 0;
 
 		buffer_append(buffer, payload_start, payload_end - payload_start + 1);
 		if (buffer_contains_full_pes_section(buffer)) {
@@ -259,5 +291,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			buffer_reset_size(buffer);
 		}
 	}
+	if (buffer)
+		buffer->continuity_counter = header->continuity_counter;
 	return ret;
 }
