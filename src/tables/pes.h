@@ -9,6 +9,8 @@
 #define pes_dprintf(x...) do { ; } while(0)
 #endif
 
+#define IS_H222_PES(s) ((s[6] & 0xC0) == 0x80)
+
 enum {
 	PES_PROGRAM_STREAM_MAP,
 	PES_PRIVATE_STREAM_1,
