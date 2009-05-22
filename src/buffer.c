@@ -42,7 +42,7 @@ struct buffer *buffer_create(size_t size, bool pes_data)
 		return NULL;
 	}
 
-	buffer = (struct buffer *) malloc(sizeof(struct buffer));
+	buffer = (struct buffer *) calloc(1, sizeof(struct buffer));
 	if (! buffer) {
 		perror("malloc");
 		return NULL;
@@ -62,6 +62,7 @@ struct buffer *buffer_create(size_t size, bool pes_data)
 
 	buffer->max_size = size;
 	buffer->current_size = 0;
+	buffer->continuity_counter = 0;
 	buffer->holds_pes_data = pes_data;
 	return buffer;
 }
@@ -74,6 +75,20 @@ void buffer_destroy(struct buffer *buffer)
 		buffer->data = NULL;
 		free(buffer);
 	}
+}
+
+int buffer_get_max_size(struct buffer *buffer)
+{
+	if (buffer)
+		return buffer->max_size;
+	return 0;
+}
+
+int buffer_get_current_size(struct buffer *buffer)
+{
+	if (buffer)
+		return buffer->current_size;
+	return 0;
 }
 
 int buffer_append(struct buffer *buffer, const char *buf, size_t size)
@@ -157,7 +172,7 @@ bool buffer_contains_full_pes_section(struct buffer *buffer)
 	return true;
 }
 
-bool buffer_unbounded(struct buffer *buffer)
+bool buffer_is_unbounded(struct buffer *buffer)
 {
 	int stream_type;
 	uint8_t stream_id;
@@ -185,12 +200,4 @@ void buffer_reset_size(struct buffer *buffer)
 {
 	if (buffer)
 		buffer->current_size = 0;
-}
-
-void buffer_reset_full(struct buffer *buffer)
-{
-	if (buffer) {
-		buffer->current_size = 0;
-		buffer->pes_unbounded_data = false;
-	}
 }
