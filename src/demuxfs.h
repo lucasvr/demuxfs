@@ -115,9 +115,9 @@ struct dentry {
 /* 
  * Maximum number of TS packets to queue in a FIFO. 
  * The default value allows a single FIFO consume up
- * to 15MB when a process starts reading from it.
+ * to 30MB when a process starts reading from it.
  */
-#define MAX_TS_PACKETS_IN_A_FIFO 256
+#define MAX_TS_PACKETS_IN_A_FIFO 512
 
 enum transmission_type {
 	SBTVD_STANDARD,
@@ -158,6 +158,8 @@ struct demuxfs_data {
 	struct input_parser *parser;
 	/* General data shared amongst table parsers and descriptor parsers */
 	void *shared_data;
+	/* DemuxFS mount point */
+	char *mount_point;
 	/* User-defined options */
 	struct user_options options;
 };
