@@ -33,12 +33,33 @@ dnl Check for FFMPEG (optional)
 dnl
 ffmpeg_found=
 AC_MSG_CHECKING([ffmpeg])
-PKG_CHECK_MODULES([LIBAVCODEC_MODULE], [libavcodec >= 52.7.0], ffmpeg_found="yes", )
+PKG_CHECK_MODULES([LIBAVCODEC_MODULE], [libavcodec >= 52.7.0], ffmpeg_found="yes", 
+				  AC_MSG_RESULT([no. DemuxFS snapshot feature will not be compiled.]))
 if test ! -z "${ffmpeg_found}"
 then
+	dnl
+	dnl Check for libswscale
+	dnl
 	FFMPEG_LIBS=`$PKG_CONFIG --libs libavcodec`
 	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavcodec`
 	CFLAGS="${CFLAGS} -DUSE_FFMPEG"
+
+	AC_MSG_CHECKING([libswscale])
+	PKG_CHECK_MODULES([LIBSWSCALE_MODULE], [libswscale >= 0.7.1], libswscale_found="yes", 
+					  AC_MSG_ERROR([FFmpeg was compiled with no support for libswscale.]))
+	SWSCALE_LIBS=`$PKG_CONFIG --libs libswscale`
+	
+	dnl
+	dnl Check for libavformat
+	dnl
+	FFMPEG_LIBS=`$PKG_CONFIG --libs libavformat`
+	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavformat`
+	CFLAGS="${CFLAGS} -DUSE_FFMPEG"
+
+	AC_MSG_CHECKING([libavformat])
+	PKG_CHECK_MODULES([LIBAVFORMAT_MODULE], [libavformat >= 0.7.1], libavformat_found="yes", 
+					  AC_MSG_ERROR([FFmpeg libavformat was not found.]))
+	AVFORMAT_LIBS=`$PKG_CONFIG --libs libavformat`
 fi
 AM_CONDITIONAL(USE_FFMPEG, test "${ffmpeg_found}" = "yes")
 
@@ -150,7 +171,7 @@ dnl
 dnl Update flags
 dnl
 CFLAGS="${CFLAGS} ${FUSE_CFLAGS} ${FFMPEG_CFLAGS} -ggdb -O0 -Wall -std=c99"
-LDFLAGS="${LDFLAGS} ${FUSE_LIBS} ${FFMPEG_LIBS}"
+LDFLAGS="${LDFLAGS} ${FUSE_LIBS} ${FFMPEG_LIBS} ${SWSCALE_LIBS} ${AVFORMAT_LIBS}"
 
 
 dnl
