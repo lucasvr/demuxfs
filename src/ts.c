@@ -110,19 +110,20 @@ static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_
 
 	if (parse_function)
 		return parse_function;
-	else if (table_id == TS_PAT_TABLE_ID)
+	else if (table_id == TS_PAT_TABLE_ID && header->pid == TS_PAT_PID)
 		return pat_parse;
 	else if (table_id == TS_PMT_TABLE_ID)
 		return pmt_parse;
-	else if (table_id == TS_NIT_TABLE_ID)
+	else if (table_id == TS_NIT_TABLE_ID && header->pid == TS_NIT_PID)
 		return nit_parse;
-	else if (table_id == TS_SDT_TABLE_ID)
+	else if (table_id == TS_SDT_TABLE_ID && header->pid == TS_SDT_PID)
 		return sdt_parse;
 	else if (table_id == TS_TOT_TABLE_ID)
 		return tot_parse;
-	else if (table_id == TS_SDTT_TABLE_ID)
+	else if (table_id == TS_SDTT_TABLE_ID && 
+		(header->pid == TS_SDTT1_PID || header->pid == TS_SDTT2_PID))
 		return sdtt_parse;
-	else if (table_id == TS_CDT_TABLE_ID)
+	else if (table_id == TS_CDT_TABLE_ID && header->pid == TS_CDT_PID)
 		dprintf("TS carries a CDT table");
 	//else if (table_id == TS_TDT_TABLE_ID)
 	//	dprintf("TS carries a TDT table");
@@ -141,7 +142,10 @@ static bool continuity_counter_is_ok(const struct ts_header *header, struct buff
 	bool buf_empty = buffer_get_current_size(buffer) == 0;
 
 	if (last_cc == this_cc) {
-		TS_WARNING("%s continuity error on pid=%d: repeating last_counter", psi ? "PSI" : "PES", header->pid);
+		/* 
+		 * Repeating last counter. The standard allows for the transmission of up to 2 sequential 
+		 * packets with the same continuity counter.
+		 */
 		return false;
 	} else if (! buf_empty) {
 		if ((last_cc == 15 && this_cc != 0) || (this_cc && (this_cc - last_cc) != 1)) {
