@@ -58,17 +58,12 @@ uint8_t descriptors_parse(const char *payload, uint8_t num_descriptors,
 
 bool descriptor_is_parseable(struct dentry *dentry, uint8_t tag, int expected, int found)
 {
-	if (found == expected)
-		return true;
-	else if (found < expected) {
-		TS_WARNING("Tag %#0x could not be parsed: descriptor size mismatch (expected %d "
-				"bytes, found %d)", tag, expected, found);
-		return false;
-	} else {
-		TS_WARNING("Tag %#0x: descriptor size mismatch (expected %d bytes, found %d)", 
+	if (found < expected) {
+		TS_WARNING("Tag %#0x: descriptor size mismatch. Expected at least %d bytes, found %d",
 				tag, expected, found);
-		return true;
+		return false;
 	}
+	return true;
 }
 
 int descriptors_count(const char *payload, uint16_t info_length)
