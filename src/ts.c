@@ -255,6 +255,9 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			if (! pusi || pointer_field == 0)
 				break;
 
+			if (buffer)
+				buffer_reset_size(buffer);
+
 			start = end + 1;
 			if (((uint8_t) start[0]) == 0xff)
 				/* Stuffing packet */
