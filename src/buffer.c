@@ -33,7 +33,7 @@
 #include "ts.h"
 #include "tables/pes.h"
 
-struct buffer *buffer_create(size_t size, bool pes_data)
+struct buffer *buffer_create(uint16_t pid, size_t size, bool pes_data)
 {
 	struct buffer *buffer;
 
@@ -60,6 +60,7 @@ struct buffer *buffer_create(size_t size, bool pes_data)
 		return NULL;
 	}
 
+	buffer->pid = pid;
 	buffer->max_size = size;
 	buffer->current_size = 0;
 	buffer->continuity_counter = 0;
@@ -145,8 +146,8 @@ bool buffer_contains_full_psi_section(struct buffer *buffer)
 	section_length = CONVERT_TO_16(buffer->data[1], buffer->data[2]) & 0x0fff;
 	if (buffer->current_size < (section_length + 3)) {
 		if ((section_length + 3) > MAX_SECTION_SIZE) {
-			dprintf("Bad section packet: curr_size=%d max_size=%d section_length=%d",
-					buffer->current_size, buffer->max_size, section_length);
+			dprintf("Bad section packet: curr_size=%d max_size=%d section_length=%d [pid %#x table_id %#x]",
+					buffer->current_size, buffer->max_size, section_length, buffer->pid, buffer->data[0]);
 			buffer->current_size = 0;
 		}
 		return false;

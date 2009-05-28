@@ -6,6 +6,7 @@
 
 struct buffer {
 	char *data;
+	uint16_t pid;
 	size_t max_size;
 	size_t current_size;
 	uint8_t continuity_counter;
@@ -13,7 +14,7 @@ struct buffer {
 	bool pes_unbounded_data;
 };
 
-struct buffer *buffer_create(size_t max_size, bool pes_data);
+struct buffer *buffer_create(uint16_t pid, size_t max_size, bool pes_data);
 void buffer_destroy(struct buffer *buffer);
 int  buffer_append(struct buffer *buffer, const char *buf, size_t size);
 int  buffer_get_max_size(struct buffer *buffer);
