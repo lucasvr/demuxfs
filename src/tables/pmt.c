@@ -104,7 +104,7 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 	parent = CREATE_DIRECTORY(version_dentry, streams_name);
 
 	/* Create a directory with this stream's PID number in /PMT/<pid>/Current/<streams_name>/ */
-	sprintf(dirname, "%#4x", stream->elementary_stream_pid);
+	sprintf(dirname, "%#04x", stream->elementary_stream_pid);
 	*subdir = CREATE_DIRECTORY(parent, dirname);
 
 	/* Create a 'Primary' symlink pointing to <streams_name> if it happens to be the primary component */
@@ -166,12 +166,11 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 	CREATE_FILE_NUMBER((*subdir), stream, elementary_stream_pid);
 	CREATE_FILE_NUMBER((*subdir), stream, es_information_length);
 	
-	/* Start parsing this PES PID from now on */
 	if (stream_type_is_data_carousel(stream->stream_type_identifier) ||
 		stream_type_is_event_message(stream->stream_type_identifier) ||
 		stream_type_is_mpe(stream->stream_type_identifier) ||
 		stream_type_is_object_carousel(stream->stream_type_identifier)) {
-		/* Assign this to the DSM-CC parser */
+		/* Assign this PID to the DSM-CC parser */
 		if (! hashtable_get(priv->psi_parsers, stream->elementary_stream_pid))
 			hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, dsmcc_parse);
 	} else if (stream_type_is_audio(stream->stream_type_identifier)) {
@@ -182,9 +181,12 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 		/* Assign this to the PES video parser */
 		if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid))
 			hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_video);
-	} else if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid))
+	} else if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid)) {
 		/* Assign this to the PES generic parser */
-		hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_other);
+		dprintf("Will parse pid %#x / stream_type %#x using a generic PES parser", 
+				stream->elementary_stream_pid, stream->stream_type_identifier);
+		hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, pes_parse_other);
+	}
 }
 
 static void pmt_create_directory(const struct ts_header *header, struct pmt_table *pmt, 
