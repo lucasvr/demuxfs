@@ -53,6 +53,10 @@ bool stream_type_is_audio(uint8_t stream_type)
 
 bool stream_type_is_data_carousel(uint8_t stream_type)
 {
+	if (stream_type == 0x05) {
+		/* ATSC uses 0x05 to transport Data Carousel */
+		return true;
+	}
 	return stream_type == 0x0b || stream_type == 0x0d;
 }
 
