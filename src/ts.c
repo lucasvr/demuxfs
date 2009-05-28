@@ -226,14 +226,12 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 						payload_start + 3 + section_length : 
 						payload_end;
 			}
-		} else {
-			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
 		}
 
 		while (start <= payload_end) {
 			buffer = hashtable_get(priv->packet_buffer, header->pid);
 			if (! buffer && is_new_packet) {
-				buffer = buffer_create(section_length + 3, false);
+				buffer = buffer_create(header->pid, section_length + 3, false);
 				if (! buffer)
 					return 0;
 				buffer->continuity_counter = header->continuity_counter;
@@ -282,7 +280,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			if (! header->payload_unit_start_indicator || (payload_end - payload_start <= 6))
 				return 0;
 			size = CONVERT_TO_16(payload_start[4], payload_start[5]);
-			buffer = buffer_create(size, true);
+			buffer = buffer_create(header->pid, size, true);
 			if (! buffer)
 				return 0;
 			buffer->continuity_counter = header->continuity_counter;
