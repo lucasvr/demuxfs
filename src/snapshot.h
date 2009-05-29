@@ -8,9 +8,6 @@
 #include <libswscale/swscale.h>
 #include <libavutil/mathematics.h>
 
-#define SNAPSHOT_INBUF_SIZE (1*1024*1024)
-#define SNAPSHOT_BUFFER_SIZE (SNAPSHOT_INBUF_SIZE)
-
 struct snapshot_context {
     AVCodec *codec;
     AVCodecContext *c;
@@ -18,7 +15,6 @@ struct snapshot_context {
 	AVFormatContext *format_context;
 	AVPacket packet;
     AVFrame *picture;
-	int video_stream;
 };
 
 /**
@@ -47,16 +43,13 @@ int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv);
 
 #else
 
-#define SNAPSHOT_INBUF_SIZE (256*1024)
-#define SNAPSHOT_BUFFER_SIZE (SNAPSHOT_INBUF_SIZE + 8)
-
 struct snapshot_context {
 	int dummy;
 };
 
-#define snapshot_init_video_context(d) ({ NULL; })
+#define snapshot_init_video_context(d) ({ 0; })
 #define snapshot_destroy_video_context(d) do { ; } while(0)
-#define snapshot_save_video_frame(i,s,d,priv) ({ 0; })
+#define snapshot_save_video_frame(d,p) ({ 0; })
 
 #endif /* USE_FFMPEG */
 
