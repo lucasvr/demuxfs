@@ -112,8 +112,15 @@ static int pes_append_to_fifo(struct dentry *dentry, bool pusi,
 	pthread_mutex_lock(&dentry->mutex);
 	/* Do not feed the FIFO if no process wants to read from it */
 	if (dentry->refcount > 0) {
+		bool append = true;
 		struct fifo_priv *priv_data = (struct fifo_priv *) dentry->priv;
-		if (!fifo_is_flushed(priv_data->fifo) || pusi) {
+
+		if (fifo_is_flushed(priv_data->fifo) && !IS_NAL_IDC_REFERENCE(payload)) {
+			/* Skip delta frames before start feeding the FIFO */
+			append = false;
+		}
+		
+		if (append) {
 			ret = fifo_append(priv_data->fifo, payload, payload_len);
 			/* Awake reader, if any */
 			sem_post(&dentry->semaphore);

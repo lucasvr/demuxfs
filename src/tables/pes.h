@@ -9,6 +9,11 @@
 #define pes_dprintf(x...) do { ; } while(0)
 #endif
 
+#define NAL_UNIT_TYPE_IDR 5
+
+#define IS_NAL_IDC_REFERENCE(s) \
+	(s[0] == 0x00 && s[1] == 0x00 && s[2] == 0x00 && s[3] == 0x01 && s[4] != 0x09)
+
 #define IS_H222_PES(s) ((s[6] & 0xC0) == 0x80)
 
 enum {
