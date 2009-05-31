@@ -149,6 +149,7 @@ struct descriptor *descriptors_init(struct demuxfs_data *priv)
 	ADD_DESCRIPTOR("NETWORK_NAME_DESCRIPTOR",                  0x40, priv);
 	ADD_DESCRIPTOR("SERVICE_LIST_DESCRIPTOR",                  0x41, priv);
 	ADD_DESCRIPTOR("STUFFING_DESCRIPTOR",                      0x42, priv);
+	ADD_DESCRIPTOR("SATELLITE_DELIVERY_SYSTEM_DESCRIPTOR",     0x43, priv);
 	ADD_DESCRIPTOR("BOUQUET_NAME_DESCRIPTOR",                  0x47, priv);
 	ADD_DESCRIPTOR("SERVICE_DESCRIPTOR",                       0x48, priv);
 	ADD_DESCRIPTOR("COUNTRY_AVAILABILITY_DESCRIPTOR",          0x49, priv);

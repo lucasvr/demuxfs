@@ -35,6 +35,7 @@ parsers = \
     parser_0x40.c \
     parser_0x41.c \
     parser_0x42.c \
+    parser_0x43.c \
     parser_0x47.c \
     parser_0x48.c \
     parser_0x49.c \
