@@ -54,7 +54,7 @@ int descriptor_0x14_parser(const char *payload, int len, struct dentry *parent, 
 		return -1;
 	}
 
-	dentry = CREATE_DIRECTORY(parent, "ASSOCIATION_TAG_DESCRIPTOR");
+	dentry = CREATE_DIRECTORY(parent, "ASSOCIATION_TAG");
 
 	f.association_tag = (payload[0] << 8) | payload[1];
 	f.use = (payload[2] << 8) | payload[3];

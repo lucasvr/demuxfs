@@ -127,7 +127,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 	sprintf(contents, "%s [%#x]", s.component_name, s.component_tag);
 	f.component_tag = contents;
 	
-	dentry = CREATE_DIRECTORY(parent, "STREAM_IDENTIFIER_DESCRIPTOR");
+	dentry = CREATE_DIRECTORY(parent, "STREAM_IDENTIFIER");
 	CREATE_FILE_STRING(dentry, &f, component_tag, XATTR_FORMAT_STRING_AND_NUMBER);
 
 	if (wrong_tag)
