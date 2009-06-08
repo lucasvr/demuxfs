@@ -5,6 +5,7 @@
 
 #define FS_ES_FIFO_NAME                 "ES"
 #define FS_PES_FIFO_NAME                "PES"
+#define FS_AIT_NAME                     "AIT"
 #define FS_PAT_NAME                     "PAT"
 #define FS_PMT_NAME                     "PMT"
 #define FS_NIT_NAME                     "NIT"
@@ -13,6 +14,7 @@
 #define FS_SDTT_NAME                    "SDTT"
 #define FS_TOT_NAME                     "TOT"
 #define FS_DII_NAME                     "DII"
+#define FS_DSI_NAME                     "DSI"
 #define FS_DDB_NAME                     "DDB"
 
 #define FS_PROGRAMS_NAME                "Programs"
