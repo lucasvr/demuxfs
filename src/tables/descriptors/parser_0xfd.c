@@ -30,10 +30,34 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "byteops.h"
+#include "descriptors.h"
+
+struct formatted_descriptor {
+	uint16_t data_component_id;
+	uint8_t dmf:4;
+	uint8_t reserved:2;
+	uint8_t timing:2;
+};
 
 /* DATA_COMPONENT_DESCRIPTOR parser */
 int descriptor_0xfd_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct dentry *dentry;
+	struct formatted_descriptor f;
+
+	if (! descriptor_is_parseable(parent, 0xfe, 3, len))
+		return -ENODATA;
+
+	dentry = CREATE_DIRECTORY(parent, "DATA_COMPONENT");
+	f.data_component_id = CONVERT_TO_16(payload[0], payload[1]);
+	f.dmf = payload[2] >> 4;
+	f.reserved = (payload[2] >> 2) & 0x03;
+	f.timing = payload[2] & 0x03;
+	CREATE_FILE_NUMBER(dentry, &f, data_component_id);
+	CREATE_FILE_NUMBER(dentry, &f, dmf);
+	CREATE_FILE_NUMBER(dentry, &f, timing);
+
+    return 0;
 }
 
