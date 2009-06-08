@@ -45,16 +45,16 @@ int descriptor_0xfb_parser(const char *payload, int len, struct dentry *parent, 
 	uint8_t i;
 	struct dentry *dentry, *subdir;
 
-	if (! descriptor_is_parseable(parent, 0xfb, 2, len))
+	if (! descriptor_is_parseable(parent, payload[0], 2, len))
 		return -ENODATA;
 
 	dentry = CREATE_DIRECTORY(parent, "PARTIAL_RECEPTION");
-	for (i=0; i<len; i+=2) {
+	for (i=2; i<len; i+=2) {
 		char buf[32];
 		struct formatted_descriptor f;
 		f.service_id = CONVERT_TO_16(payload[i], payload[i+1]);
 
-		sprintf(buf, "SERVICE_%02d", (i/2)+1);
+		sprintf(buf, "SERVICE_%02d", ((i-2)/2)+1);
 		subdir = CREATE_DIRECTORY(dentry, buf);
 		CREATE_FILE_NUMBER(subdir, &f, service_id);
 

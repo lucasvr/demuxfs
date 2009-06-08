@@ -31,6 +31,7 @@
 #include "xattr.h"
 #include "ts.h"
 #include "services.h"
+#include "descriptors.h"
 
 struct formatted_descriptor {
 	uint8_t _service_type;
@@ -48,22 +49,25 @@ int descriptor_0x48_parser(const char *payload, int len, struct dentry *parent, 
 	struct dentry *dentry;
 	int i, j;
 
+	if (! descriptor_is_parseable(parent, payload[0], 4, len))
+		return -ENODATA;
+
 	memset(&f, 0, sizeof(f));
 	dentry = CREATE_DIRECTORY(parent, "SERVICE");
 
-	f._service_type = payload[0];
+	f._service_type = payload[2];
 	sprintf(f.service_type, "%s [%#x]", service_type_to_string(f._service_type), f._service_type);
 	CREATE_FILE_STRING(dentry, &f, service_type, XATTR_FORMAT_STRING_AND_NUMBER);
 
-	f.service_provider_name_length = payload[1];
+	f.service_provider_name_length = payload[3];
 	for (i=0; i<f.service_provider_name_length; ++i)
-		f.service_provider_name[i] = payload[2+i];
+		f.service_provider_name[i] = payload[4+i];
 	CREATE_FILE_NUMBER(dentry, &f, service_provider_name_length);
 	CREATE_FILE_STRING(dentry, &f, service_provider_name, XATTR_FORMAT_STRING);
 
-	f.service_name_length = payload[2+i];
+	f.service_name_length = payload[4+i];
 	for (j=0; j<f.service_name_length; ++j)
-		f.service_name[j] = payload[3+i+j];
+		f.service_name[j] = payload[5+i+j];
 	CREATE_FILE_NUMBER(dentry, &f, service_name_length);
 	CREATE_FILE_STRING(dentry, &f, service_name, XATTR_FORMAT_STRING);
 

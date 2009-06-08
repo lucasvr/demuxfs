@@ -31,6 +31,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
 
 struct formatted_descriptor {
 	uint16_t association_tag;
@@ -49,15 +50,13 @@ int descriptor_0x14_parser(const char *payload, int len, struct dentry *parent, 
 	struct dentry *dentry;
 	struct formatted_descriptor f;
 
-	if (len < 5) {
-		TS_WARNING("cannot parse descriptor %#x: contents smaller than 2 bytes (%d)", 0x14, len);
-		return -1;
-	}
+	if (! descriptor_is_parseable(parent, payload[0], 5, len))
+		return -ENODATA;
 
 	dentry = CREATE_DIRECTORY(parent, "ASSOCIATION_TAG");
 
-	f.association_tag = (payload[0] << 8) | payload[1];
-	f.use = (payload[2] << 8) | payload[3];
+	f.association_tag = (payload[2] << 8) | payload[3];
+	f.use = (payload[4] << 8) | payload[5];
 	CREATE_FILE_NUMBER(dentry, &f, association_tag);
 	CREATE_FILE_NUMBER(dentry, &f, use);
 
@@ -66,30 +65,30 @@ int descriptor_0x14_parser(const char *payload, int len, struct dentry *parent, 
 			TS_WARNING("cannot parse descriptor %#x: contents smaller than 13 bytes (%d)", 0x14, len);
 			return -1;
 		}
-		f.selector_length = payload[4];
-		f.transaction_id = CONVERT_TO_32(payload[5], payload[6], payload[7], payload[8]);
-		f.timeout = CONVERT_TO_32(payload[9], payload[10], payload[11], payload[12]);
+		f.selector_length = payload[6];
+		f.transaction_id = CONVERT_TO_32(payload[7], payload[8], payload[9], payload[10]);
+		f.timeout = CONVERT_TO_32(payload[11], payload[12], payload[13], payload[14]);
 		CREATE_FILE_NUMBER(dentry, &f, selector_length);
 		CREATE_FILE_NUMBER(dentry, &f, transaction_id);
 		CREATE_FILE_NUMBER(dentry, &f, timeout);
-		offset = 13;
+		offset = 15;
 	} else if (f.use == 0x0001) {
-		f.selector_length = payload[4];
+		f.selector_length = payload[6];
 		CREATE_FILE_NUMBER(dentry, &f, selector_length);
-		offset = 5;
+		offset = 7;
 	} else {
-		f.selector_length = payload[4];
+		f.selector_length = payload[6];
 		if (len < 5 + f.selector_length) {
 			TS_WARNING("cannot parse descriptor %#x: contents smaller than %d bytes (%d)",
 					0x14, 5 + f.selector_length, len);
 			return -1;
 		}
 		for (i=0; i<f.selector_length; ++i)
-			f.selector_byte[i] = payload[5+i];
+			f.selector_byte[i] = payload[7+i];
 		f.selector_byte[i] = '\0';
 		CREATE_FILE_NUMBER(dentry, &f, selector_length);
 		CREATE_FILE_STRING(dentry, &f, selector_byte, XATTR_FORMAT_STRING);
-		offset = 4 + i;
+		offset = 6 + i;
 	}
 
 	memset(f.private_data_byte, 0, sizeof(f.private_data_byte));

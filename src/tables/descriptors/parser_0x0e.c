@@ -39,11 +39,11 @@ struct maximum_bitrate_descriptor {
 /* MAXIMUM_BITRATE_DESCRIPTOR parser */
 int descriptor_0x0e_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	if (! descriptor_is_parseable(parent, 0x0e, 3, len))
+	if (! descriptor_is_parseable(parent, payload[0], 5, len))
 		return -ENODATA;
 
 	struct maximum_bitrate_descriptor m;
-	m.max_bitrate = ((payload[0] << 16) | (payload[1] << 8) | payload[2]) & 0x00ffffff;
+	m.max_bitrate = ((payload[2] << 16) | (payload[3] << 8) | payload[4]) & 0x00ffffff;
 
 	struct dentry *subdir = CREATE_DIRECTORY(parent, "MAXIMUM_BITRATE");
 	CREATE_FILE_NUMBER(subdir, &m, max_bitrate);

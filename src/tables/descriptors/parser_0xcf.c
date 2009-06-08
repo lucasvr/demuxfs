@@ -31,6 +31,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
 
 struct transmission_type_01 {
 	uint16_t reserved_1:7;
@@ -84,38 +85,41 @@ int descriptor_0xcf_parser(const char *payload, int len, struct dentry *parent, 
 	struct formatted_descriptor f;
 	struct dentry *dentry = CREATE_DIRECTORY(parent, "LOGO_TRANSMISSION");
 	
-	f._logo_transmission_type = payload[0];
+	if (! descriptor_is_parseable(parent, payload[0], 4, len))
+		return -ENODATA;
+
+	f._logo_transmission_type = payload[2];
 	snprintf(f.logo_transmission_type, sizeof(f.logo_transmission_type), "%s [%#x]",
 			transmission_type_meaning(f._logo_transmission_type), 
 			f._logo_transmission_type);
 	CREATE_FILE_STRING(dentry, &f, logo_transmission_type, XATTR_FORMAT_STRING_AND_NUMBER);
 
 	if (f._logo_transmission_type == 0x01) {
-		f.t1.reserved_1 = payload[1] >> 1;
-		f.t1.logo_id = CONVERT_TO_16(payload[1], payload[2]) & 0x01ff;
-		f.t1.reserved_2 = payload[3] >> 4;
-		f.t1.logo_version = CONVERT_TO_16(payload[3], payload[4]) & 0x0fff;
-		f.t1.download_data_id = CONVERT_TO_16(payload[5], payload[6]);
+		f.t1.reserved_1 = payload[3] >> 1;
+		f.t1.logo_id = CONVERT_TO_16(payload[3], payload[4]) & 0x01ff;
+		f.t1.reserved_2 = payload[5] >> 4;
+		f.t1.logo_version = CONVERT_TO_16(payload[5], payload[6]) & 0x0fff;
+		f.t1.download_data_id = CONVERT_TO_16(payload[7], payload[8]);
 		CREATE_FILE_NUMBER(dentry, &f.t1, logo_id);
 		CREATE_FILE_NUMBER(dentry, &f.t1, logo_version);
 		CREATE_FILE_NUMBER(dentry, &f.t1, download_data_id);
 
 	} else if (f._logo_transmission_type == 0x02) {
-		f.t2.reserved_1 = payload[1] >> 1;
-		f.t2.logo_id = CONVERT_TO_16(payload[1], payload[2]) & 0x01ff;
+		f.t2.reserved_1 = payload[3] >> 1;
+		f.t2.logo_id = CONVERT_TO_16(payload[3], payload[4]) & 0x01ff;
 		CREATE_FILE_NUMBER(dentry, &f.t2, logo_id);
 
 	} else if (f._logo_transmission_type == 0x03) {
 		int i;
 		for (i=0; i<len-1; ++i)
-			f.t3.logo_char[i] = payload[1+i];
+			f.t3.logo_char[i] = payload[3+i];
 		f.t3._len = i;
 		CREATE_FILE_BIN(dentry, &f.t3, logo_char, f.t3._len);
 
 	} else {
 		int i;
 		for (i=0; i<len-1; ++i)
-			f.other.reserved_future_use[i] = payload[1+i];
+			f.other.reserved_future_use[i] = payload[3+i];
 		f.other._len = i;
 		CREATE_FILE_BIN(dentry, &f.other, reserved_future_use, f.other._len);
 	}

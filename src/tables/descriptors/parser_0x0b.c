@@ -43,15 +43,15 @@ struct system_clock_descriptor {
 /* SYSTEM_CLOCK_DESCRIPTOR parser */
 int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	if (! descriptor_is_parseable(parent, 0x0b, 2, len))
+	if (! descriptor_is_parseable(parent, payload[0], 4, len))
 		return -ENODATA;
 
 	struct system_clock_descriptor s;
-	s.external_clock_reference_indicator = (payload[0] >> 7) & 0x01;
-	s.reserved_1 = (payload[0] >> 6) & 0x01;
-	s.clock_accuracy_integer = payload[0] & 0x3f;
-	s.clock_accuracy_exponent = (payload[1] >> 5) & 0x07;
-	s.reserved_2 = payload[1] & 0x1f;
+	s.external_clock_reference_indicator = (payload[2] >> 7) & 0x01;
+	s.reserved_1 = (payload[2] >> 6) & 0x01;
+	s.clock_accuracy_integer = payload[2] & 0x3f;
+	s.clock_accuracy_exponent = (payload[3] >> 5) & 0x07;
+	s.reserved_2 = payload[3] & 0x1f;
 
 	struct dentry *subdir = CREATE_DIRECTORY(parent, "SYSTEM_CLOCK");
 	CREATE_FILE_NUMBER(subdir, &s, external_clock_reference_indicator);

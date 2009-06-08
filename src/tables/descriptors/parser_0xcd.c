@@ -54,15 +54,15 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 	struct formatted_descriptor f;
 	uint8_t offset, i, j;
 
-	if (! descriptor_is_parseable(parent, 0xcd, 2, len))
+	if (! descriptor_is_parseable(parent, payload[0], 4, len))
 		return -ENODATA;
 	
-	f.remote_control_key_id = payload[0];
-	f.length_of_ts_name = payload[1] >> 2;
-	f.transmission_type_count = payload[1] & 0x03;
+	f.remote_control_key_id = payload[2];
+	f.length_of_ts_name = payload[3] >> 2;
+	f.transmission_type_count = payload[3] & 0x03;
 	
 	for (i=0; i<f.length_of_ts_name; ++i)
-		f.ts_name[i] = payload[2+i];
+		f.ts_name[i] = payload[4+i];
 	f.ts_name[i] = '\0';
 	
 	struct dentry *dentry = CREATE_DIRECTORY(parent, "TRANSMISSION_INFORMATION");
@@ -71,7 +71,7 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 	CREATE_FILE_NUMBER(dentry, &f, transmission_type_count);
 	CREATE_FILE_STRING(dentry, &f, ts_name, XATTR_FORMAT_STRING);
 
-	offset = 2 + f.length_of_ts_name;
+	offset = 4 + f.length_of_ts_name;
 	for (i=0; i<f.transmission_type_count; ++i) {
 		struct transmission_type_data t;
 		struct dentry *subdir, *service;

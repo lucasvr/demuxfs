@@ -45,14 +45,14 @@ int descriptor_0x10_parser(const char *payload, int len, struct dentry *parent, 
 {
 	struct dentry *subdir = CREATE_DIRECTORY(parent, "SMOOTHING_BUFFER");
 
-	if (! descriptor_is_parseable(parent, 0x10, 6, len))
+	if (! descriptor_is_parseable(parent, payload[0], 9, len))
 		return -ENODATA;
 
 	struct smoothing_buffer_descriptor s;
-	s.reserved_1 = (payload[0] >> 6) & 0x03;
-	s.sb_leak_rate = CONVERT_TO_24(payload[0], payload[1], payload[2]) & 0x003fffff;
-	s.reserved_2 = (payload[3] >> 6) & 0x03;
-	s.sb_size = CONVERT_TO_24(payload[3], payload[4], payload[5]) & 0x003fffff;
+	s.reserved_1 = (payload[2] >> 6) & 0x03;
+	s.sb_leak_rate = CONVERT_TO_24(payload[2], payload[3], payload[4]) & 0x003fffff;
+	s.reserved_2 = (payload[5] >> 6) & 0x03;
+	s.sb_size = CONVERT_TO_24(payload[5], payload[6], payload[7]) & 0x003fffff;
 
 	//CREATE_FILE_NUMBER(subdir, &s, reserved_1);
 	CREATE_FILE_NUMBER(subdir, &s, sb_leak_rate);
