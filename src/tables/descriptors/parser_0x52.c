@@ -53,7 +53,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 	uint8_t stream_type = 0;
 	bool wrong_tag = false;
 
-	if (! descriptor_is_parseable(parent, 0x52, 1, len))
+	if (! descriptor_is_parseable(parent, payload[0], 3, len))
 		return -ENODATA;
 
 	if (! priv->shared_data)
@@ -64,7 +64,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 	}
 
 	s.component_name = "Unknown";
-	s.component_tag = payload[0];
+	s.component_tag = payload[2];
 	switch (s.component_tag) {
 		case 0x00:
 			s.component_name = "Primary full-seg video ES";

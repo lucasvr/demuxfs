@@ -39,11 +39,12 @@ struct parental_rating_descriptor {
 /* PARENTAL_RATING_DESCRIPTOR parser */
 int descriptor_0x55_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	int i, n, num_entries = len / 4;
-	for (i=0, n=0; n<num_entries; ++n) {
+	int i, n, num_entries = (len-2) / 4;
+
+	for (i=2, n=0; n<num_entries; ++n) {
 		struct dentry *subdir;
 		char dirname[32];
-		sprintf(dirname, "PARENTAL_RATING_%d", i);
+		sprintf(dirname, "PARENTAL_RATING_%d", n+1);
 		subdir = CREATE_DIRECTORY(parent, dirname);
 
 		struct parental_rating_descriptor p;

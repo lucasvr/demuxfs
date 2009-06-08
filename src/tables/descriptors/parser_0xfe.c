@@ -48,12 +48,12 @@ int descriptor_0xfe_parser(const char *payload, int len, struct dentry *parent,
 	uint16_t bflag, bid;
 	int i;
 	
-	if (! descriptor_is_parseable(parent, 0xfe, 2, len))
+	if (! descriptor_is_parseable(parent, payload[0], 2, len))
 		return -ENODATA;
 
 	dentry = CREATE_DIRECTORY(parent, "SYSTEM_MANAGEMENT");
 
-	bflag = (payload[0] >> 6);
+	bflag = (payload[2] >> 6);
 	if (bflag == 0)
 		sprintf(f.broadcasting_flag, "Broadcasting [%#x]", bflag);
 	else if (bflag == 1 || bflag == 2)
@@ -61,7 +61,7 @@ int descriptor_0xfe_parser(const char *payload, int len, struct dentry *parent,
 	else
 		sprintf(f.broadcasting_flag, "Reserved [%#x]", bflag);
 
-	bid = payload[0] & 0x3f;
+	bid = payload[2] & 0x3f;
 	if (priv->options.standard == SBTVD_STANDARD) {
 		if (bid == 0 || bid >= 7)
 			sprintf(f.broadcasting_identifier, "Undefined [%#x]", bid);
@@ -85,11 +85,11 @@ int descriptor_0xfe_parser(const char *payload, int len, struct dentry *parent,
 		else
 			sprintf(f.broadcasting_identifier, "Unknown [%#x]", bid);
 	}
-	f.additional_broadcasting_identification = payload[1];
+	f.additional_broadcasting_identification = payload[3];
 
 	len -= 2;
 	for (i=0; i<len; ++i)
-		f.additional_identification_information[i] = payload[2+i];
+		f.additional_identification_information[i] = payload[4+i];
 	f.additional_identification_information[i] = '\0';
 
 	CREATE_FILE_STRING(dentry, &f, broadcasting_flag, XATTR_FORMAT_STRING_AND_NUMBER);

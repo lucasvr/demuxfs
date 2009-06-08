@@ -48,20 +48,20 @@ int descriptor_0x58_parser(const char *payload, int len, struct dentry *parent, 
 {
 	struct formatted_descriptor f;
 
-	if (! descriptor_is_parseable(parent, 0x58, 13, len))
+	if (! descriptor_is_parseable(parent, payload[0], 15, len))
 		return -ENODATA;
 
 	memset(&f, 0, sizeof(f));
 	sprintf(f.country_code, "%c%c%c [0x%x%x%x]",
-		payload[0], payload[1], payload[2],
-		payload[0], payload[1], payload[2]);
+		payload[2], payload[3], payload[4],
+		payload[2], payload[3], payload[4]);
 
-	f.country_region_id = payload[3] >> 2;
-	f.reserved = (payload[3] >> 6) & 0x01;
-	f.local_time_offset_polarity = (payload[3] >> 7) & 0x01;
-	f.local_time_offset = CONVERT_TO_16(payload[4], payload[5]);
-	f.time_of_change = CONVERT_TO_40(payload[6], payload[7], payload[8], payload[9], payload[10]) & 0xffffffffff;
-	f.next_time_offset = CONVERT_TO_16(payload[11], payload[12]);
+	f.country_region_id = payload[5] >> 2;
+	f.reserved = (payload[5] >> 6) & 0x01;
+	f.local_time_offset_polarity = (payload[5] >> 7) & 0x01;
+	f.local_time_offset = CONVERT_TO_16(payload[6], payload[7]);
+	f.time_of_change = CONVERT_TO_40(payload[8], payload[9], payload[10], payload[11], payload[12]) & 0xffffffffff;
+	f.next_time_offset = CONVERT_TO_16(payload[13], payload[14]);
 	
 	struct dentry *dentry = CREATE_DIRECTORY(parent, "LOCAL_TIME_OFFSET");
 	CREATE_FILE_STRING(dentry, &f, country_code, XATTR_FORMAT_STRING_AND_NUMBER);

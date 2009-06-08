@@ -30,6 +30,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
 
 
 struct formatted_descriptor {
@@ -50,11 +51,14 @@ int descriptor_0xfa_parser(const char *payload, int len, struct dentry *parent, 
 	struct formatted_descriptor f;
 	const char *guard_interval[] = { "1/32", "1/16", "1/8", "1/4" };
 
-	f.area_code = ((payload[0] << 8) | payload[1]) >> 4;
-	f._guard_interval = (payload[1] >> 2) & 0x03;
+	if (! descriptor_is_parseable(parent, payload[0], 4, len))
+		return -ENODATA;
+
+	f.area_code = ((payload[2] << 8) | payload[3]) >> 4;
+	f._guard_interval = (payload[3] >> 2) & 0x03;
 	sprintf(f.guard_interval, "%s [%#x]", guard_interval[f._guard_interval], f._guard_interval);
 	
-	f._transmission_mode = payload[1] & 0x03;
+	f._transmission_mode = payload[3] & 0x03;
 	if (f._transmission_mode == 0 || f._transmission_mode == 1 || f._transmission_mode == 2)
 		sprintf(f.transmission_mode, "Mode %d [%#x]", f._transmission_mode+1, f._transmission_mode);
 	else
@@ -68,7 +72,7 @@ int descriptor_0xfa_parser(const char *payload, int len, struct dentry *parent, 
 	memset(f.frequency, 0, sizeof(f.frequency));
 	for (i=0; i<len-2; i+=2) {
 		char buf[16];
-		f._frequency = (payload[2+i] << 8) | payload[2+i+1];
+		f._frequency = (payload[4+i] << 8) | payload[4+i+1];
 		sprintf(buf, "%s%#x", i == 0 ? "" : "\n", f._frequency);
 		strcat(f.frequency, buf);
 	}
