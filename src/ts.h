@@ -49,6 +49,7 @@
 #define TS_EIT_XSCHEDULE_LAST_TABLE_ID  0x5f
 #define TS_ST_TABLE_ID                  0x72
 #define TS_TOT_TABLE_ID                 0x73
+#define TS_AIT_TABLE_ID                 0x74
 #define TS_SDTT_TABLE_ID                0xc3
 #define TS_BIT_TABLE_ID                 0xc4
 #define TS_CDT_TABLE_ID                 0xc8
