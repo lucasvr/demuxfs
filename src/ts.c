@@ -275,9 +275,11 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 		}
 	} else if (ts_is_pes_packet(header->pid, priv)) {
 		uint16_t size;
+		bool pusi = header->payload_unit_start_indicator;
+
 		buffer = hashtable_get(priv->packet_buffer, header->pid);
 		if (! buffer) {
-			if (! header->payload_unit_start_indicator || (payload_end - payload_start <= 6))
+			if (! pusi || (payload_end - payload_start <= 6))
 				return 0;
 			size = CONVERT_TO_16(payload_start[4], payload_start[5]);
 			buffer = buffer_create(header->pid, size, true);
@@ -285,8 +287,11 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				return 0;
 			buffer->continuity_counter = header->continuity_counter;
 			hashtable_add(priv->packet_buffer, header->pid, buffer);
-		} else if (buffer && ! continuity_counter_is_ok(header, buffer, false))
+		} else if (!continuity_counter_is_ok(header, buffer, false) ||
+			(buffer_get_current_size(buffer) == 0 && !buffer_is_unbounded(buffer) && 
+			 (!pusi || (payload_end - payload_start <= 6)))) {
 			return 0;
+		}
 
 		buffer_append(buffer, payload_start, payload_end - payload_start + 1);
 		if (buffer_contains_full_pes_section(buffer)) {
