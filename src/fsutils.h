@@ -168,6 +168,7 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 
 #define CREATE_FIFO(parent,ftype,fname) \
 	({ \
+	 	char fifo_size[128]; \
 	 	struct dentry *_dentry = fsutils_get_child(parent, fname); \
 	 	if (! _dentry) { \
 	 		_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
@@ -184,7 +185,9 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 			_priv->fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
 	 			_dentry->priv = _priv; \
 	 		} \
+	 		sprintf(fifo_size, "%d", MAX_TS_PACKETS_IN_A_FIFO); \
 	 		CREATE_COMMON((parent),_dentry); \
+			xattr_add(_dentry, XATTR_FIFO_SIZE, fifo_size, strlen(fifo_size), true); \
 	 	} \
 	 	_dentry; \
 	})

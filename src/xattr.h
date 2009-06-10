@@ -5,12 +5,17 @@
 #define ENOATTR ENODATA
 #endif
 
+/* Attribute name */
 #define XATTR_FORMAT                    "system.format"
+/* List of allowed values for above attribute */
 #define XATTR_FORMAT_BIN                "binary data"
 #define XATTR_FORMAT_NUMBER             "number"
 #define XATTR_FORMAT_STRING             "string"
 #define XATTR_FORMAT_STRING_AND_NUMBER  "string [number]"
 #define XATTR_FORMAT_NUMBER_ARRAY       "number [<new_line>number]"
+
+/* Attribute name */
+#define XATTR_FIFO_SIZE                 "user.fifo_size"
 
 struct xattr *xattr_get(struct dentry *dentry, const char *name);
 bool xattr_exists(struct dentry *dentry, const char *name);
