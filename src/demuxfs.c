@@ -278,10 +278,14 @@ static int demuxfs_setxattr(const char *path, const char *name, const char *valu
 	else if ((flags & XATTR_REPLACE) && !xattr_exists(dentry, name))
 		return -ENOATTR;
 
-	write_lock();
+	pthread_mutex_lock(&dentry->mutex);
 	xattr_remove(dentry, name);
 	ret = xattr_add(dentry, name, value, size, true);
-	write_unlock();
+	if (ret == 0 && DEMUXFS_IS_FIFO(dentry) && !strcmp(name, XATTR_FIFO_SIZE)) {
+		struct fifo_priv *fifo_priv = (struct fifo_priv *) dentry->priv;
+		fifo_set_max_elements(fifo_priv->fifo, atoi(value));
+	}
+	pthread_mutex_unlock(&dentry->mutex);
 	return ret;
 }
 

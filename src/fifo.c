@@ -44,6 +44,13 @@ struct fifo *fifo_init(uint32_t max_elements)
 	return fifo;
 }
 
+void fifo_set_max_elements(struct fifo *fifo, uint32_t max_elements)
+{
+	pthread_mutex_lock(&fifo->head_mutex);
+	fifo->max_elements = max_elements;
+	pthread_mutex_unlock(&fifo->head_mutex);
+}
+
 void fifo_flush(struct fifo *fifo)
 {
 	struct fifo_element *entry, *aux;

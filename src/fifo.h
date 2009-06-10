@@ -26,6 +26,14 @@ struct fifo_element {
 struct fifo *fifo_init(uint32_t max_elements);
 
 /**
+ * fifo_set_max_elements - Updates the FIFO maximum number of elements
+ *
+ * @fifo: the FIFO.
+ * @max_elements: how many elements to keep in the FIFO at most.
+ */
+void fifo_set_max_elements(struct fifo *fifo, uint32_t max_elements);
+
+/**
  * fifo_flush - Removes remaining elements stored in a FIFO
  *
  * @fifo: the FIFO.
