@@ -37,6 +37,7 @@
 #include "dsm-cc/dsmcc.h"
 #include "dsm-cc/dii.h"
 #include "dsm-cc/ddb.h"
+#include "dsm-cc/ait.h"
 
 void dsmcc_create_download_data_header_dentries(struct dsmcc_download_data_header *data_header, struct dentry *parent)
 {
@@ -219,7 +220,9 @@ int dsmcc_parse(const struct ts_header *header, const char *payload, uint32_t pa
 {
 	uint8_t table_id = payload[0];
 
-	if (table_id == TS_DII_TABLE_ID)
+	if (table_id == TS_AIT_TABLE_ID)
+		return ait_parse(header, payload, payload_len, priv);
+	else if (table_id == TS_DII_TABLE_ID)
 		return dii_parse(header, payload, payload_len, priv);
 	else if (table_id == TS_DDB_TABLE_ID)
 		return ddb_parse(header, payload, payload_len, priv);
