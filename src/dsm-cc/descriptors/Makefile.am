@@ -1,6 +1,7 @@
 noinst_LTLIBRARIES = libdsmcc_descriptors.la
 
 parsers = \
+	parser_0x00.c \
 	parser_0x01.c \
     parser_0x02.c \
     parser_0x03.c \
