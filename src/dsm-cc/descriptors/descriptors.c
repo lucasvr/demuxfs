@@ -90,6 +90,7 @@ struct dsmcc_descriptor *dsmcc_descriptors_init(struct demuxfs_data *priv)
 	priv->dsmcc_descriptors = (struct dsmcc_descriptor *) calloc(0xff+1, sizeof(struct dsmcc_descriptor));
 
 	/* DSM-CC descriptors and their tag values, defined by ABNT 15606-3 */
+	ADD_DESCRIPTOR("APPLICATION_DESCRIPTOR",           0x00, priv);
 	ADD_DESCRIPTOR("TYPE_DESCRIPTOR",                  0x01, priv);
 	ADD_DESCRIPTOR("NAME_DESCRIPTOR",                  0x02, priv);
 	ADD_DESCRIPTOR("INFO_DESCRIPTOR",                  0x03, priv);
