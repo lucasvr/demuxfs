@@ -64,5 +64,7 @@ int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, const ch
 int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_header, const char *payload, int index);
 int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd, const char *payload, int index);
 int dsmcc_parse(const struct ts_header *header, const char *payload, uint32_t payload_len, struct demuxfs_data *priv);
+void dsmcc_free_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd);
+void dsmcc_free_message_header(struct dsmcc_message_header *msg_header);
 
 #endif /* __dsmcc_h */

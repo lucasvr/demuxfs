@@ -98,6 +98,21 @@ void dsmcc_create_compatibility_descriptor_dentries(struct dsmcc_compatibility_d
 	}
 }
 
+void dsmcc_free_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd)
+{
+	for (uint16_t n=0; n<cd->descriptor_count; ++n) {
+		if (cd->descriptors[n].sub_descriptors)
+			free(cd->descriptors[n].sub_descriptors);
+		for (uint8_t k=0; k<cd->descriptors[n].sub_descriptor_count; ++k) {
+			struct dsmcc_sub_descriptor *sub = &cd->descriptors[n].sub_descriptors[k];
+			if (sub->additional_information)
+				free(sub->additional_information);
+		}
+	}
+	if (cd->descriptors)
+		free(cd->descriptors);
+}
+
 int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd,
 		const char *payload, int index)
 {
@@ -144,6 +159,13 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 	return i;
 }
 
+void dsmcc_free_message_header(struct dsmcc_message_header *msg_header)
+{
+	struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
+	if (adaptation_header->adaptation_data_bytes)
+		free(adaptation_header->adaptation_data_bytes);
+}
+
 int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, 
 		const char *payload, int index)
 {
@@ -158,11 +180,13 @@ int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header,
 	i += 12;
 
 	if (msg_header->adaptation_length) {
+		uint8_t j;
 		struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
 		adaptation_header->adaptation_type = payload[i++];
 		adaptation_header->adaptation_data_bytes = malloc(msg_header->adaptation_length);
-		for (uint8_t j=0; j<msg_header->adaptation_length; ++j, ++i)
+		for (j=0; j<msg_header->adaptation_length; ++j)
 			adaptation_header->adaptation_data_bytes[j] = payload[i+j];
+		i += j;
 	}
 	return i;
 }
