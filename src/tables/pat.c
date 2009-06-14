@@ -64,15 +64,23 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 		uint16_t pid = pat->programs[i].pid;
 		uint16_t program_number = pat->programs[i].program_number;
 
+		/* 
+		 * XXX: we may run into a problem as we just make use the PID, whereas 
+		 * in nit.c and pmt.c both the PID and the table_id are used as key.
+		 */
+		void *existing_parser = hashtable_get(priv->psi_tables, pid);
+
 		/* Create a symlink which points to this dentry in the PMT */
 		snprintf(name, sizeof(name), "%#04x", pat->programs[i].program_number);
 		if (program_number == 0) {
 			snprintf(target, sizeof(target), "../../../%s/%s", FS_NIT_NAME, FS_CURRENT_NAME);
-			hashtable_add(priv->psi_parsers, pid, nit_parse);
+			if (! existing_parser)
+				hashtable_add(priv->psi_parsers, pid, nit_parse);
 		} else {
 			snprintf(target, sizeof(target), "../../../%s/%#04x/%s", 
-					FS_PMT_NAME, pat->programs[i].pid, FS_CURRENT_NAME);
-			hashtable_add(priv->psi_parsers, pid, pmt_parse);
+					FS_PMT_NAME, pid, FS_CURRENT_NAME);
+			if (! existing_parser)
+				hashtable_add(priv->psi_parsers, pid, pmt_parse);
 		}
 		CREATE_SYMLINK(dentry, name, target);
 	}
