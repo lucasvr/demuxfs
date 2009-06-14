@@ -68,6 +68,12 @@ struct transport_protocol_descriptor {
 	char *selector_byte;
 };
 
+/* AIT descriptor 0x03 */
+struct ginga_j_application_descriptor {
+	uint8_t parameter_length;
+	char *parameter;
+};
+
 /* AIT descriptor 0x04 */
 struct ginga_j_application_location_descriptor {
 	uint8_t base_directory_length;
@@ -180,7 +186,25 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 			break;
 		case 0x03: /* Ginga-J application descriptor */
 			{
+				uint8_t param = 1;
+				uint8_t i = 2;
 				dentry = CREATE_DIRECTORY(parent, "GINGA-J_APPLICATION");
+				while (i < len) {
+					char dir_name[32];
+					struct dentry *param_dentry;
+					struct ginga_j_application_descriptor desc;
+
+					desc.parameter_length = payload[i];
+					desc.parameter = strndup(&payload[i+1], desc.parameter_length+1);
+					desc.parameter[desc.parameter_length] = '\0';
+
+					sprintf(dir_name, "PARAMETER_%02d", param++);
+					param_dentry = CREATE_DIRECTORY(dentry, dir_name);
+					CREATE_FILE_NUMBER(param_dentry, &desc, parameter_length);
+					CREATE_FILE_STRING(param_dentry, &desc, parameter, XATTR_FORMAT_STRING);
+
+					free(desc.parameter);
+				}
 			}
 			break;
 		case 0x04: /* Ginga-J application location descriptor */
@@ -200,7 +224,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				desc.classpath_extension[desc.classpath_extension_length] = '\0';
 
 				i += 1 + desc.classpath_extension_length;
-				desc.initial_class = strndup(&payload[i], len - i + 2);
+				desc.initial_class = strndup(&payload[i], len-i+2);
 				desc.initial_class[len-i+2] = '\0';
 
 				CREATE_FILE_NUMBER(dentry, &desc, base_directory_length);
