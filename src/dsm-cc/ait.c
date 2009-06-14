@@ -68,6 +68,15 @@ struct transport_protocol_descriptor {
 	char *selector_byte;
 };
 
+/* AIT descriptor 0x04 */
+struct ginga_j_application_location_descriptor {
+	uint8_t base_directory_length;
+	char *base_directory;
+	uint8_t classpath_extension_length;
+	char *classpath_extension;
+	char *initial_class;
+};
+
 static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 		struct dentry *parent)
 {
@@ -124,6 +133,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 							payload[i+1], payload[i+2]) & 0x00ffffff;
 					desc.application_name_length = payload[i+3];
 					desc.application_name = strndup(&payload[i+4], desc.application_name_length+1);
+					desc.application_name[desc.application_name_length] = '\0';
 
 					CREATE_FILE_NUMBER(app_dentry, &desc, iso_639_language_code);
 					CREATE_FILE_NUMBER(app_dentry, &desc, application_name_length);
@@ -175,7 +185,33 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 			break;
 		case 0x04: /* Ginga-J application location descriptor */
 			{
+				struct ginga_j_application_location_descriptor desc;
+				uint8_t i;
+
 				dentry = CREATE_DIRECTORY(parent, "GINGA-J_APPLICATION_LOCATION");
+
+				desc.base_directory_length = payload[2];
+				desc.base_directory = strndup(&payload[3], desc.base_directory_length+1);
+				desc.base_directory[desc.base_directory_length] = '\0';
+
+				i = 3 + desc.base_directory_length;
+				desc.classpath_extension_length = payload[i];
+				desc.classpath_extension = strndup(&payload[i+1], desc.classpath_extension_length+1);
+				desc.classpath_extension[desc.classpath_extension_length] = '\0';
+
+				i += 1 + desc.classpath_extension_length;
+				desc.initial_class = strndup(&payload[i], len - i + 2);
+				desc.initial_class[len-i+2] = '\0';
+
+				CREATE_FILE_NUMBER(dentry, &desc, base_directory_length);
+				CREATE_FILE_STRING(dentry, &desc, base_directory, XATTR_FORMAT_STRING);
+				CREATE_FILE_NUMBER(dentry, &desc, classpath_extension_length);
+				CREATE_FILE_STRING(dentry, &desc, classpath_extension, XATTR_FORMAT_STRING);
+				CREATE_FILE_STRING(dentry, &desc, initial_class, XATTR_FORMAT_STRING);
+
+				free(desc.base_directory);
+				free(desc.classpath_extension);
+				free(desc.initial_class);
 			}
 			break;
 		case 0x05: /* Application authorization descriptor */
