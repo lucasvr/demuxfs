@@ -16,6 +16,7 @@ uint8_t dsmcc_descriptors_parse(const char *payload, uint8_t num_descriptors,
 		struct dentry *parent, struct demuxfs_data *priv);
 
 /* Descriptor parsers */
+int dsmcc_descriptor_0x00_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int dsmcc_descriptor_0x01_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int dsmcc_descriptor_0x02_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int dsmcc_descriptor_0x03_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
