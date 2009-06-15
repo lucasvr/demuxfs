@@ -128,12 +128,8 @@ int sdtt_parse(const struct ts_header *header, const char *payload, uint32_t pay
 	
 	for (uint8_t i=0; i<sdtt->num_of_contents; ++i) {
 		struct sdtt_contents *c = &sdtt->contents[i];
-		char dir_name[32];
-		struct dentry *subdir;
 		struct sdtt_text_info txt;
-		
-		sprintf(dir_name, "%02d", i+1);
-		subdir = CREATE_DIRECTORY(version_dentry, dir_name);
+		struct dentry *subdir = CREATE_DIRECTORY(version_dentry, "%02d", i+1);
 
 		int index = 15 * (i+1);
 		c->group = payload[index] >> 4;
@@ -189,11 +185,8 @@ int sdtt_parse(const struct ts_header *header, const char *payload, uint32_t pay
 		if (c->_sched_entries)
 			c->sched = calloc(c->_sched_entries, sizeof(struct sdtt_schedule));
 		for (uint16_t j=0; j<c->_sched_entries; ++j) {
+			struct dentry *sched_dentry = CREATE_DIRECTORY(subdir, "sched_%02d", j+1);
 			int idx = index * (j+1);
-			struct dentry *sched_dentry;
-
-			sprintf(dir_name, "sched_%02d", j+1);
-			sched_dentry = CREATE_DIRECTORY(subdir, dir_name);
 
 			c->sched[j].start_time = CONVERT_TO_40(payload[idx], payload[idx+1], 
 					payload[idx+2], payload[idx+3], payload[idx+4]) & 0xffffffffff;
