@@ -1,8 +1,8 @@
 #ifndef __ts_h
 #define __ts_h
 
-#define TS_WARNING(x...) dprintf(x)
-#define TS_ERROR(x...)   dprintf(x)
+#define TS_WARNING(x...) dprintf("WARNING: " x)
+#define TS_ERROR(x...)   dprintf("ERROR: " x)
 
 #define TS_SYNC_BYTE             0x47
 #define TS_MAX_SECTION_LENGTH    0x03FD
