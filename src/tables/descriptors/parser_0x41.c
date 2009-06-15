@@ -45,7 +45,6 @@ struct formatted_descriptor {
 int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
 	uint8_t i;
-	char buf[64];
 	struct dentry *dentry, *subdir;
 	struct formatted_descriptor f;
 	
@@ -60,8 +59,7 @@ int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, 
 		service_type = payload[i+2];
 		sprintf(f.service_type, "%s [%#x]", service_type_to_string(service_type), service_type);
 		
-		sprintf(buf, "SERVICE_%02d", ((i-2)/3)+1);
-		subdir = CREATE_DIRECTORY(dentry, buf);
+		subdir = CREATE_DIRECTORY(dentry, "SERVICE_%02d", ((i-2)/3)+1);
 		CREATE_FILE_NUMBER(subdir, &f, service_id);
 		CREATE_FILE_STRING(subdir, &f, service_type, XATTR_FORMAT_STRING_AND_NUMBER);
 		

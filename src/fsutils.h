@@ -192,12 +192,15 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	_dentry; \
 	})
 
-#define CREATE_DIRECTORY(parent,dname) \
+#define CREATE_DIRECTORY(parent,dname...) \
 	({ \
-	 	struct dentry *_dentry = fsutils_get_child(parent, dname); \
+	 	char _dbuf[PATH_MAX]; \
+	 	struct dentry *_dentry; \
+	 	snprintf(_dbuf, sizeof(_dbuf), dname); \
+	 	_dentry = fsutils_get_child(parent, _dbuf); \
 	 	if (! _dentry) { \
 			_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-			_dentry->name = strdup(dname); \
+			_dentry->name = strdup(_dbuf); \
 			_dentry->mode = S_IFDIR | 0555; \
 	 		_dentry->obj_type = OBJ_TYPE_DIR; \
 			CREATE_COMMON((parent),_dentry); \

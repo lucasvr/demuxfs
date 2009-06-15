@@ -122,11 +122,7 @@ int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	sdt->_services = calloc(sdt->_number_of_services, sizeof(struct sdt_service_info));
 	for (j=0, i=11; j < sdt->_number_of_services; ++j) {
 		struct sdt_service_info *si = &sdt->_services[j];
-		struct dentry *service_dentry;
-		char subdir[32];
-
-		snprintf(subdir, sizeof(subdir), "Service_%02d", j+1);
-		service_dentry = CREATE_DIRECTORY(version_dentry, subdir);
+		struct dentry *service_dentry = CREATE_DIRECTORY(version_dentry, "Service_%02d", j+1);
 
 		si->service_id = CONVERT_TO_16(payload[i], payload[i+1]);
 		si->reserved_future_use = (payload[i+2] >> 2) & 0x3f;

@@ -75,10 +75,8 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 	for (i=0; i<f.transmission_type_count; ++i) {
 		struct transmission_type_data t;
 		struct dentry *subdir, *service;
-		char transmission_name[32];
 		
-		sprintf(transmission_name, "TRANSMISSION_%02d", i+1);
-		subdir = CREATE_DIRECTORY(dentry, transmission_name);
+		subdir = CREATE_DIRECTORY(dentry, "TRANSMISSION_%02d", i+1);
 
 		t.transmission_type_info = payload[offset];
 		t.num_of_service = payload[offset+1];
@@ -87,13 +85,10 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 		CREATE_FILE_NUMBER(subdir, &t, num_of_service);
 
 		for (j=0; j<t.num_of_service; j++) {
-			char buf[64];
-
 			t.service_id = CONVERT_TO_16(payload[offset], payload[offset+1]);
 			offset += 2;
 
-			sprintf(buf, "SERVICE_%02d", (j/2)+1);
-			service = CREATE_DIRECTORY(subdir, buf);
+			service = CREATE_DIRECTORY(subdir, "SERVICE_%02d", (j/2)+1);
 			CREATE_FILE_NUMBER(service, &t, service_id);
 
 			if (! pat_announces_service(t.service_id, priv))

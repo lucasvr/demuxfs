@@ -50,12 +50,10 @@ int descriptor_0xfb_parser(const char *payload, int len, struct dentry *parent, 
 
 	dentry = CREATE_DIRECTORY(parent, "PARTIAL_RECEPTION");
 	for (i=2; i<len; i+=2) {
-		char buf[32];
 		struct formatted_descriptor f;
 		f.service_id = CONVERT_TO_16(payload[i], payload[i+1]);
 
-		sprintf(buf, "SERVICE_%02d", ((i-2)/2)+1);
-		subdir = CREATE_DIRECTORY(dentry, buf);
+		subdir = CREATE_DIRECTORY(dentry, "SERVICE_%02d", ((i-2)/2)+1);
 		CREATE_FILE_NUMBER(subdir, &f, service_id);
 
 		if (! pat_announces_service(f.service_id, priv))
