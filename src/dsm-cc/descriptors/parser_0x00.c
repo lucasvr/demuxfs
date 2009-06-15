@@ -68,10 +68,7 @@ int dsmcc_descriptor_0x00_parser(const char *payload, int len, struct dentry *pa
 		if (! f.profiles)
 			return -ENOMEM;
 		for (i=0, n=0; n<count; ++n, i+=5) {
-			char app_path[PATH_MAX];
-			snprintf(app_path, sizeof(app_path), "APPLICATION_PROFILE_%02d", n+1);
-			struct dentry *profile_dentry = CREATE_DIRECTORY(subdir, app_path);
-
+			struct dentry *profile_dentry = CREATE_DIRECTORY(subdir, "APPLICATION_PROFILE_%02d", n+1);
 			f.profiles[n].application_profile = CONVERT_TO_16(payload[i+1], payload[i+2]);
 			f.profiles[n].version_major = payload[i+3];
 			f.profiles[n].version_minor = payload[i+4];

@@ -99,10 +99,7 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	struct dentry *ts_dentry = CREATE_DIRECTORY(version_dentry, "TS_INFORMATION");
 	uint16_t i = 0, info_index = 0;
 	while (i < nit->transport_stream_loop_length) {
-		char subdir[PATH_MAX];
-		snprintf(subdir, sizeof(subdir), "%02d", ++info_index);
-		struct dentry *info_dentry = CREATE_DIRECTORY(ts_dentry, subdir);
-
+		struct dentry *info_dentry = CREATE_DIRECTORY(ts_dentry, "%02d", ++info_index);
 		struct nit_ts_data ts_data;
 		ts_data.transport_stream_id = (payload[offset] << 8) | payload[offset+1];
 		ts_data.original_network_id = (payload[offset+2] << 8) | payload[offset+3];

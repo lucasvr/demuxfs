@@ -99,7 +99,6 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 
 				desc.application_profiles_length = payload[2];
 				for (i=3; i<desc.application_profiles_length+3; i+=5) {
-					char dir_name[64];
 					struct dentry *prof_dentry;
 					struct app_profile *profile = &desc.app_profile;
 
@@ -108,8 +107,8 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 					profile->version_minor = payload[i+3];
 					profile->version_micro = payload[i+4];
 
-					sprintf(dir_name, "APPLICATION_PROFILE_%02d", profile->application_profile);
-					prof_dentry = CREATE_DIRECTORY(dentry, dir_name);
+					prof_dentry = CREATE_DIRECTORY(dentry, "APPLICATION_PROFILE_%02d", 
+						profile->application_profile);
 
 					CREATE_FILE_NUMBER(prof_dentry, profile, version_major);
 					CREATE_FILE_NUMBER(prof_dentry, profile, version_minor);
@@ -143,9 +142,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 
 				dentry = CREATE_DIRECTORY(parent, "APPLICATION_NAME");
 				while (i < len) {
-					char dir_name[64];
-					sprintf(dir_name, "APPLICATION_NAME_%02d", app_nr++);
-					app_dentry = CREATE_DIRECTORY(dentry, dir_name); 
+					app_dentry = CREATE_DIRECTORY(dentry, "APPLICATION_NAME_%02d", app_nr++); 
 
 					desc.iso_639_language_code = CONVERT_TO_24(payload[i],
 							payload[i+1], payload[i+2]) & 0x00ffffff;
@@ -202,7 +199,6 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				uint8_t i = 2;
 				dentry = CREATE_DIRECTORY(parent, "GINGA-J_APPLICATION");
 				while (i < len) {
-					char dir_name[32];
 					struct dentry *param_dentry;
 					struct ginga_j_application_descriptor desc;
 
@@ -210,8 +206,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 					desc.parameter = strndup(&payload[i+1], desc.parameter_length+1);
 					desc.parameter[desc.parameter_length] = '\0';
 
-					sprintf(dir_name, "PARAMETER_%02d", param++);
-					param_dentry = CREATE_DIRECTORY(dentry, dir_name);
+					param_dentry = CREATE_DIRECTORY(dentry, "PARAMETER_%02d", param++);
 					CREATE_FILE_NUMBER(param_dentry, &desc, parameter_length);
 					CREATE_FILE_STRING(param_dentry, &desc, parameter, XATTR_FORMAT_STRING);
 
@@ -363,12 +358,10 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		uint16_t ait_index = 0;
 		ait->ait_data = calloc(ait->_ait_data_entries, sizeof(struct ait_data));
 		while (i < ait->application_loop_length) {
-			char dir_name[64];
 			struct dentry *app_dentry;
 			struct ait_data *data = &ait->ait_data[ait_index++];
 
-			sprintf(dir_name, "Application_%02d", ait_index);
-			app_dentry = CREATE_DIRECTORY(version_dentry, dir_name);
+			app_dentry = CREATE_DIRECTORY(version_dentry, "Application_%02d", ait_index);
 
 			data->application_identifier.organization_id = CONVERT_TO_32(payload[i],
 				payload[i+1], payload[i+2], payload[i+3]);
