@@ -47,9 +47,10 @@ struct application_descriptor {
 		uint8_t version_micro;
 	} app_profile;
 	uint8_t service_bound_flag:1;
-	uint8_t visibility:2;
+	uint8_t _visibility:2;
 	uint8_t reserved_future_use:5;
 	uint8_t application_priority;
+	char *visibility;
 	char *transport_protocol_label;
 };
 
@@ -115,12 +116,23 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 					CREATE_FILE_NUMBER(prof_dentry, profile, version_micro);
 				}
 				desc.service_bound_flag = payload[i] >> 7;
-				desc.visibility = (payload[i] >> 5) & 0x03;
+				desc._visibility = (payload[i] >> 5) & 0x03;
 				desc.application_priority = payload[i+1];
 
+				if (desc._visibility == 0x00)
+					desc.visibility = strdup("Not visible to users or other applications through API, except for logout information errors and such [0x00]");
+				else if (desc._visibility == 0x01)
+					desc.visibility = strdup("Not visible to users but visible to other applications through API [0x01]");
+				else if (desc._visibility == 0x02)
+					desc.visibility = strdup("Reserved for future use [0x02]");
+				else /* if (desc._visibility == 0x03) */
+					desc.visibility = strdup("Visible to users and to other applications through API [0x03]");
+
 				CREATE_FILE_NUMBER(dentry, &desc, service_bound_flag);
-				CREATE_FILE_NUMBER(dentry, &desc, visibility);
+				CREATE_FILE_STRING(dentry, &desc, visibility, XATTR_FORMAT_STRING_AND_NUMBER);
 				CREATE_FILE_NUMBER(dentry, &desc, application_priority);
+
+				free(desc.visibility);
 			}
 			break;
 		case 0x01: /* Application name descriptor */
