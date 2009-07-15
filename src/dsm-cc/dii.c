@@ -37,29 +37,15 @@
 #include "tables/psi.h"
 #include "dsm-cc/dsmcc.h"
 #include "dsm-cc/dii.h"
+#include "dsm-cc/dsi.h"
 #include "dsm-cc/descriptors/descriptors.h"
 
-static void __attribute__((unused)) dii_free(struct dii_table *dii)
+static void dii_free(struct dii_table *dii)
 {
 	/* Free DSM-CC compatibility descriptors */
-	struct dsmcc_compatibility_descriptor *cd = &dii->compatibility_descriptor;
-	if (cd->descriptor_count) {
-		for (uint16_t i=0; i<cd->descriptor_count; ++i) {
-			for (uint8_t j=0; j<cd->descriptors[i].sub_descriptor_count; ++j) {
-				struct dsmcc_sub_descriptor *sub = &cd->descriptors[i].sub_descriptors[j];
-				if (sub->sub_descriptor_length)
-					free(sub->additional_information);
-			}
-			if (cd->descriptor_count)
-				free(cd->descriptors[i].sub_descriptors);
-		}
-		free(cd->descriptors);
-	}
+	dsmcc_free_compatibility_descriptors(&dii->compatibility_descriptor);
 	/* Free DSM-CC message header */
-	struct dsmcc_message_header *msg_header = &dii->dsmcc_message_header;
-	struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
-	if (adaptation_header->adaptation_data_bytes)
-		free(adaptation_header->adaptation_data_bytes);
+	dsmcc_free_message_header(&dii->dsmcc_message_header);
 	/* Free the dentry and its subtree */
 	if (dii->dentry && dii->dentry->name)
 		fsutils_dispose_tree(dii->dentry);
@@ -69,8 +55,13 @@ static void __attribute__((unused)) dii_free(struct dii_table *dii)
 
 static void dii_check_header(struct dii_table *dii)
 {
-	if (dii->section_syntax_indicator != 1)
-		TS_WARNING("section_syntax_indicator != 1 (0)");
+	if (dii->section_syntax_indicator == 0) {
+		/* Checksum */
+		TS_WARNING("DII contains a Checksum");
+	} else {
+		/* CRC 32 */
+		TS_WARNING("DII contains a CRC-32");
+	}
 	if (dii->section_length > 4093)
 		TS_WARNING("section_length exceeds 4093 bytes (%d)", dii->section_length);
 }
@@ -98,7 +89,8 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 	struct dsmcc_compatibility_descriptor *cd = &dii->compatibility_descriptor;
 
 	dsmcc_create_message_header_dentries(msg_header, parent);
-	dsmcc_create_compatibility_descriptor_dentries(cd, parent);
+	if (dii->private_data_length)
+		dsmcc_create_compatibility_descriptor_dentries(cd, parent);
 
 	CREATE_FILE_NUMBER(parent, dii, download_id);
 	CREATE_FILE_NUMBER(parent, dii, block_size);
@@ -116,10 +108,7 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 	
 	CREATE_FILE_NUMBER(parent, dii, number_of_modules);
 	for (uint16_t i=0; i<dii->number_of_modules; ++i) {
-		char dir_name[64];
-		sprintf(dir_name, "module_%02d", i+1);
-		struct dentry *subdir = CREATE_DIRECTORY(parent, dir_name);
-		
+		struct dentry *subdir = CREATE_DIRECTORY(parent, "module_%02d", i+1);
 		struct dii_module *mod = &dii->modules[i];
 		CREATE_FILE_NUMBER(subdir, mod, module_id);
 		CREATE_FILE_NUMBER(subdir, mod, module_size);
@@ -167,8 +156,8 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) dii, payload, payload_len);
 	if (ret < 0) {
-		free(dii->dentry);
-		free(dii);
+		dprintf("error parsing PSI packet");
+		dii_free(dii);
 		return 0;
 	}
 	dii_check_header(dii);
@@ -178,22 +167,33 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	int j = dsmcc_parse_message_header(msg_header, payload, 8);
 	
 	/* Check whether we should keep processing this packet or not */
-	if (msg_header->protocol_discriminator != 0x11 ||
-		msg_header->dsmcc_type != 0x03 ||
-		msg_header->message_id != 0x1002) {
-		free(dii->dentry);
-		free(dii);
+	if (msg_header->protocol_discriminator != 0x11 || msg_header->dsmcc_type != 0x03) {
+		dprintf("protocol_discriminator=%#x, dsmcc_type=%#x: not a U-N message, bailing out", 
+				msg_header->protocol_discriminator,
+				msg_header->dsmcc_type);
+		dii_free(dii);
 		return 0;
 	}
+
+	if (msg_header->message_id == 0x1006) {
+		/* DSM-CC Download Server Initiate. Free data allocated so far and parse the message. */
+		dii_free(dii);
+		return dsi_parse(header, payload, payload_len, priv);
+	} else if (msg_header->message_id != 0x1002) {
+		dii_free(dii);
+		return 0;
+	}
+
+	dprintf("DII: protocol_discriminator=%#x, dsmcc_type=%#x, message_id=%#x", 
+			msg_header->protocol_discriminator, msg_header->dsmcc_type, msg_header->message_id);
 
 	/** At this point we know for sure that this is a DII table */ 
 	dii->dentry->inode = TS_PACKET_HASH_KEY(header, dii);
 	current_dii = hashtable_get(priv->psi_tables, dii->dentry->inode);
-	if (! dii->current_next_indicator || (current_dii && current_dii->version_number == dii->version_number)) {
-		free(dii->dentry);
-		free(dii);
+/*	if (! dii->current_next_indicator || (current_dii && current_dii->version_number == dii->version_number)) {
+		dii_free(dii);
 		return 0;
-	}
+	}*/
 
 	dprintf("*** DII parser: pid=%#x, table_id=%#x, dii->version_number=%#x, transaction_nr=%#x ***", 
 			header->pid, dii->table_id, dii->version_number, msg_header->transaction_id & ~0x80000000);
@@ -207,8 +207,7 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	dii->t_c_download_scenario = CONVERT_TO_32(payload[j+12], payload[j+13], payload[j+14], payload[j+15]);
 
 	if (dii->block_size == 0) {
-		free(dii->dentry);
-		free(dii);
+		dii_free(dii);
 		return 0;
 	}
 
@@ -241,7 +240,7 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		dii->private_data_bytes[i] = payload[j+2+i];
 
 	j += 2 + dii->private_data_length;
-	
+
 	/* Create filesystem entries for this table */
 	struct dentry *version_dentry = NULL;
 	dii_create_directory(header, dii, &version_dentry, priv);
