@@ -76,10 +76,7 @@ void dsmcc_create_compatibility_descriptor_dentries(struct dsmcc_compatibility_d
 	CREATE_FILE_NUMBER(parent, cd, compatibility_descriptor_length);
 	CREATE_FILE_NUMBER(parent, cd, descriptor_count);
 	for (uint16_t i=0; i<cd->descriptor_count; ++i) {
-		char dir_name[64];
-		sprintf(dir_name, "descriptor_%02d", i+1);
-		struct dentry *subdir = CREATE_DIRECTORY(parent, dir_name);
-
+		struct dentry *subdir = CREATE_DIRECTORY(parent, "descriptor_%02d", i+1);
 		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], descriptor_type);
 		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], descriptor_length);
 		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], specifier_type);
@@ -88,8 +85,7 @@ void dsmcc_create_compatibility_descriptor_dentries(struct dsmcc_compatibility_d
 		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], version);
 		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], sub_descriptor_count);
 		for (uint8_t k=0; k<cd->descriptors[i].sub_descriptor_count; ++k) {
-			sprintf(dir_name, "sub_descriptor_%02d", k+1);
-			struct dentry *dentry = CREATE_DIRECTORY(subdir, dir_name);
+			struct dentry *dentry = CREATE_DIRECTORY(subdir, "sub_descriptor_%02d", k+1);
 			struct dsmcc_sub_descriptor *sub = &cd->descriptors[i].sub_descriptors[k];
 			CREATE_FILE_NUMBER(dentry, sub, sub_descriptor_type);
 			CREATE_FILE_NUMBER(dentry, sub, sub_descriptor_length);
