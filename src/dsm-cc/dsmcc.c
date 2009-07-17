@@ -177,15 +177,20 @@ int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header,
 	i += 12;
 
 	if (msg_header->adaptation_length) {
-		uint8_t j;
 		struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
 		adaptation_header->adaptation_type = payload[i++];
 		adaptation_header->adaptation_data_bytes = malloc(msg_header->adaptation_length);
-		for (j=0; j<msg_header->adaptation_length; ++j)
+		for (uint16_t j=0; j<msg_header->adaptation_length; ++j, ++i)
 			adaptation_header->adaptation_data_bytes[j] = payload[i+j];
-		i += j;
 	}
 	return i;
+}
+
+void dsmcc_free_download_data_header(struct dsmcc_download_data_header *data_header)
+{
+	struct dsmcc_adaptation_header *adaptation_header = &data_header->dsmcc_adaptation_header;
+	if (adaptation_header->adaptation_data_bytes)
+		free(adaptation_header->adaptation_data_bytes);
 }
 
 int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_header,
@@ -203,12 +208,12 @@ int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_hea
 
 	if (data_header->adaptation_length) {
 		struct dsmcc_adaptation_header *adaptation_header = &data_header->dsmcc_adaptation_header;
-		adaptation_header->adaptation_type = payload[i+12];
+		adaptation_header->adaptation_type = payload[i++];
 		adaptation_header->adaptation_data_bytes = malloc(data_header->adaptation_length);
-		for (uint16_t j=0; j<data_header->adaptation_length; ++j)
-			adaptation_header->adaptation_data_bytes[j] = payload[i+13+j];
+		for (uint16_t j=0; j<data_header->adaptation_length; ++j, ++i)
+			adaptation_header->adaptation_data_bytes[j] = payload[i+j];
 	}
-	return i + data_header->adaptation_length;
+	return i;
 }
 
 int dsmcc_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
