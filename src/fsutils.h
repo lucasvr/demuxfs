@@ -40,6 +40,7 @@ char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size);
 void fsutils_dump_tree(struct dentry *dentry);
 struct dentry *fsutils_get_child(struct dentry *dentry, const char *name);
 struct dentry *fsutils_get_dentry(struct dentry *root, const char *path);
+struct dentry * fsutils_get_current(struct dentry *parent);
 struct dentry *fsutils_create_dentry(const char *path, mode_t mode);
 struct dentry * fsutils_create_version_dir(struct dentry *parent, int version);
 void fsutils_dispose_tree(struct dentry *dentry);

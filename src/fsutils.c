@@ -308,3 +308,12 @@ struct dentry * fsutils_create_version_dir(struct dentry *parent, int version)
 
 	return child;
 }
+
+struct dentry * fsutils_get_current(struct dentry *parent)
+{
+	struct dentry *target = NULL;
+	struct dentry *current = fsutils_get_child(parent, FS_CURRENT_NAME);
+	if (current)
+		target = fsutils_get_child(parent, current->contents);
+	return target;
+}
