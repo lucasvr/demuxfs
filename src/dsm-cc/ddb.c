@@ -38,6 +38,109 @@
 #include "dsm-cc/ddb.h"
 #include "dsm-cc/dii.h"
 
+static void ddb_free(struct ddb_table *ddb)
+{
+	struct dsmcc_download_data_header *data_header;
+	
+	if (! ddb)
+		return;
+
+	data_header = &ddb->dsmcc_download_data_header;
+	dsmcc_free_download_data_header(data_header);
+	if (ddb->block_data_bytes)
+		free(ddb->block_data_bytes);
+	free(ddb->dentry);
+	free(ddb);
+}
+
+static struct dentry * ddb_find_dii(struct ddb_table *ddb, uint16_t *block_size, struct demuxfs_data *priv)
+{
+	struct dentry *dii = fsutils_get_dentry(priv->root, "/DII");
+	if (! dii) {
+		dprintf("no /dii found");
+		return NULL;
+	}
+
+	char dii_path[PATH_MAX];
+	struct dentry *module, *target, *file;
+	list_for_each_entry(module, &dii->children, list) {
+		sprintf(dii_path, "%s/%s/block_size", module->name, FS_CURRENT_NAME);
+		dprintf("looking for %s", dii_path);
+		file = fsutils_get_dentry(module, dii_path);
+		if (file)
+			*block_size = strtol(file->contents, NULL, 16);
+
+		sprintf(dii_path, "%s/%s/module_%02d", module->name, FS_CURRENT_NAME, ddb->module_id+1);
+		target = fsutils_get_dentry(module, dii_path);
+		if (! target)
+			continue;
+
+		file = fsutils_get_child(target, "module_id");
+		uint16_t module_id = strtol(file->contents, NULL, 16);
+
+		file = fsutils_get_child(target, "module_version");
+		uint8_t module_version = strtol(file->contents, NULL, 16);
+
+		if (module_id == ddb->module_id && module_version == ddb->module_version)
+			return target;
+	}
+	return NULL;
+}
+
+static char * ddb_get_filename(struct dentry *dii_module_dir, struct demuxfs_data *priv)
+{
+	char *path_to_file;
+	struct dentry *entry;
+	
+	/* Try to find the name descriptor */
+	entry = fsutils_get_child(dii_module_dir, "NAME");
+	if (entry) {
+		struct dentry *name = fsutils_get_child(entry, "text_char");
+		if (name) {
+			asprintf(&path_to_file, "%s/%s", priv->options.tmpdir, name->contents);
+			return path_to_file;
+		}
+	}
+	asprintf(&path_to_file, "%s/file.bin", priv->options.tmpdir);
+	return path_to_file;
+}
+
+static void ddb_update_file_contents(const char *filename, uint16_t block_size,
+		struct ddb_table *ddb, struct demuxfs_data *priv)
+{
+	FILE *fp = fopen(filename, "a");
+	if (! fp) {
+		perror(filename);
+		return;
+	}
+	fseek(fp, ddb->block_number * block_size, SEEK_SET);
+	fwrite(ddb->block_data_bytes, 1, ddb->_block_data_size, fp);
+	fclose(fp);
+}
+
+static bool ddb_block_number_already_parsed(struct ddb_table *current_ddb, 
+	uint16_t module_id, uint16_t block_number)
+{
+	struct dentry *current_dentry, *module_dentry, *block_dentry;
+	char dname[64], fname[64];
+
+	if (! current_ddb)
+		return false;
+
+	current_dentry = fsutils_get_current(current_ddb->dentry);
+	if (current_dentry) {
+		sprintf(dname, "module_%02d", module_id);
+		sprintf(fname, "block_%02d.bin", block_number);
+		module_dentry = fsutils_get_child(current_dentry, dname);
+		if (module_dentry) {
+			block_dentry = fsutils_get_child(module_dentry, fname);
+			return block_dentry ? true : false;
+		}
+	}
+
+	return false;
+}
+
 static void ddb_check_header(struct ddb_table *ddb)
 {
 }
@@ -55,9 +158,6 @@ static void ddb_create_directory(const struct ts_header *header, struct ddb_tabl
 	
 	/* Create the versioned dir and update the Current symlink */
 	*version_dentry = fsutils_create_version_dir(ddb->dentry, ddb->version_number);
-
-	psi_populate((void **) &ddb, *version_dentry);
-	//ddb_populate(ddb, *version_dentry, priv);
 }
 
 int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
@@ -84,32 +184,26 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	current_ddb = hashtable_get(priv->psi_tables, ddb->dentry->inode);
 	
 	/* Check whether we should keep processing this packet or not */
-	if (! ddb->current_next_indicator || (current_ddb && current_ddb->version_number == ddb->version_number)) {
+	if (! ddb->current_next_indicator) {
 		free(ddb->dentry);
 		free(ddb);
 		return 0;
 	}
 
-	dprintf("*** DDB parser: pid=%#x, table_id=%#x, current_ddb=%p, ddb->version_number=%#x, len=%d ***", 
-			header->pid, ddb->table_id, current_ddb, ddb->version_number, payload_len);
-
-	/* Parse DDB specific bits */
-	struct dentry *version_dentry = NULL;
-	ddb_create_directory(header, ddb, &version_dentry, priv);
-	
 	/** DSM-CC Download Data Header */
 	struct dsmcc_download_data_header *data_header = &ddb->dsmcc_download_data_header;
 	int j = dsmcc_parse_download_data_header(data_header, payload, 8);
-	dsmcc_create_download_data_header_dentries(data_header, version_dentry);
-	j += data_header->adaptation_length;
 	
-	if (data_header->dsmcc_type != 0x03) {
-	//	TS_WARNING("dsmcc_type != 0x03 (%#x)", data_header->dsmcc_type);
-		goto out;
+	if (data_header->dsmcc_type != 0x03 ||
+		data_header->message_id != 0x1003) {
+		ddb_free(ddb);
+		return 0;
 	}
-	if (data_header->message_id != 0x1003) {
-	//	TS_WARNING("message_id != 0x1003 (%#x)", data_header->message_id);
-		goto out;
+
+	if (data_header->message_length < 5) {
+		// XXX: expose header in the fs?
+		ddb_free(ddb);
+		return 0;
 	}
 
 	/** DDB bits */
@@ -117,25 +211,68 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	ddb->module_version = payload[j+2];
 	ddb->reserved = payload[j+3];
 	ddb->block_number = CONVERT_TO_16(payload[j+4], payload[j+5]);
-	CREATE_FILE_NUMBER(version_dentry, ddb, module_id);
-	CREATE_FILE_NUMBER(version_dentry, ddb, module_version);
-	CREATE_FILE_NUMBER(version_dentry, ddb, block_number);
-	ddb->_block_data_size = data_header->message_length - data_header->adaptation_length - 6;
-	if (ddb->_block_data_size) {
-		ddb->block_data_bytes = malloc(sizeof(char) * ddb->_block_data_size);
-		for (uint16_t i=0; i<ddb->_block_data_size; ++i)
-			ddb->block_data_bytes[i] = payload[j+6+i];
-		CREATE_FILE_BIN(version_dentry, ddb, block_data_bytes, ddb->_block_data_size);
+	if (ddb_block_number_already_parsed(current_ddb, ddb->module_id, ddb->block_number)) {
+		dprintf("ddb module_%02d_block_%02d version %d was already parsed", ddb->module_id, ddb->block_number, ddb->module_version);
+		ddb_free(ddb);
+		return 0;
 	}
 
-out:
-	if (current_ddb) {
-		hashtable_del(priv->psi_tables, current_ddb->dentry->inode);
-		fsutils_migrate_children(current_ddb->dentry, ddb->dentry);
-		fsutils_dispose_tree(current_ddb->dentry);
-		free(current_ddb);
+	ddb->_block_data_size = data_header->message_length - data_header->adaptation_length - 6;
+	if (! ddb->_block_data_size) {
+		dprintf("ddb module_%02d_block_%02d version %d has empty data block", ddb->module_id, ddb->block_number, ddb->module_version);
+		ddb_free(ddb);
+		return 0;
 	}
-	hashtable_add(priv->psi_tables, ddb->dentry->inode, ddb);
+
+//	dprintf("payload_len=%d, (%d) + (%d) + 6 = %d",
+//			payload_len, 
+//			data_header->message_length, data_header->adaptation_length,
+//			data_header->message_length+data_header->adaptation_length+6);
+
+	uint16_t block_size = payload_len - (j+6);
+	ddb->block_data_bytes = malloc(sizeof(char) * block_size);
+	for (uint16_t i=0; i<block_size; ++i)
+		ddb->block_data_bytes[i] = payload[j+6+i];
+
+	/* Find the corresponding DII entry for this packet */
+//	uint16_t block_size = 0;
+//	struct dentry *dii = ddb_find_dii(ddb, &block_size, priv);
+//	if (! dii) {
+//		ddb_free(ddb);
+//		return 0;
+//	}
+
+//	dprintf("*** DDB parser: pid=%d, table_id=%#x, ddb->version_number=%#x, ddb->block_number=%d, module_id=%d, current=%p ***", 
+//			header->pid, ddb->table_id, ddb->version_number, ddb->block_number, ddb->module_id, current_ddb);
+
+	/* Create filesystem entries for this table */
+	struct dentry *version_dentry = NULL;
+	if (current_ddb)
+		version_dentry = fsutils_get_current(current_ddb->dentry);
+	else
+		ddb_create_directory(header, ddb, &version_dentry, priv);
+
+	struct dentry *module_dir = CREATE_DIRECTORY(version_dentry, "module_%02d", ddb->module_id);
+	struct dentry *block_dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
+	block_dentry->size = block_size;
+	block_dentry->mode = S_IFREG | 0444;
+	block_dentry->obj_type = OBJ_TYPE_FILE;
+	block_dentry->contents = malloc(block_size);
+	memcpy(block_dentry->contents, ddb->block_data_bytes, block_size);
+	asprintf(&block_dentry->name, "block_%02d.bin", ddb->block_number);
+	CREATE_COMMON(module_dir, block_dentry);
+	xattr_add(block_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false);
+		
+//	char *filename = ddb_get_filename(dii, priv);
+//	dprintf("filename = %s", filename);
+//	dsmcc_create_download_data_header_dentries(data_header, version_dentry);
+//	ddb_update_file_contents(filename, block_size, ddb, priv);
+//	free(filename);
+
+	if (current_ddb)
+		ddb_free(ddb);
+	else
+		hashtable_add(priv->psi_tables, ddb->dentry->inode, ddb);
 
 	return 0;
 }
