@@ -47,8 +47,8 @@ static void ddb_free(struct ddb_table *ddb)
 
 	data_header = &ddb->dsmcc_download_data_header;
 	dsmcc_free_download_data_header(data_header);
-	if (ddb->block_data_bytes)
-		free(ddb->block_data_bytes);
+//	if (ddb->block_data_bytes)
+//		free(ddb->block_data_bytes);
 	free(ddb->dentry);
 	free(ddb);
 }
@@ -185,6 +185,7 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! ddb->current_next_indicator) {
+		dprintf("ddb doesn't have current_next_indicator bit set, skipping it");
 		free(ddb->dentry);
 		free(ddb);
 		return 0;
@@ -194,14 +195,16 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	struct dsmcc_download_data_header *data_header = &ddb->dsmcc_download_data_header;
 	int j = dsmcc_parse_download_data_header(data_header, payload, 8);
 	
-	if (data_header->dsmcc_type != 0x03 ||
-		data_header->message_id != 0x1003) {
+	if (data_header->_dsmcc_type != 0x03 ||
+		data_header->_message_id != 0x1003) {
 		ddb_free(ddb);
 		return 0;
 	}
 
 	if (data_header->message_length < 5) {
 		// XXX: expose header in the fs?
+		if (data_header->message_length)
+			dprintf("skipping message with len=%d", data_header->message_length);
 		ddb_free(ddb);
 		return 0;
 	}
@@ -212,27 +215,15 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	ddb->reserved = payload[j+3];
 	ddb->block_number = CONVERT_TO_16(payload[j+4], payload[j+5]);
 	if (ddb_block_number_already_parsed(current_ddb, ddb->module_id, ddb->block_number)) {
-		dprintf("ddb module_%02d_block_%02d version %d was already parsed", ddb->module_id, ddb->block_number, ddb->module_version);
 		ddb_free(ddb);
 		return 0;
 	}
 
 	ddb->_block_data_size = data_header->message_length - data_header->adaptation_length - 6;
 	if (! ddb->_block_data_size) {
-		dprintf("ddb module_%02d_block_%02d version %d has empty data block", ddb->module_id, ddb->block_number, ddb->module_version);
 		ddb_free(ddb);
 		return 0;
 	}
-
-//	dprintf("payload_len=%d, (%d) + (%d) + 6 = %d",
-//			payload_len, 
-//			data_header->message_length, data_header->adaptation_length,
-//			data_header->message_length+data_header->adaptation_length+6);
-
-	uint16_t block_size = payload_len - (j+6);
-	ddb->block_data_bytes = malloc(sizeof(char) * block_size);
-	for (uint16_t i=0; i<block_size; ++i)
-		ddb->block_data_bytes[i] = payload[j+6+i];
 
 	/* Find the corresponding DII entry for this packet */
 //	uint16_t block_size = 0;
@@ -252,23 +243,21 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	else
 		ddb_create_directory(header, ddb, &version_dentry, priv);
 
+	uint16_t this_block_size = payload_len - (j+6);
+	uint16_t this_block_start = j+6;
+
+	/* Create individual block file */
 	struct dentry *module_dir = CREATE_DIRECTORY(version_dentry, "module_%02d", ddb->module_id);
 	struct dentry *block_dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
-	block_dentry->size = block_size;
+	block_dentry->size = this_block_size;
 	block_dentry->mode = S_IFREG | 0444;
 	block_dentry->obj_type = OBJ_TYPE_FILE;
-	block_dentry->contents = malloc(block_size);
-	memcpy(block_dentry->contents, ddb->block_data_bytes, block_size);
+	block_dentry->contents = malloc(this_block_size);
+	memcpy(block_dentry->contents, &payload[this_block_start], this_block_size);
 	asprintf(&block_dentry->name, "block_%02d.bin", ddb->block_number);
 	CREATE_COMMON(module_dir, block_dentry);
 	xattr_add(block_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false);
-		
-//	char *filename = ddb_get_filename(dii, priv);
-//	dprintf("filename = %s", filename);
-//	dsmcc_create_download_data_header_dentries(data_header, version_dentry);
-//	ddb_update_file_contents(filename, block_size, ddb, priv);
-//	free(filename);
-
+	
 	if (current_ddb)
 		ddb_free(ddb);
 	else
