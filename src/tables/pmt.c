@@ -32,6 +32,7 @@
 #include "hash.h"
 #include "fifo.h"
 #include "ts.h"
+#include "byteops.h"
 #include "snapshot.h"
 #include "descriptors.h"
 #include "stream_type.h"
@@ -149,10 +150,10 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 		stream_type_is_object_carousel(stream->stream_type_identifier)) {
 		char target[PATH_MAX];
 		if (0) {
-			sprintf(target, "../../../../../DDB/%#02x/Current/BIOP", stream->elementary_stream_pid);
+			sprintf(target, "../../../../../DDB/%#02x/%s/BIOP", stream->elementary_stream_pid, FS_CURRENT_NAME);
 			struct dentry *biop_symlink = CREATE_SYMLINK(*subdir, "BIOP", target);
 		} else {
-			sprintf(target, "../../../../../DDB/%#02x/Current", stream->elementary_stream_pid);
+			sprintf(target, "../../../../../DDB/%#02x/%s", stream->elementary_stream_pid, FS_CURRENT_NAME);
 			struct dentry *biop_symlink = CREATE_SYMLINK(*subdir, "BIOP", target);
 		}
 	}
@@ -243,9 +244,9 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Parse PMT specific bits */
 	struct dentry *version_dentry;
 	pmt->reserved_4 = payload[8] >> 5;
-	pmt->pcr_pid = ((payload[8] << 8) | payload[9]) & 0x1fff;
+	pmt->pcr_pid = CONVERT_TO_16(payload[8], payload[9]) & 0x1fff;
 	pmt->reserved_5 = payload[10] >> 4;
-	pmt->program_information_length = ((payload[10] << 8) | payload[11]) & 0x0fff;
+	pmt->program_information_length = CONVERT_TO_16(payload[10], payload[11]) & 0x0fff;
 	pmt->num_descriptors = descriptors_count(&payload[12], pmt->program_information_length);
 	pmt_create_directory(header, pmt, &version_dentry, priv);
 
@@ -258,17 +259,20 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		struct pmt_stream stream;
 		stream.stream_type_identifier = payload[offset];
 		stream.reserved_1 = (payload[offset+1] >> 5) & 0x7;
-		stream.elementary_stream_pid = ((payload[offset+1] << 8) | payload[offset+2]) & 0x1fff;
+		stream.elementary_stream_pid = CONVERT_TO_16(payload[offset+1], payload[offset+2]) & 0x1fff;
 		stream.reserved_2 = (payload[offset+3] >> 4) & 0x0f; 
-		stream.es_information_length = ((payload[offset+3] << 8) | payload[offset+4]) & 0x0fff;
+		stream.es_information_length = CONVERT_TO_16(payload[offset+3], payload[offset+4]) & 0x0fff;
 
-		struct dentry *subdir = NULL;
-		const char *descriptor_info = &payload[offset+5];
-		pmt_populate_stream_dir(&stream, descriptor_info, version_dentry, &subdir, priv);
+		uint16_t es_i = 0;
+		while (es_i < stream.es_information_length) {
+			struct dentry *subdir = NULL;
+			const char *descriptor_info = &payload[offset+5+es_i];
+			pmt_populate_stream_dir(&stream, descriptor_info, version_dentry, &subdir, priv);
 
-		priv->shared_data = (void *) &stream;
-		descriptors_parse(descriptor_info, 1, subdir, priv);
-		priv->shared_data = NULL;
+			priv->shared_data = (void *) &stream;
+			es_i += descriptors_parse(descriptor_info, 1, subdir, priv);
+			priv->shared_data = NULL;
+		}
 
 		offset += 5 + stream.es_information_length;
 		pmt->num_programs++;
