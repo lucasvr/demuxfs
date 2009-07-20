@@ -61,7 +61,7 @@ int descriptor_0xfd_parser(const char *payload, int len, struct dentry *parent, 
 		TS_WARNING("data_component_id == %#x, expected 0x0008", f.data_component_id);
 	if (f.dmf != 0x03)
 		TS_WARNING("DMF == %#x, expected 0x03", f.dmf);
-	if (f.dmf != 0x01)
+	if (f.timing != 0x01)
 		TS_WARNING("timing == %#x, expected 0x01", f.timing);
 
     return 0;
