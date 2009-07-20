@@ -112,8 +112,19 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	struct dsmcc_message_header *msg_header = &dsi->dsmcc_message_header;
 	int j = dsmcc_parse_message_header(msg_header, payload, 8);
 	
-	/** At this point we know for sure that this is a DSI table */ 
-	dsi->dentry->inode = TS_PACKET_HASH_KEY(header, dsi);
+	/** 
+	 * At this point we know for sure that this is a DSI table.
+	 *
+	 * However, since the dentry inode is generated based on the PID and
+	 * table_id, that will certainly match with any DII tables previously
+	 * added to the hash table, as the DSI can arrive in the same PID.
+	 *
+	 * For that reason we need to modify the inode number, and we
+	 * do that by setting the 1st bit from the 7th byte, which is not
+	 * used by the TS_PACKET_HASH_KEY macro.
+	 * */ 
+	dsi->dentry->inode = TS_PACKET_HASH_KEY(header, dsi) | 0x1000000;
+
 	current_dsi = hashtable_get(priv->psi_tables, dsi->dentry->inode);
 	if (! dsi->current_next_indicator || (current_dsi && current_dsi->version_number == dsi->version_number)) {
 		dsi_free(dsi);
