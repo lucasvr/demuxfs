@@ -30,6 +30,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "byteops.h"
 #include "tables/psi.h"
 
 void psi_populate(void **table, struct dentry *parent)
@@ -90,8 +91,8 @@ int psi_parse(struct psi_common_header *header, const char * payload, uint32_t p
 	header->section_syntax_indicator = (payload[1] >> 7) & 0x01;
 	header->reserved_1               = (payload[1] >> 6) & 0x01;
 	header->reserved_2               = (payload[1] >> 4) & 0x03;
-	header->section_length           = ((payload[1] << 8) | payload[2]) & 0x0fff;
-	header->identifier               = (payload[3] << 8) | payload[4];
+	header->section_length           = CONVERT_TO_16(payload[1], payload[2]) & 0x0fff;
+	header->identifier               = CONVERT_TO_16(payload[3], payload[4]);
 	header->reserved_3               = (payload[5] >> 6) & 0x03;
 	header->version_number           = (payload[5] >> 1) & 0x1f;
 	header->current_next_indicator   = payload[5] & 0x01;

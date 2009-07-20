@@ -29,6 +29,7 @@
 #include "demuxfs.h"
 #include "filesrc.h"
 #include "fsutils.h"
+#include "byteops.h"
 #include "ts.h"
 
 struct input_parser {
@@ -232,7 +233,7 @@ int filesrc_process_packet(struct demuxfs_data *priv)
 	header.transport_error_indicator    = (p->packet[1] >> 7) & 0x01;
 	header.payload_unit_start_indicator = (p->packet[1] >> 6) & 0x01;
 	header.transport_priority           = (p->packet[1] >> 5) & 0x01;
-	header.pid                          = ((p->packet[1] << 8) | p->packet[2]) & 0x1fff;
+	header.pid                          = CONVERT_TO_16(p->packet[1], p->packet[2]) & 0x1fff;
 	header.transport_scrambling_control = (p->packet[3] >> 6) & 0x03;
 	header.adaptation_field             = (p->packet[3] >> 4) & 0x03;
 	header.continuity_counter           = (p->packet[3]) & 0x0f;

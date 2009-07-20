@@ -147,7 +147,7 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	tot->section_syntax_indicator = (payload[1] >> 7) & 0x01;
 	tot->reserved_1               = (payload[1] >> 6) & 0x01;
 	tot->reserved_2               = (payload[1] >> 4) & 0x03;
-	tot->section_length           = ((payload[1] << 8) | payload[2]) & 0x0fff;
+	tot->section_length           = CONVERT_TO_16(payload[1], payload[2]) & 0x0fff;
 	
 	/* Parse TOT specific bits */
 	tot->_utc3_time = CONVERT_TO_40(payload[3], payload[4], payload[5], payload[6], payload[7]) & 0xffffffffff;

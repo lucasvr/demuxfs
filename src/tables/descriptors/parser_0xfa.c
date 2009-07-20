@@ -30,6 +30,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "byteops.h"
 #include "descriptors.h"
 
 
@@ -72,7 +73,7 @@ int descriptor_0xfa_parser(const char *payload, int len, struct dentry *parent, 
 	memset(f.frequency, 0, sizeof(f.frequency));
 	for (i=0; i<len-2; i+=2) {
 		char buf[16];
-		f._frequency = (payload[4+i] << 8) | payload[4+i+1];
+		f._frequency = CONVERT_TO_16(payload[4+i], payload[4+i+1]);
 		sprintf(buf, "%s%#x", i == 0 ? "" : "\n", f._frequency);
 		strcat(f.frequency, buf);
 	}
