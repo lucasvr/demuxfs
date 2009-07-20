@@ -120,13 +120,15 @@ int buffer_append(struct buffer *buffer, const char *buf, size_t size)
 		if ((buffer->current_size + size > MAX_SECTION_SIZE) && ! buffer->holds_pes_data)
 			to_write = MAX_SECTION_SIZE - buffer->current_size;
 		if (buffer->current_size + to_write > buffer->max_size) {
-			char *ptr = (char *) realloc(buffer->data, buffer->current_size + to_write);
+			int required_room = buffer->current_size + to_write;
+			int new_size = required_room > MAX_SECTION_SIZE ? required_room : MAX_SECTION_SIZE;
+			char *ptr = (char *) realloc(buffer->data, new_size);
 			if (! ptr) {
 				dprintf("Error reallocating memory");
 				return -ENOMEM;
 			}
 			buffer->data = ptr;
-			buffer->max_size = buffer->current_size + to_write;
+			buffer->max_size = new_size;
 		}
 	}
 
