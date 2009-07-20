@@ -39,11 +39,26 @@
 #include "dsm-cc/ddb.h"
 #include "dsm-cc/ait.h"
 
+#define DSMCC_FILL_HEADER_NAMES(hdr) \
+	if ((hdr)->_dsmcc_type == 0x03) \
+		sprintf((hdr)->dsmcc_type, "U-N Download Message [%#x]", (hdr)->_dsmcc_type); \
+	else \
+		sprintf((hdr)->dsmcc_type, "Unknown [%#x]", (hdr)->_dsmcc_type); \
+	if ((hdr)->_message_id == 0x1002) \
+		sprintf((hdr)->message_id, "Download Info Indication [%#x]", (hdr)->_message_id); \
+	else if ((hdr)->_message_id == 0x1003) \
+		sprintf((hdr)->message_id, "Download Data Block [%#x]", (hdr)->_message_id); \
+	else if ((hdr)->_message_id == 0x1006) \
+		sprintf((hdr)->message_id, "Download Server Initiate [%#x]", (hdr)->_message_id); \
+	else \
+		sprintf((hdr)->message_id, "Unknown [%#x]", (hdr)->_message_id)
+
 void dsmcc_create_download_data_header_dentries(struct dsmcc_download_data_header *data_header, struct dentry *parent)
 {
+	DSMCC_FILL_HEADER_NAMES(data_header);
+	CREATE_FILE_STRING(parent, data_header, dsmcc_type, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_STRING(parent, data_header, message_id, XATTR_FORMAT_STRING_AND_NUMBER);
 	CREATE_FILE_NUMBER(parent, data_header, protocol_discriminator);
-	CREATE_FILE_NUMBER(parent, data_header, dsmcc_type);
-	CREATE_FILE_NUMBER(parent, data_header, message_id);
 	CREATE_FILE_NUMBER(parent, data_header, download_id);
 	CREATE_FILE_NUMBER(parent, data_header, adaptation_length);
 	CREATE_FILE_NUMBER(parent, data_header, message_length);
@@ -56,9 +71,10 @@ void dsmcc_create_download_data_header_dentries(struct dsmcc_download_data_heade
 
 void dsmcc_create_message_header_dentries(struct dsmcc_message_header *msg_header, struct dentry *parent)
 {
+	DSMCC_FILL_HEADER_NAMES(msg_header);
+	CREATE_FILE_STRING(parent, msg_header, dsmcc_type, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_STRING(parent, msg_header, message_id, XATTR_FORMAT_STRING_AND_NUMBER);
 	CREATE_FILE_NUMBER(parent, msg_header, protocol_discriminator);
-	CREATE_FILE_NUMBER(parent, msg_header, dsmcc_type);
-	CREATE_FILE_NUMBER(parent, msg_header, message_id);
 	CREATE_FILE_NUMBER(parent, msg_header, transaction_id);
 	CREATE_FILE_NUMBER(parent, msg_header, adaptation_length);
 	CREATE_FILE_NUMBER(parent, msg_header, message_length);
@@ -168,8 +184,8 @@ int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header,
 {
 	int i = index;
 	msg_header->protocol_discriminator = payload[i];
-	msg_header->dsmcc_type = payload[i+1];
-	msg_header->message_id = CONVERT_TO_16(payload[i+2], payload[i+3]);
+	msg_header->_dsmcc_type = payload[i+1];
+	msg_header->_message_id = CONVERT_TO_16(payload[i+2], payload[i+3]);
 	msg_header->transaction_id = CONVERT_TO_32(payload[i+4], payload[i+5], payload[i+6], payload[i+7]);
 	msg_header->reserved = payload[i+8];
 	msg_header->adaptation_length = payload[i+9];
@@ -198,8 +214,8 @@ int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_hea
 {
 	int i = index;
 	data_header->protocol_discriminator = payload[i];
-	data_header->dsmcc_type = payload[i+1];
-	data_header->message_id = CONVERT_TO_16(payload[i+2], payload[i+3]);
+	data_header->_dsmcc_type = payload[i+1];
+	data_header->_message_id = CONVERT_TO_16(payload[i+2], payload[i+3]);
 	data_header->download_id = CONVERT_TO_32(payload[i+4], payload[i+5], payload[i+6], payload[i+7]);
 	data_header->reserved = payload[i+8];
 	data_header->adaptation_length = payload[i+9];

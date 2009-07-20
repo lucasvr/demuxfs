@@ -34,8 +34,10 @@ struct dsmcc_adaptation_header {
  */
 struct dsmcc_message_header {
 	uint8_t protocol_discriminator;
-	uint8_t dsmcc_type;
-	uint16_t message_id;
+	uint8_t _dsmcc_type;
+	char dsmcc_type[64];
+	uint16_t _message_id;
+	char message_id[64];
 	uint32_t transaction_id;
 	uint8_t reserved;
 	uint8_t adaptation_length;
@@ -48,8 +50,10 @@ struct dsmcc_message_header {
  */
 struct dsmcc_download_data_header {
 	uint8_t protocol_discriminator;
-	uint8_t dsmcc_type;
-	uint16_t message_id;
+	uint8_t _dsmcc_type;
+	char dsmcc_type[64];
+	uint16_t _message_id;
+	char message_id[64];
 	uint32_t download_id;
 	uint8_t reserved;
 	uint8_t adaptation_length;
