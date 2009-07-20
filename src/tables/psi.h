@@ -12,8 +12,7 @@
 	uint8_t version_number:5; \
 	uint8_t current_next_indicator:1; \
 	uint8_t section_number; \
-	uint8_t last_section_number; \
-	uint16_t _remaining_packets
+	uint8_t last_section_number
 
 /**
  * Common header

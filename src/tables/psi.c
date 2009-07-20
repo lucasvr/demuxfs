@@ -69,15 +69,14 @@ static bool psi_check_header(struct psi_common_header *header)
 		ret = false;
 	}
 	if (header->section_length > TS_MAX_SECTION_LENGTH) {
-		TS_WARNING("section_length is greater than %#x bytes", TS_MAX_SECTION_LENGTH);
+		TS_WARNING("section_length is greater than %#x bytes: %#x", 
+			TS_MAX_SECTION_LENGTH, header->section_length);
 		ret = false;
 	}
 	if (header->table_id > TS_LAST_TABLE_ID) {
 		TS_WARNING("table_id is greater than %#x", TS_LAST_TABLE_ID);
 		ret = false;
 	}
-	if (header->_remaining_packets > 0)
-		dprintf("_remaining_packets = %d", header->_remaining_packets);
 	return ret;
 }
 
@@ -98,8 +97,6 @@ int psi_parse(struct psi_common_header *header, const char * payload, uint32_t p
 	header->current_next_indicator   = payload[5] & 0x01;
 	header->section_number           = payload[6];
 	header->last_section_number      = payload[7];
-	header->_remaining_packets       = (header->section_length + 3) / 188 + 
-									   ((header->section_length + 3) % 188 ? 1 : 0) - 1;
 	psi_check_header(header);
 
 	return 0;
