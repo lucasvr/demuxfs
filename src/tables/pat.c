@@ -30,6 +30,7 @@
 #include "fsutils.h"
 #include "hash.h"
 #include "ts.h"
+#include "byteops.h"
 #include "tables/psi.h"
 #include "tables/pat.h"
 #include "tables/pmt.h"
@@ -146,9 +147,9 @@ int pat_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	for (uint16_t i=0; i<pat->num_programs; ++i) {
 		uint16_t offset = 8 + (i * 4);
-		pat->programs[i].program_number = (payload[offset] << 8) | payload[offset+1];
+		pat->programs[i].program_number = CONVERT_TO_16(payload[offset], payload[offset+1]);
 		pat->programs[i].reserved = payload[offset+2] >> 4;
-		pat->programs[i].pid = ((payload[offset+2] << 8) | payload[offset+3]) & 0x1fff;
+		pat->programs[i].pid = CONVERT_TO_16(payload[offset+2], payload[offset+3]) & 0x1fff;
 	}
 
 	pat_create_directory(pat, priv);

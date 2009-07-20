@@ -30,6 +30,7 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "byteops.h"
 #include "descriptors.h"
 
 struct maximum_bitrate_descriptor {
@@ -43,7 +44,7 @@ int descriptor_0x0e_parser(const char *payload, int len, struct dentry *parent, 
 		return -ENODATA;
 
 	struct maximum_bitrate_descriptor m;
-	m.max_bitrate = ((payload[2] << 16) | (payload[3] << 8) | payload[4]) & 0x00ffffff;
+	m.max_bitrate = CONVERT_TO_24(payload[2], payload[3], payload[4]) & 0x00ffffff;
 
 	struct dentry *subdir = CREATE_DIRECTORY(parent, "MAXIMUM_BITRATE");
 	CREATE_FILE_NUMBER(subdir, &m, max_bitrate);

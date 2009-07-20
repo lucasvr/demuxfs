@@ -31,6 +31,7 @@
 #include "xattr.h"
 #include "hash.h"
 #include "ts.h"
+#include "byteops.h"
 #include "descriptors.h"
 #include "tables/psi.h"
 #include "tables/nit.h"
@@ -85,7 +86,7 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Parse NIT specific bits */
 	struct dentry *version_dentry;
 	nit->reserved_4 = payload[8] >> 4;
-	nit->network_descriptors_length = ((payload[8] << 8) | payload[9]) & 0x0fff;
+	nit->network_descriptors_length = CONVERT_TO_16(payload[8], payload[9]) & 0x0fff;
 	nit->num_descriptors = descriptors_count(&payload[10], nit->network_descriptors_length);
 	nit_create_directory(nit, &version_dentry, priv);
 
@@ -93,7 +94,7 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	uint8_t offset = 10 + nit->network_descriptors_length;
 	nit->reserved_5 = payload[offset] >> 4;
-	nit->transport_stream_loop_length = ((payload[offset] << 8) | payload[offset+1]) & 0x0fff;
+	nit->transport_stream_loop_length = CONVERT_TO_16(payload[offset], payload[offset+1]) & 0x0fff;
 	offset += 2;
 
 	struct dentry *ts_dentry = CREATE_DIRECTORY(version_dentry, "TS_INFORMATION");
@@ -101,10 +102,10 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	while (i < nit->transport_stream_loop_length) {
 		struct dentry *info_dentry = CREATE_DIRECTORY(ts_dentry, "%02d", ++info_index);
 		struct nit_ts_data ts_data;
-		ts_data.transport_stream_id = (payload[offset] << 8) | payload[offset+1];
-		ts_data.original_network_id = (payload[offset+2] << 8) | payload[offset+3];
+		ts_data.transport_stream_id = CONVERT_TO_16(payload[offset], payload[offset+1]);
+		ts_data.original_network_id = CONVERT_TO_16(payload[offset+2], payload[offset+3]);
 		ts_data.reserved_future_use = payload[offset+4] >> 4;
-		ts_data.transport_descriptors_length = ((payload[offset+4] << 8) | payload[offset+5]) & 0x0fff;
+		ts_data.transport_descriptors_length = CONVERT_TO_16(payload[offset+4], payload[offset+5]) & 0x0fff;
 		ts_data.num_descriptors = descriptors_count(&payload[offset+6], ts_data.transport_descriptors_length);
 		CREATE_FILE_NUMBER(info_dentry, &ts_data, transport_stream_id);
 		CREATE_FILE_NUMBER(info_dentry, &ts_data, original_network_id);
