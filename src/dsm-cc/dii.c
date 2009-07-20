@@ -56,11 +56,9 @@ static void dii_free(struct dii_table *dii)
 static void dii_check_header(struct dii_table *dii)
 {
 	if (dii->section_syntax_indicator == 0) {
-		/* Checksum */
-		TS_WARNING("DII contains a Checksum");
+		/* TODO: Checksum */
 	} else {
-		/* CRC 32 */
-		TS_WARNING("DII contains a CRC-32");
+		/* TODO: CRC 32 */
 	}
 	if (dii->section_length > 4093)
 		TS_WARNING("section_length exceeds 4093 bytes (%d)", dii->section_length);
