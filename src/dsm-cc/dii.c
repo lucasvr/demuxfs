@@ -167,33 +167,30 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	int j = dsmcc_parse_message_header(msg_header, payload, 8);
 	
 	/* Check whether we should keep processing this packet or not */
-	if (msg_header->protocol_discriminator != 0x11 || msg_header->dsmcc_type != 0x03) {
+	if (msg_header->protocol_discriminator != 0x11 || msg_header->_dsmcc_type != 0x03) {
 		dprintf("protocol_discriminator=%#x, dsmcc_type=%#x: not a U-N message, bailing out", 
 				msg_header->protocol_discriminator,
-				msg_header->dsmcc_type);
+				msg_header->_dsmcc_type);
 		dii_free(dii);
 		return 0;
 	}
 
-	if (msg_header->message_id == 0x1006) {
-		/* DSM-CC Download Server Initiate. Free data allocated so far and parse the message. */
+	if (msg_header->_message_id == 0x1006) {
+		/* DSM-CC Download Server Initiate. Proceed with the DSI parser. */
 		dii_free(dii);
 		return dsi_parse(header, payload, payload_len, priv);
-	} else if (msg_header->message_id != 0x1002) {
+	} else if (msg_header->_message_id != 0x1002) {
 		dii_free(dii);
 		return 0;
 	}
-
-	dprintf("DII: protocol_discriminator=%#x, dsmcc_type=%#x, message_id=%#x", 
-			msg_header->protocol_discriminator, msg_header->dsmcc_type, msg_header->message_id);
 
 	/** At this point we know for sure that this is a DII table */ 
 	dii->dentry->inode = TS_PACKET_HASH_KEY(header, dii);
 	current_dii = hashtable_get(priv->psi_tables, dii->dentry->inode);
-/*	if (! dii->current_next_indicator || (current_dii && current_dii->version_number == dii->version_number)) {
+	if (! dii->current_next_indicator || (current_dii && current_dii->version_number == dii->version_number)) {
 		dii_free(dii);
 		return 0;
-	}*/
+	}
 
 	dprintf("*** DII parser: pid=%#x, table_id=%#x, dii->version_number=%#x, transaction_nr=%#x ***", 
 			header->pid, dii->table_id, dii->version_number, msg_header->transaction_id & ~0x80000000);
