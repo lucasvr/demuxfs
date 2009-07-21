@@ -55,33 +55,35 @@
 
 void dsmcc_create_download_data_header_dentries(struct dsmcc_download_data_header *data_header, struct dentry *parent)
 {
+	struct dentry *dir = CREATE_DIRECTORY(parent, FS_DSMCC_DOWNLOAD_DATA_HEADER_DIRNAME);
 	DSMCC_FILL_HEADER_NAMES(data_header);
-	CREATE_FILE_STRING(parent, data_header, dsmcc_type, XATTR_FORMAT_STRING_AND_NUMBER);
-	CREATE_FILE_STRING(parent, data_header, message_id, XATTR_FORMAT_STRING_AND_NUMBER);
-	CREATE_FILE_NUMBER(parent, data_header, protocol_discriminator);
-	CREATE_FILE_NUMBER(parent, data_header, download_id);
-	CREATE_FILE_NUMBER(parent, data_header, adaptation_length);
-	CREATE_FILE_NUMBER(parent, data_header, message_length);
+	CREATE_FILE_STRING(dir, data_header, dsmcc_type, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_STRING(dir, data_header, message_id, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_NUMBER(dir, data_header, protocol_discriminator);
+	CREATE_FILE_NUMBER(dir, data_header, download_id);
+	CREATE_FILE_NUMBER(dir, data_header, adaptation_length);
+	CREATE_FILE_NUMBER(dir, data_header, message_length);
 	if (data_header->adaptation_length) {
 		struct dsmcc_adaptation_header *adaptation_header = &data_header->dsmcc_adaptation_header;
-		CREATE_FILE_NUMBER(parent, adaptation_header, adaptation_type);
-		CREATE_FILE_BIN(parent, adaptation_header, adaptation_data_bytes, data_header->adaptation_length);
+		CREATE_FILE_NUMBER(dir, adaptation_header, adaptation_type);
+		CREATE_FILE_BIN(dir, adaptation_header, adaptation_data_bytes, data_header->adaptation_length);
 	}
 }
 
 void dsmcc_create_message_header_dentries(struct dsmcc_message_header *msg_header, struct dentry *parent)
 {
+	struct dentry *dir = CREATE_DIRECTORY(parent, FS_DSMCC_MESSAGE_HEADER_DIRNAME);
 	DSMCC_FILL_HEADER_NAMES(msg_header);
-	CREATE_FILE_STRING(parent, msg_header, dsmcc_type, XATTR_FORMAT_STRING_AND_NUMBER);
-	CREATE_FILE_STRING(parent, msg_header, message_id, XATTR_FORMAT_STRING_AND_NUMBER);
-	CREATE_FILE_NUMBER(parent, msg_header, protocol_discriminator);
-	CREATE_FILE_NUMBER(parent, msg_header, transaction_id);
-	CREATE_FILE_NUMBER(parent, msg_header, adaptation_length);
-	CREATE_FILE_NUMBER(parent, msg_header, message_length);
+	CREATE_FILE_STRING(dir, msg_header, dsmcc_type, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_STRING(dir, msg_header, message_id, XATTR_FORMAT_STRING_AND_NUMBER);
+	CREATE_FILE_NUMBER(dir, msg_header, protocol_discriminator);
+	CREATE_FILE_NUMBER(dir, msg_header, transaction_id);
+	CREATE_FILE_NUMBER(dir, msg_header, adaptation_length);
+	CREATE_FILE_NUMBER(dir, msg_header, message_length);
 	if (msg_header->adaptation_length) {
 		struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
-		CREATE_FILE_NUMBER(parent, adaptation_header, adaptation_type);
-		CREATE_FILE_BIN(parent, adaptation_header, adaptation_data_bytes, msg_header->adaptation_length);
+		CREATE_FILE_NUMBER(dir, adaptation_header, adaptation_type);
+		CREATE_FILE_BIN(dir, adaptation_header, adaptation_data_bytes, msg_header->adaptation_length);
 	}
 	if ((msg_header->transaction_id & 0x80000000) != 0x80000000)
 		TS_WARNING("transaction_id originator != '10' (%#x)", msg_header->transaction_id);
@@ -89,10 +91,11 @@ void dsmcc_create_message_header_dentries(struct dsmcc_message_header *msg_heade
 
 void dsmcc_create_compatibility_descriptor_dentries(struct dsmcc_compatibility_descriptor *cd, struct dentry *parent)
 {
-	CREATE_FILE_NUMBER(parent, cd, compatibility_descriptor_length);
-	CREATE_FILE_NUMBER(parent, cd, descriptor_count);
+	struct dentry *dir = CREATE_DIRECTORY(parent, FS_DSMCC_COMPATIBILITY_DESCRIPTOR_DIRNAME);
+	CREATE_FILE_NUMBER(dir, cd, compatibility_descriptor_length);
+	CREATE_FILE_NUMBER(dir, cd, descriptor_count);
 	for (uint16_t i=0; i<cd->descriptor_count; ++i) {
-		struct dentry *subdir = CREATE_DIRECTORY(parent, "descriptor_%02d", i+1);
+		struct dentry *subdir = CREATE_DIRECTORY(dir, "descriptor_%02d", i+1);
 		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], descriptor_type);
 		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], descriptor_length);
 		CREATE_FILE_NUMBER(subdir, &cd->descriptors[i], specifier_type);
