@@ -36,6 +36,8 @@
 #define FS_MPE_STREAMS_NAME             "MPEStreams"
 #define FS_RESERVED_STREAMS_NAME        "ReservedStreams"
 
+#define FS_TABLE_HEADER_DIRNAME         "table_header"
+
 char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size);
 void fsutils_dump_tree(struct dentry *dentry);
 struct dentry *fsutils_get_child(struct dentry *dentry, const char *name);
