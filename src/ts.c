@@ -32,6 +32,7 @@
 #include "byteops.h"
 #include "hash.h"
 #include "ts.h"
+#include "crc32.h"
 
 /* PSI tables */
 #include "tables/psi.h"
@@ -141,6 +142,14 @@ static bool continuity_counter_is_ok(const struct ts_header *header, struct buff
 	uint8_t this_cc = header->continuity_counter;
 	bool buf_empty = buffer_get_current_size(buffer) == 0;
 
+	if (! header->payload_unit_start_indicator && buffer->current_size == 0) {
+		/*
+		 * Cannot start appending data if we don't have PUSI set and there are
+		 * no contents in the buffer yet.
+		 */
+		return false;
+	}
+
 	if (last_cc == this_cc) {
 		/* 
 		 * Repeating last counter. The standard allows for the transmission of up to 2 sequential 
@@ -195,7 +204,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 		/* TODO: parse adaptation field */
 	}
 	struct user_options *opt = &priv->options;
-	payload_end = payload + opt->packet_size - 1 - opt->packet_error_correction_bytes;
+	payload_end = payload + opt->packet_size - 4 - 1 - opt->packet_error_correction_bytes;
 	
 	//ts_dump_header(header);
 	//ts_dump_payload(payload, payload_end-payload_start);
@@ -240,10 +249,15 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				return 0;
 
 			if (buffer) {
-				buffer_append(buffer, start, end - start + 1);
+				int ret = buffer_append(buffer, start, end - start + 1);
 				if (buffer_contains_full_psi_section(buffer)) {
 					table_id = buffer->data[0];
-					if ((parse_function = ts_get_psi_parser(header, table_id, priv)))
+					if (! crc32_check(buffer->data, buffer->current_size)) {
+						uint16_t section_length = CONVERT_TO_16(buffer->data[1], buffer->data[2]) & 0x0fff;
+						TS_WARNING("CRC error on PID %d(%#x), table_id %d(%#x) (crc=%#10lx, buffer_size=%d, sec_len=%d)", 
+							header->pid, header->pid, table_id, table_id, buffer_crc32(buffer), buffer->current_size,
+							section_length);
+					} else if ((parse_function = ts_get_psi_parser(header, table_id, priv)))
 						/* Invoke the PSI parser for this packet */
 						ret = parse_function(header, buffer->data, buffer->current_size, priv);
 					buffer_reset_size(buffer);
