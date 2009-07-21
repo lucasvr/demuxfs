@@ -36,7 +36,10 @@
 #define FS_MPE_STREAMS_NAME             "MPEStreams"
 #define FS_RESERVED_STREAMS_NAME        "ReservedStreams"
 
-#define FS_TABLE_HEADER_DIRNAME         "table_header"
+#define FS_TABLE_HEADER_DIRNAME                   "tableHeader"
+#define FS_DSMCC_DOWNLOAD_DATA_HEADER_DIRNAME     "dsmccDownloadDataHeader"
+#define FS_DSMCC_MESSAGE_HEADER_DIRNAME           "dsmccMessageHeader"
+#define FS_DSMCC_COMPATIBILITY_DESCRIPTOR_DIRNAME "dsmccCompatibilityDescriptor"
 
 char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size);
 void fsutils_dump_tree(struct dentry *dentry);
