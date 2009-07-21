@@ -23,5 +23,6 @@ void buffer_reset_size(struct buffer *buffer);
 bool buffer_is_unbounded(struct buffer *buffer);
 bool buffer_contains_full_psi_section(struct buffer *buffer);
 bool buffer_contains_full_pes_section(struct buffer *buffer);
+unsigned long buffer_crc32(struct buffer *buffer);
 
 #endif /* __buffer_h */
