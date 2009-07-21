@@ -141,21 +141,17 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/** Parse DSI bits */
 
-	int x = j;
-	for (x=j; x<payload_len; ++x)
-		fprintf(stderr, "%#x ", payload[x]);
-	fprintf(stderr, "\n");
-
 	/* server_id must contain 20 entries filled up with 0xff */
 	memcpy(dsi->server_id, &payload[j], 20);
+	CREATE_FILE_BIN(version_dentry, dsi, server_id, 20);
 	j += 20;
 
 	/** DSM-CC Compatibility Descriptor. There must be no entries in this loop. */
 	struct dsmcc_compatibility_descriptor *cd = &dsi->compatibility_descriptor;
 	cd->compatibility_descriptor_length = CONVERT_TO_16(payload[j], payload[j+1]);
 	if (cd->compatibility_descriptor_length)
-		TS_WARNING("DSM-CC compatibility descriptor has length != 0 (%d)",
-			cd->compatibility_descriptor_length);
+		TS_WARNING("DSM-CC compatibility descriptor has length != 0 (%d) (payload[%d],[%d] = %d,%d), payload_len=%d",
+			cd->compatibility_descriptor_length, j, j+1, payload[j], payload[j+1], payload_len);
 	CREATE_FILE_NUMBER(version_dentry, cd, compatibility_descriptor_length);
 
 	/* Private data (Group Info Indication) */
