@@ -142,14 +142,6 @@ static bool continuity_counter_is_ok(const struct ts_header *header, struct buff
 	uint8_t this_cc = header->continuity_counter;
 	bool buf_empty = buffer_get_current_size(buffer) == 0;
 
-	if (! header->payload_unit_start_indicator && buffer->current_size == 0) {
-		/*
-		 * Cannot start appending data if we don't have PUSI set and there are
-		 * no contents in the buffer yet.
-		 */
-		return false;
-	}
-
 	if (last_cc == this_cc) {
 		/* 
 		 * Repeating last counter. The standard allows for the transmission of up to 2 sequential 
@@ -245,8 +237,22 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 					return 0;
 				buffer->continuity_counter = header->continuity_counter;
 				hashtable_add(priv->packet_buffer, header->pid, buffer);
-			} else if (buffer && ! continuity_counter_is_ok(header, buffer, true))
+			} else if (buffer && ! continuity_counter_is_ok(header, buffer, true)) {
 				return 0;
+			} else if (buffer && buffer->current_size == 0 && ! is_new_packet) {
+				/*
+				 * Cannot start appending data if we don't have PUSI set and there are
+				 * no contents in the buffer yet.
+				 */
+				if (! pusi)
+					return 0;
+
+				/*
+				 * The second half of the packet can very well have valid data.
+				 * Just invalidate the buffer to return to the beginning of the loop.
+				 */
+				buffer = NULL;
+			}
 
 			if (buffer) {
 				int ret = buffer_append(buffer, start, end - start + 1);
