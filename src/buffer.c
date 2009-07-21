@@ -150,7 +150,7 @@ bool buffer_contains_full_psi_section(struct buffer *buffer)
 		if ((section_length + 3) > MAX_SECTION_SIZE) {
 			dprintf("Bad section packet: curr_size=%d max_size=%d section_length=%d [pid %#x table_id %#x]",
 					buffer->current_size, buffer->max_size, section_length, buffer->pid, buffer->data[0]);
-			buffer->current_size = 0;
+			buffer_reset_size(buffer);
 		}
 		return false;
 	}
@@ -203,4 +203,17 @@ void buffer_reset_size(struct buffer *buffer)
 {
 	if (buffer)
 		buffer->current_size = 0;
+}
+
+unsigned long buffer_crc32(struct buffer *buffer)
+{
+	const char *data;
+	int i;
+
+	if (! buffer)
+		return 0;
+
+	data = buffer->data;
+	i = buffer->current_size - 4;
+	return CONVERT_TO_32(data[i], data[i+1], data[i+2], data[i+3]);
 }
