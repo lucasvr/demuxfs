@@ -260,9 +260,8 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 					table_id = buffer->data[0];
 					if (! crc32_check(buffer->data, buffer->current_size)) {
 						uint16_t section_length = CONVERT_TO_16(buffer->data[1], buffer->data[2]) & 0x0fff;
-						TS_WARNING("CRC error on PID %d(%#x), table_id %d(%#x) (crc=%#10lx, buffer_size=%d, sec_len=%d)", 
-							header->pid, header->pid, table_id, table_id, buffer_crc32(buffer), buffer->current_size,
-							section_length);
+						TS_WARNING("CRC error on PID %d(%#x), table_id %d(%#x)", 
+							header->pid, header->pid, table_id, table_id);
 					} else if ((parse_function = ts_get_psi_parser(header, table_id, priv)))
 						/* Invoke the PSI parser for this packet */
 						ret = parse_function(header, buffer->data, buffer->current_size, priv);
