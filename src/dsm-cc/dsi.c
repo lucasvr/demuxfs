@@ -34,6 +34,7 @@
 #include "fifo.h"
 #include "list.h"
 #include "ts.h"
+#include "biop.h"
 #include "tables/psi.h"
 #include "dsm-cc/dsmcc.h"
 #include "dsm-cc/dsi.h"
@@ -45,6 +46,18 @@ static void dsi_free(struct dsi_table *dsi)
 	dsmcc_free_compatibility_descriptors(&dsi->compatibility_descriptor);
 	/* Free DSM-CC message header */
 	dsmcc_free_message_header(&dsi->dsmcc_message_header);
+	if (dsi->group_info_indication) {
+		if (dsi->group_info_indication->dsi_group_info)
+			free(dsi->group_info_indication->dsi_group_info);
+		free(dsi->group_info_indication);
+	}
+	if (dsi->service_gateway_info) {
+		/* TODO: follow the allocations performed in biop.c and deallocate them here */
+		struct iop_ior *iop = &dsi->service_gateway_info->iop_ior;
+		if (iop->type_id)
+			free(iop->type_id);
+		free(dsi->service_gateway_info);
+	}
 	/* Free Private data */
 //	if (dsi->private_data_bytes)
 //		free(dsi->private_data_bytes);
@@ -165,37 +178,124 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	dsi->private_data_length = payload_len-j-8;
 	j += 4;
 
-	struct dsi_group_info_indication *gii = &dsi->group_info_indication;
-	gii->number_of_groups = CONVERT_TO_16(payload[j], payload[j+1]);
-	CREATE_FILE_NUMBER(version_dentry, gii, number_of_groups);
-	j += 2;
+	/* 
+	 * The private data can hold two different data sets, depending on
+	 * which carousel we are parsing.
+	 * 
+	 * For Data Carousels it holds a GroupInfoByte structure followed by
+	 * DSM-CC Carousel Descriptors.
+	 * For Object Carousels it holds a BIOP::ServiceGatewayInformation.
+	 * 
+	 * We use the same trick employed by DVBSnoop here: we look for a
+	 * BIOP U-U object type_id "srg\0" and "DSM:" strings to know how
+	 * to parse the private data.
+	 */
 
-	if (gii->number_of_groups) {
-		gii->dsi_group_info = calloc(gii->number_of_groups, sizeof(struct dsi_group_info));
-		for (uint16_t i=0; i<gii->number_of_groups; ++i) {
-			struct dentry *group_dentry = CREATE_DIRECTORY(version_dentry, "GroupInfo_%02d", i+1);
-			struct dsi_group_info *group_info = &gii->dsi_group_info[i];
-			int len;
+	/* Prefetch only */
+	uint32_t idx = j + 4;
+	uint32_t type_id = CONVERT_TO_32(payload[idx], payload[idx+1], payload[idx+2], payload[idx+3]);
 
-			group_info->group_id = CONVERT_TO_32(payload[j], payload[j+1],
-				payload[j+2], payload[j+3]);
-			group_info->group_size = CONVERT_TO_32(payload[j+4], payload[j+5],
-				payload[j+6], payload[j+7]);
-			CREATE_FILE_NUMBER(group_dentry, group_info, group_id);
-			CREATE_FILE_NUMBER(group_dentry, group_info, group_size);
+	if (type_id != 0x73726700 && type_id != 0x53443a4d) {
+		/* Data Carousel: GroupInfoByte + DSM-CC CarouselDescriptors */
+		struct dentry *gii_dentry = CREATE_DIRECTORY(version_dentry, FS_DSMCC_GROUP_INFO_INDICATION_DIRNAME);
+		struct dsi_group_info_indication *gii;
 
-			// GroupCompatibility()
-			len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
-				&payload[j+8], j+8);
-			dsmcc_create_compatibility_descriptor_dentries(&group_info->group_compatibility,
-				group_dentry);
-			j += 8 + len;
+		dsi->group_info_indication = calloc(1, sizeof(struct dsi_group_info_indication));
+		gii = dsi->group_info_indication;
+		gii->number_of_groups = CONVERT_TO_16(payload[j], payload[j+1]);
+		CREATE_FILE_NUMBER(gii_dentry, gii, number_of_groups);
+		j += 2;
+
+		if (gii->number_of_groups) {
+			gii->dsi_group_info = calloc(gii->number_of_groups, sizeof(struct dsi_group_info));
+			for (uint16_t i=0; i<gii->number_of_groups; ++i) {
+				struct dentry *group_dentry = CREATE_DIRECTORY(gii_dentry, "GroupInfo_%02d", i+1);
+				struct dsi_group_info *group_info = &gii->dsi_group_info[i];
+				int len;
+
+				group_info->group_id = CONVERT_TO_32(payload[j], payload[j+1],
+						payload[j+2], payload[j+3]);
+				group_info->group_size = CONVERT_TO_32(payload[j+4], payload[j+5],
+						payload[j+6], payload[j+7]);
+				CREATE_FILE_NUMBER(group_dentry, group_info, group_id);
+				CREATE_FILE_NUMBER(group_dentry, group_info, group_size);
+
+				// GroupCompatibility()
+				len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
+						&payload[j+8], j+8);
+				dsmcc_create_compatibility_descriptor_dentries(&group_info->group_compatibility,
+						group_dentry);
+				j += 8 + len;
+			}
 		}
+
+		gii->private_data_length = CONVERT_TO_16(payload[j], payload[j+1]);
+		dprintf("private_data_length=%d", gii->private_data_length);
+
+		// XXX: CarouselDescriptors
+	
+	} else {
+		/* Object Carousel: BIOP::ServiceGatewayInformation */
+		dsi->service_gateway_info = calloc(1, sizeof(struct dsi_service_gateway_info));
+
+		/* IOP::IOR() */
+		struct dentry *sgi_dentry = CREATE_DIRECTORY(version_dentry, FS_BIOP_SERVICE_GATEWAY_INFORMATION_DIRNAME);
+		struct iop_ior *iop = &dsi->service_gateway_info->iop_ior;
+
+		iop->type_id_length = CONVERT_TO_32(payload[j], payload[j+1], payload[j+2], payload[j+3]);
+		iop->type_id = calloc(iop->type_id_length+1, sizeof(char));
+		memcpy(iop->type_id, &payload[j+4], iop->type_id_length);
+		CREATE_FILE_NUMBER(sgi_dentry, iop, type_id_length);
+		CREATE_FILE_STRING(sgi_dentry, iop, type_id, XATTR_FORMAT_STRING);
+		j += 4 + iop->type_id_length;
+
+		uint8_t gap_bytes = iop->type_id_length % 4;
+		if (gap_bytes) {
+			memcpy(iop->alignment_gap, &payload[j], gap_bytes);
+			CREATE_FILE_BIN(sgi_dentry, iop, alignment_gap, gap_bytes);
+			j += gap_bytes;
+		}
+		
+		iop->tagged_profiles_count = CONVERT_TO_32(payload[j], payload[j+1], payload[j+2], payload[j+3]);
+		CREATE_FILE_NUMBER(sgi_dentry, iop, tagged_profiles_count);
+		j += 4;
+		if (iop->tagged_profiles_count) {
+			iop->tagged_profiles = calloc(iop->tagged_profiles_count, sizeof(struct biop_tagged_profile));
+			j += biop_parse_tagged_profiles(iop->tagged_profiles, iop->tagged_profiles_count, 
+				&payload[j], payload_len-j);
+			biop_create_tagged_profiles_dentries(sgi_dentry, iop->tagged_profiles);
+		}
+		
+		/* Remaining Service Gateway Info members */
+		struct dsi_service_gateway_info *sgi = dsi->service_gateway_info;
+		sgi->download_taps_count = payload[j];
+		CREATE_FILE_NUMBER(sgi_dentry, sgi, download_taps_count);
+		if (sgi->download_taps_count) {
+			sgi->download_taps = calloc(sgi->download_taps_count, sizeof(char));
+			memcpy(sgi->download_taps, &payload[j+1], sgi->download_taps_count);
+			CREATE_FILE_BIN(sgi_dentry, sgi, download_taps, sgi->download_taps_count);
+		}
+		j += 1 + sgi->download_taps_count;
+
+		sgi->service_context_list_count = payload[j];
+		CREATE_FILE_NUMBER(sgi_dentry, sgi, service_context_list_count);
+		if (sgi->service_context_list_count) {
+			sgi->service_context_list = calloc(sgi->service_context_list_count, sizeof(char));
+			memcpy(sgi->service_context_list, &payload[j+1], sgi->service_context_list_count);
+			CREATE_FILE_BIN(sgi_dentry, sgi, service_context_list, sgi->service_context_list_count);
+		}
+		j += 1 + sgi->service_context_list_count;
+		
+		sgi->user_info_length = CONVERT_TO_16(payload[j], payload[j+1]);
+		CREATE_FILE_NUMBER(sgi_dentry, sgi, user_info_length);
+		if (sgi->user_info_length) {
+			sgi->user_info = calloc(sgi->user_info_length, sizeof(char));
+			memcpy(sgi->user_info, &payload[j+2], sgi->user_info_length);
+			CREATE_FILE_BIN(sgi_dentry, sgi, user_info, sgi->user_info_length);
+		}
+		j += 2 + sgi->user_info_length;
 	}
 
-	gii->private_data_length = CONVERT_TO_16(payload[j], payload[j+1]);
-	dprintf("private_data_length=%d", gii->private_data_length);
-	
 	if (current_dsi) {
 		hashtable_del(priv->psi_tables, current_dsi->dentry->inode);
 		fsutils_migrate_children(current_dsi->dentry, dsi->dentry);
