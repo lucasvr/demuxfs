@@ -47,6 +47,7 @@
 #define FS_BIOP_PROFILE_BODY_DIRNAME                "biopProfileBody"
 #define FS_BIOP_OBJECT_LOCATION_DIRNAME             "biopObjectLocation"
 #define FS_BIOP_CONNBINDER_DIRNAME                  "biopConnBinder"
+#define FS_BIOP_MODULE_INFO_DIRNAME                 "biopModuleInfo"
 
 char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size);
 void fsutils_dump_tree(struct dentry *dentry);
