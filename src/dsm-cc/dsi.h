@@ -50,6 +50,7 @@ struct dsi_table {
 	/* the private bytes can hold different structures */
 	struct dsi_group_info_indication *group_info_indication;
 	struct dsi_service_gateway_info *service_gateway_info;
+	bool _linked_to_dii;
 	uint32_t crc;
 } __attribute__((__packed__));
 

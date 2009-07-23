@@ -280,6 +280,7 @@ int biop_create_tagged_profiles_dentries(struct dentry *parent, struct biop_tagg
 				struct dentry *selector_dentry = CREATE_DIRECTORY(tap_dentry, 
 						FS_DSMCC_MESSAGE_SELECTOR_DIRNAME);
 				struct message_selector *ms = tap->message_selector;
+
 				CREATE_FILE_NUMBER(selector_dentry, ms, selector_length);
 				CREATE_FILE_NUMBER(selector_dentry, ms, selector_type);
 				CREATE_FILE_NUMBER(selector_dentry, ms, transaction_id);
@@ -288,7 +289,6 @@ int biop_create_tagged_profiles_dentries(struct dentry *parent, struct biop_tagg
 					TS_WARNING("selector_length != 0x0a");
 				if (ms->selector_type != 0x01)
 					TS_WARNING("selector_type != 0x01");
-				/* TODO: ms->transaction_id needs to match DII->transaction_id */
 			}
 		}
 	} else if (profile->lite_body) {
