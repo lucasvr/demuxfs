@@ -38,7 +38,7 @@ struct input_parser {
 	char *packet;
 	bool packet_valid;
 	uint8_t packet_size;
-	bool fileloop;
+	int fileloop;
 	bool parse_pes;
 	char *standard;
 	char *tmpdir;
@@ -52,7 +52,7 @@ static void filesrc_usage(void)
 {
 	fprintf(stderr, "FILESRC options:\n"
 			"    -o filesrc=FILE        transport stream input file\n"
-			"    -o fileloop=1|0        loop back on EOF (default: 0)\n"
+			"    -o fileloop=<count>    how many times to loop on EOF, -1 means infinite (default: 0)\n"
 			"    -o parse_pes=1|0       parse PES packets (default: 0)\n"
 			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC (default: SBTVD)\n"
 			"    -o tmpdir=DIR          temporary directory in which to store DSM-CC files (default: %s)\n\n",
@@ -201,7 +201,7 @@ int filesrc_read_packet(struct demuxfs_data *priv)
 	size_t n = fread(p->packet, p->packet_size, 1, p->fp);
 	if (n <= 0 && feof(p->fp)) {
 		p->packet_valid = false;
-		if (p->fileloop) {
+		if (p->fileloop == -1 || p->fileloop--) {
 			dprintf("Rewinding TS file");
 			rewind(p->fp);
 			return 0;
@@ -212,8 +212,7 @@ int filesrc_read_packet(struct demuxfs_data *priv)
 		perror("fread");
 		return -1;
 	}
-	if (p->fileloop)
-		usleep(1);
+	usleep(1);
 	p->packet_valid = true;
 	return 0;
 }
