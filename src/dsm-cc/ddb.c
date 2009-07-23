@@ -47,75 +47,8 @@ static void ddb_free(struct ddb_table *ddb)
 
 	data_header = &ddb->dsmcc_download_data_header;
 	dsmcc_free_download_data_header(data_header);
-//	if (ddb->block_data_bytes)
-//		free(ddb->block_data_bytes);
 	free(ddb->dentry);
 	free(ddb);
-}
-
-static struct dentry * ddb_find_dii(struct ddb_table *ddb, uint16_t *block_size, struct demuxfs_data *priv)
-{
-	struct dentry *dii = fsutils_get_dentry(priv->root, "/DII");
-	if (! dii) {
-		dprintf("no /dii found");
-		return NULL;
-	}
-
-	char dii_path[PATH_MAX];
-	struct dentry *module, *target, *file;
-	list_for_each_entry(module, &dii->children, list) {
-		sprintf(dii_path, "%s/%s/block_size", module->name, FS_CURRENT_NAME);
-		dprintf("looking for %s", dii_path);
-		file = fsutils_get_dentry(module, dii_path);
-		if (file)
-			*block_size = strtol(file->contents, NULL, 16);
-
-		sprintf(dii_path, "%s/%s/module_%02d", module->name, FS_CURRENT_NAME, ddb->module_id+1);
-		target = fsutils_get_dentry(module, dii_path);
-		if (! target)
-			continue;
-
-		file = fsutils_get_child(target, "module_id");
-		uint16_t module_id = strtol(file->contents, NULL, 16);
-
-		file = fsutils_get_child(target, "module_version");
-		uint8_t module_version = strtol(file->contents, NULL, 16);
-
-		if (module_id == ddb->module_id && module_version == ddb->module_version)
-			return target;
-	}
-	return NULL;
-}
-
-static char * ddb_get_filename(struct dentry *dii_module_dir, struct demuxfs_data *priv)
-{
-	char *path_to_file;
-	struct dentry *entry;
-	
-	/* Try to find the name descriptor */
-	entry = fsutils_get_child(dii_module_dir, "NAME");
-	if (entry) {
-		struct dentry *name = fsutils_get_child(entry, "text_char");
-		if (name) {
-			asprintf(&path_to_file, "%s/%s", priv->options.tmpdir, name->contents);
-			return path_to_file;
-		}
-	}
-	asprintf(&path_to_file, "%s/file.bin", priv->options.tmpdir);
-	return path_to_file;
-}
-
-static void ddb_update_file_contents(const char *filename, uint16_t block_size,
-		struct ddb_table *ddb, struct demuxfs_data *priv)
-{
-	FILE *fp = fopen(filename, "a");
-	if (! fp) {
-		perror(filename);
-		return;
-	}
-	fseek(fp, ddb->block_number * block_size, SEEK_SET);
-	fwrite(ddb->block_data_bytes, 1, ddb->_block_data_size, fp);
-	fclose(fp);
 }
 
 static bool ddb_block_number_already_parsed(struct ddb_table *current_ddb, 
@@ -224,14 +157,6 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		ddb_free(ddb);
 		return 0;
 	}
-
-	/* Find the corresponding DII entry for this packet */
-//	uint16_t block_size = 0;
-//	struct dentry *dii = ddb_find_dii(ddb, &block_size, priv);
-//	if (! dii) {
-//		ddb_free(ddb);
-//		return 0;
-//	}
 
 //	dprintf("*** DDB parser: pid=%d, table_id=%#x, ddb->version_number=%#x, ddb->block_number=%d, module_id=%d, current=%p ***", 
 //			header->pid, ddb->table_id, ddb->version_number, ddb->block_number, ddb->module_id, current_ddb);
