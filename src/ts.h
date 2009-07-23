@@ -54,6 +54,8 @@
 #define TS_BIT_TABLE_ID                 0xc4
 #define TS_CDT_TABLE_ID                 0xc8
 
+#define IS_STUFFING_PACKET(payload) ((payload[0] & 0xff) == 0xff)
+
 /* The hash key generator to the private hash table */
 #define TS_PACKET_HASH_KEY(ts_header,packet_header) \
 	((((ts_header)->pid & 0xffff) << 8) | ((struct psi_common_header*)(packet_header))->table_id)

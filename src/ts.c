@@ -254,6 +254,9 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				buffer = NULL;
 			}
 
+			if (is_new_packet && IS_STUFFING_PACKET(start))
+				buffer = NULL;
+
 			if (buffer) {
 				int ret = buffer_append(buffer, start, end - start + 1);
 				if (buffer_contains_full_psi_section(buffer)) {
@@ -275,12 +278,8 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				buffer_reset_size(buffer);
 
 			start = end + 1;
-			if (((uint8_t) start[0]) == 0xff)
-				/* Stuffing packet */
-				break;
-
 			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
-			if (section_length == 0)
+			if (IS_STUFFING_PACKET(start) || section_length == 0)
 				/* Nothing to parse */
 				break;
 
