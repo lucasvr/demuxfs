@@ -21,6 +21,7 @@
 #define FS_CURRENT_NAME                 "Current"
 #define FS_PRIMARY_NAME                 "Primary"
 #define FS_SECONDARY_NAME               "Secondary"
+#define FS_BROKEN_SYMLINK_NAME          "BrokenSymlink"
 
 #define FS_VIDEO_SNAPSHOT_NAME          "snapshot.ppm"
 #define FS_STREAMS_NAME                 "Streams"

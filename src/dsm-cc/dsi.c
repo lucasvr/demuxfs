@@ -98,6 +98,51 @@ static void dsi_create_dentries(struct dentry *parent, struct dsi_table *dsi, st
 //	CREATE_FILE_BIN(parent, dsi, private_data_bytes, dsi->private_data_length);
 }
 
+void dsi_create_dii_symlink(const struct ts_header *header, struct dsi_table *dsi, 
+		struct demuxfs_data *priv)
+{
+	struct iop_ior *iop = &dsi->service_gateway_info->iop_ior;
+	struct biop_profile_body *pb = iop->tagged_profiles->profile_body;
+	struct dsmcc_tap *tap = pb && pb->connbinder.tap_count ? &pb->connbinder.taps[0] : NULL;
+	char search_dir[PATH_MAX], target[PATH_MAX], subdir[PATH_MAX];
+
+	if (tap && tap->message_selector) {
+		struct dentry *dii_pid_dentry, *dii_dentry, *dsi_dentry, *transaction_dentry;
+		uint32_t dii_transaction_id, dsi_transaction_id;
+
+		snprintf(search_dir, sizeof(search_dir), "/%s/%#04x", FS_DII_NAME, header->pid);
+		dii_pid_dentry = fsutils_get_dentry(priv->root, search_dir);
+		if (! dii_pid_dentry) {
+			/* XXX Possibly we didn't scan the DII yet */
+			dprintf("%s not found yet", search_dir);
+			return;
+		}
+
+		dii_dentry = fsutils_get_current(dii_pid_dentry);
+		assert(dii_dentry);
+
+		dsi_dentry = fsutils_get_current(dsi->dentry);
+		assert(dsi_dentry);
+
+		snprintf(subdir, sizeof(subdir), "/%s/transaction_id", FS_DSMCC_MESSAGE_HEADER_DIRNAME);
+		transaction_dentry = fsutils_get_dentry(dii_dentry, subdir);
+		assert(transaction_dentry);
+
+		dii_transaction_id = strtoul(transaction_dentry->contents, NULL, 16);
+		dsi_transaction_id = tap->message_selector ? tap->message_selector->transaction_id : 0;
+		if (dii_transaction_id != dsi_transaction_id) {
+			TS_WARNING("dii_transaction_id %#x != dsi_transaction_id %#x", 
+				dii_transaction_id, dsi_transaction_id);
+			CREATE_SYMLINK(dsi_dentry, "DII", FS_BROKEN_SYMLINK_NAME);
+		} else {
+			snprintf(target, sizeof(target), "../../../%s/%#04x/%s", FS_DII_NAME, 
+					header->pid, FS_CURRENT_NAME);
+			CREATE_SYMLINK(dsi_dentry, "DII", target);
+		}
+		dsi->_linked_to_dii = true;
+	}
+}
+
 int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
@@ -141,6 +186,8 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	current_dsi = hashtable_get(priv->psi_tables, dsi->dentry->inode);
 	if (! dsi->current_next_indicator || (current_dsi && current_dsi->version_number == dsi->version_number)) {
 		dsi_free(dsi);
+		if (current_dsi && ! current_dsi->_linked_to_dii)
+			dsi_create_dii_symlink(header, current_dsi, priv);
 		return 0;
 	}
 
@@ -260,10 +307,14 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		CREATE_FILE_NUMBER(sgi_dentry, iop, tagged_profiles_count);
 		j += 4;
 		if (iop->tagged_profiles_count) {
+			/* Parse and create tagged profiles */
 			iop->tagged_profiles = calloc(iop->tagged_profiles_count, sizeof(struct biop_tagged_profile));
 			j += biop_parse_tagged_profiles(iop->tagged_profiles, iop->tagged_profiles_count, 
 				&payload[j], payload_len-j);
 			biop_create_tagged_profiles_dentries(sgi_dentry, iop->tagged_profiles);
+
+			/* Check if DSI transaction_id matches DII transaction_id and create a symlink accordingly */
+			dsi_create_dii_symlink(header, dsi, priv);
 		}
 		
 		/* Remaining Service Gateway Info members */
