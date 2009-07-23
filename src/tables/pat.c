@@ -61,7 +61,7 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 
 	/* Append new parsers to the list of known PIDs */
 	for (uint16_t i=0; i<pat->num_programs; ++i) {
-		char name[32], target[32];
+		char name[32], target[PATH_MAX];
 		uint16_t pid = pat->programs[i].pid;
 		uint16_t program_number = pat->programs[i].program_number;
 
@@ -74,12 +74,13 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 		/* Create a symlink which points to this dentry in the PMT */
 		snprintf(name, sizeof(name), "%#04x", pat->programs[i].program_number);
 		if (program_number == 0) {
-			snprintf(target, sizeof(target), "../../../%s/%s", FS_NIT_NAME, FS_CURRENT_NAME);
+			snprintf(target, sizeof(target), "%s/%s/%s", priv->mount_point,
+				FS_NIT_NAME, FS_CURRENT_NAME);
 			if (! existing_parser)
 				hashtable_add(priv->psi_parsers, pid, nit_parse);
 		} else {
-			snprintf(target, sizeof(target), "../../../%s/%#04x/%s", 
-					FS_PMT_NAME, pid, FS_CURRENT_NAME);
+			snprintf(target, sizeof(target), "%s/%s/%#04x/%s", priv->mount_point,
+				FS_PMT_NAME, pid, FS_CURRENT_NAME);
 			if (! existing_parser)
 				hashtable_add(priv->psi_parsers, pid, pmt_parse);
 		}
