@@ -74,12 +74,12 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 		/* Create a symlink which points to this dentry in the PMT */
 		snprintf(name, sizeof(name), "%#04x", pat->programs[i].program_number);
 		if (program_number == 0) {
-			snprintf(target, sizeof(target), "%s/%s/%s", priv->mount_point,
+			snprintf(target, sizeof(target), "../../../%s/%s",
 				FS_NIT_NAME, FS_CURRENT_NAME);
 			if (! existing_parser)
 				hashtable_add(priv->psi_parsers, pid, nit_parse);
 		} else {
-			snprintf(target, sizeof(target), "%s/%s/%#04x/%s", priv->mount_point,
+			snprintf(target, sizeof(target), "../../../%s/%#04x/%s",
 				FS_PMT_NAME, pid, FS_CURRENT_NAME);
 			if (! existing_parser)
 				hashtable_add(priv->psi_parsers, pid, pmt_parse);
