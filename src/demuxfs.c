@@ -51,7 +51,7 @@ static int do_getattr(struct dentry *dentry, struct stat *stbuf)
 	stbuf->st_mode = dentry->mode;
 	if (DEMUXFS_IS_FIFO(dentry) || DEMUXFS_IS_SNAPSHOT(dentry))
 		stbuf->st_size = 0xffffff;
-	else
+	else if (! DEMUXFS_IS_DIR(dentry))
 		stbuf->st_size = dentry->size;
 	stbuf->st_nlink = 1;
     stbuf->st_blksize = 128;
