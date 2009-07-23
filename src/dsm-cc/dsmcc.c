@@ -137,7 +137,7 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 	cd->compatibility_descriptor_length = CONVERT_TO_16(payload[i], payload[i+1]);
 	if (cd->compatibility_descriptor_length < 2) {
 		cd->descriptor_count = 0;
-		return index + cd->compatibility_descriptor_length + 1;
+		return i + 2 + cd->compatibility_descriptor_length;
 	}
 	
 	cd->descriptor_count = CONVERT_TO_16(payload[i+2], payload[i+3]);
