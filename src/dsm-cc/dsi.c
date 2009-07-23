@@ -114,7 +114,6 @@ void dsi_create_dii_symlink(const struct ts_header *header, struct dsi_table *ds
 		dii_pid_dentry = fsutils_get_dentry(priv->root, search_dir);
 		if (! dii_pid_dentry) {
 			/* XXX Possibly we didn't scan the DII yet */
-			dprintf("%s not found yet", search_dir);
 			return;
 		}
 
