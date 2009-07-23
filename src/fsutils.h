@@ -36,10 +36,17 @@
 #define FS_MPE_STREAMS_NAME             "MPEStreams"
 #define FS_RESERVED_STREAMS_NAME        "ReservedStreams"
 
-#define FS_TABLE_HEADER_DIRNAME                   "tableHeader"
-#define FS_DSMCC_DOWNLOAD_DATA_HEADER_DIRNAME     "dsmccDownloadDataHeader"
-#define FS_DSMCC_MESSAGE_HEADER_DIRNAME           "dsmccMessageHeader"
-#define FS_DSMCC_COMPATIBILITY_DESCRIPTOR_DIRNAME "dsmccCompatibilityDescriptor"
+#define FS_TABLE_HEADER_DIRNAME                     "tableHeader"
+#define FS_DSMCC_DOWNLOAD_DATA_HEADER_DIRNAME       "dsmccDownloadDataHeader"
+#define FS_DSMCC_MESSAGE_HEADER_DIRNAME             "dsmccMessageHeader"
+#define FS_DSMCC_COMPATIBILITY_DESCRIPTOR_DIRNAME   "dsmccCompatibilityDescriptor"
+#define FS_DSMCC_GROUP_INFO_INDICATION_DIRNAME      "dsmccGroupInfoIndication"
+#define FS_DSMCC_MESSAGE_SELECTOR_DIRNAME           "dsmccMessageSelector"
+#define FS_BIOP_SERVICE_GATEWAY_INFORMATION_DIRNAME "biopServiceGatewayInformation"
+#define FS_BIOP_MESSAGE_DIRNAME                     "biopMessage"
+#define FS_BIOP_PROFILE_BODY_DIRNAME                "biopProfileBody"
+#define FS_BIOP_OBJECT_LOCATION_DIRNAME             "biopObjectLocation"
+#define FS_BIOP_CONNBINDER_DIRNAME                  "biopConnBinder"
 
 char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size);
 void fsutils_dump_tree(struct dentry *dentry);
