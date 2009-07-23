@@ -243,7 +243,7 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	else
 		ddb_create_directory(header, ddb, &version_dentry, priv);
 
-	uint16_t this_block_size = payload_len - (j+6);
+	uint16_t this_block_size = payload_len - (j+6) - 4;
 	uint16_t this_block_start = j+6;
 
 	/* Create individual block file */
