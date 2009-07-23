@@ -296,3 +296,62 @@ int biop_create_tagged_profiles_dentries(struct dentry *parent, struct biop_tagg
 	}
 	return 0;
 }
+
+
+/* Returns how many bytes were parsed */
+int biop_parse_module_info(struct biop_module_info *modinfo, const char *buf, uint32_t len)
+{
+	int i, j = 0;
+
+	modinfo->module_timeout = CONVERT_TO_32(buf[j], buf[j+1], buf[j+2], buf[j+3]);
+	modinfo->block_timeout = CONVERT_TO_32(buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
+	modinfo->min_block_time = CONVERT_TO_32(buf[j+8], buf[j+9], buf[j+10], buf[j+11]);
+	modinfo->taps_count = buf[j+12];
+	j += 13;
+
+	if (modinfo->taps_count) {
+		modinfo->taps = calloc(modinfo->taps_count, sizeof(struct biop_module_tap));
+		for (i=0; i<modinfo->taps_count; ++i) {
+			struct biop_module_tap *tap = &modinfo->taps[i];
+			tap->tap_id = CONVERT_TO_16(buf[j], buf[j+1]);
+			tap->tap_use = CONVERT_TO_16(buf[j+2], buf[j+3]);
+			tap->association_tag = CONVERT_TO_16(buf[j+4], buf[j+5]);
+			tap->selector_length = buf[j+6];
+			j += 7;
+		}
+	}
+
+	modinfo->user_info_length = buf[j];
+	if (modinfo->user_info_length) {
+		modinfo->user_info = calloc(modinfo->user_info_length, sizeof(char));
+		memcpy(modinfo->user_info, &buf[j+1], modinfo->user_info_length);
+	}
+	j += 1 + modinfo->user_info_length;
+
+	return j;
+}
+
+/* Returns 0 on success, -1 on error */
+int biop_create_module_info_dentries(struct dentry *parent, struct biop_module_info *modinfo)
+{
+	struct dentry *mod_dentry = CREATE_DIRECTORY(parent, FS_BIOP_MODULE_INFO_DIRNAME);
+	CREATE_FILE_NUMBER(mod_dentry, modinfo, module_timeout);
+	CREATE_FILE_NUMBER(mod_dentry, modinfo, block_timeout);
+	CREATE_FILE_NUMBER(mod_dentry, modinfo, min_block_time);
+	CREATE_FILE_NUMBER(mod_dentry, modinfo, taps_count);
+
+	for (int i=0; i<modinfo->taps_count; ++i) {
+		struct dentry *tap_dentry = CREATE_DIRECTORY(mod_dentry, "tap_%02d", i+1);
+		struct biop_module_tap *tap = &modinfo->taps[i];
+		CREATE_FILE_NUMBER(tap_dentry, tap, tap_id);
+		CREATE_FILE_NUMBER(tap_dentry, tap, tap_use);
+		CREATE_FILE_NUMBER(tap_dentry, tap, association_tag);
+		CREATE_FILE_NUMBER(tap_dentry, tap, selector_length);
+	}
+
+	CREATE_FILE_NUMBER(mod_dentry, modinfo, user_info_length);
+	if (modinfo->user_info_length)
+		CREATE_FILE_BIN(mod_dentry, modinfo, user_info, modinfo->user_info_length);
+
+	return 0;
+}

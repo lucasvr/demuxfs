@@ -28,6 +28,21 @@ struct biop_message_header {
 	uint8_t object_kind[4];
 };
 
+struct biop_module_info {
+	uint32_t module_timeout;
+	uint32_t block_timeout;
+	uint32_t min_block_time;
+	uint8_t taps_count;
+	struct biop_module_tap {
+		uint16_t tap_id;
+		uint16_t tap_use;
+		uint16_t association_tag;
+		uint8_t selector_length;
+	} *taps;
+	uint8_t user_info_length;
+	char *user_info;
+};
+
 struct biop_object_location {
 	uint32_t object_location_tag;
 	uint8_t object_location_length;
@@ -65,15 +80,18 @@ struct biop_profile_body {
 	struct biop_connbinder connbinder;
 };
 
-struct lite_profile_body {
-	int not_implemented;
-};
-
 struct biop_tagged_profile {
 	struct biop_profile_body *profile_body;
-	struct lite_options_profile_body *lite_body;
+	struct lite_options_profile_body {
+		int not_implemented;
+	} *lite_body;
 };
 
+
+int biop_parse_module_info(struct biop_module_info *modinfo,
+		const char *buf, uint32_t len);
+int biop_create_module_info_dentries(struct dentry *parent,
+		struct biop_module_info *modinfo);
 
 int biop_parse_tagged_profiles(struct biop_tagged_profile *profile, 
 		uint32_t count, const char *buf, uint32_t len);
