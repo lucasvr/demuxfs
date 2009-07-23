@@ -248,31 +248,37 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 		case 0x05: /* Application authorization descriptor */
 			{
 				dentry = CREATE_DIRECTORY(parent, "APPLICATION_AUTHORIZATION");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 		case 0x06: /* Ginga-NCL application descriptor */
 			{
 				dentry = CREATE_DIRECTORY(parent, "GINGA-NCL_APPLICATION");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 		case 0x0b: /* Application icons descriptor */
 			{
 				dentry = CREATE_DIRECTORY(parent, "APPLICATION_ICONS");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 		case 0x11: /* IP signalling descriptor */
 			{
 				dentry = CREATE_DIRECTORY(parent, "IP_SIGNALLING");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 		case 0x0c: /* Prefetch descriptor */
 			{
 				dentry = CREATE_DIRECTORY(parent, "PREFETCH");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 		case 0x0d: /* DII location descriptor */
 			{
 				dentry = CREATE_DIRECTORY(parent, "DII_LOCATION");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 	}
