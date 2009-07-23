@@ -1,6 +1,8 @@
 #ifndef __dsi_h
 #define __dsi_h
 
+#include "biop.h"
+
 /**
  * DSI - Download Server Initiate
  */
@@ -16,16 +18,23 @@ struct dsi_group_info_indication {
 		char *group_info_bytes;
 	} *dsi_group_info;
 	uint16_t private_data_length;
-	/* the private bytes actually hold a service gateway info structure */
-	struct dsi_service_gateway_info {
-		// IOP::IOR()
-		uint8_t download_taps_count;
-		char *download_taps;
-		uint8_t service_context_list_count;
-		char *service_context_list;
-		uint16_t user_info_length;
-		char *user_info;
-	} service_gateway_info;
+	/* the private bytes actually hold DSM-CC Carousel Descriptors */
+};
+
+struct dsi_service_gateway_info {
+	struct iop_ior {              /* IOP::IOR() */
+		uint32_t type_id_length;
+		char *type_id;
+		char alignment_gap[4];
+		uint32_t tagged_profiles_count;
+		struct biop_tagged_profile *tagged_profiles;
+	} iop_ior;
+	uint8_t download_taps_count;
+	char *download_taps;
+	uint8_t service_context_list_count;
+	char *service_context_list;
+	uint16_t user_info_length;
+	char *user_info;
 };
  
 struct dsi_table {
@@ -38,8 +47,9 @@ struct dsi_table {
 	char server_id[20];
 	struct dsmcc_compatibility_descriptor compatibility_descriptor;
 	uint16_t private_data_length;
-	/* the private bytes actually hold the group info indication */
-	struct dsi_group_info_indication group_info_indication;
+	/* the private bytes can hold different structures */
+	struct dsi_group_info_indication *group_info_indication;
+	struct dsi_service_gateway_info *service_gateway_info;
 	uint32_t crc;
 } __attribute__((__packed__));
 
