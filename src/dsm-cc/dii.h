@@ -1,6 +1,8 @@
 #ifndef __dii_h
 #define __dii_h
 
+#include "biop.h"
+
 /**
  * DII - Download Info Indication
  */
@@ -9,7 +11,7 @@ struct dii_module {
 	uint32_t module_size;
 	uint8_t module_version;
 	uint8_t module_info_length;
-	char *module_info_bytes;
+	struct biop_module_info *module_info;
 };
 
 struct dii_table {

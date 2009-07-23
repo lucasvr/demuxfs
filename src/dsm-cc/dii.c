@@ -112,17 +112,12 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 		CREATE_FILE_NUMBER(subdir, mod, module_size);
 		CREATE_FILE_NUMBER(subdir, mod, module_version);
 		CREATE_FILE_NUMBER(subdir, mod, module_info_length);
-		if (mod->module_info_length) {
-			uint8_t len;
-			uint16_t offset = 0;
-			while (offset < mod->module_info_length) {
-				len = dsmcc_descriptors_parse(&mod->module_info_bytes[offset], 1, subdir, priv);
-				offset += len + 2;
-			}
-		}
+		biop_create_module_info_dentries(subdir, mod->module_info);
 	}
 
 	CREATE_FILE_NUMBER(parent, dii, private_data_length);
+	if (dii->private_data_length)
+		CREATE_FILE_BIN(parent, dii, private_data_bytes, dii->private_data_length);
 #if 0
 	if (dii->private_data_length) {
 		uint8_t len;
@@ -213,27 +208,29 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/** DII bits */
 	dii->number_of_modules = CONVERT_TO_16(payload[j], payload[j+1]);
 	j += 2;
-	if (dii->number_of_modules)
+
+	if (dii->number_of_modules) {
 		dii->modules = calloc(dii->number_of_modules, sizeof(struct dii_module));
-	for (uint16_t i=0; i<dii->number_of_modules; ++i) {
-		struct dii_module *mod = &dii->modules[i];
-		mod->module_id = CONVERT_TO_16(payload[j], payload[j+1]);
-		mod->module_size = CONVERT_TO_32(payload[j+2], payload[j+3], payload[j+4], payload[j+5]);
-		mod->module_version = payload[j+6];
-		mod->module_info_length = payload[j+7];
-		if (mod->module_info_length)
-			mod->module_info_bytes = malloc(mod->module_info_length);
-		for (uint8_t k=0; k<mod->module_info_length; ++k)
-			mod->module_info_bytes[k] = payload[j+8+k];
-		j += 8 + mod->module_info_length;
+		for (uint16_t i=0; i<dii->number_of_modules; ++i) {
+			struct dii_module *mod = &dii->modules[i];
+			mod->module_id = CONVERT_TO_16(payload[j], payload[j+1]);
+			mod->module_size = CONVERT_TO_32(payload[j+2], payload[j+3], payload[j+4], payload[j+5]);
+			mod->module_version = payload[j+6];
+			mod->module_info_length = payload[j+7];
+			j += 8;
+			if (mod->module_info_length) {
+				mod->module_info = calloc(1, sizeof(struct biop_module_info));
+				j += biop_parse_module_info(mod->module_info, &payload[j], payload_len-j);
+			}
+		}
 	}
 	
 	dii->private_data_length = CONVERT_TO_16(payload[j], payload[j+1]);
-	if (dii->private_data_length)
+	if (dii->private_data_length) {
 		dii->private_data_bytes = malloc(dii->private_data_length);
-	for (uint16_t i=0; i<dii->private_data_length; ++i)
-		dii->private_data_bytes[i] = payload[j+2+i];
-
+		for (uint16_t i=0; i<dii->private_data_length; ++i)
+			dii->private_data_bytes[i] = payload[j+2+i];
+	}
 	j += 2 + dii->private_data_length;
 
 	/* Create filesystem entries for this table */
