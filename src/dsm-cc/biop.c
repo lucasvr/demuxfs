@@ -186,15 +186,11 @@ static int biop_parse_directory_message(struct biop_directory_message *msg,
 			j += ret;
 
 			binding->binding_type = buf[j++];
+			binding->iop_ior = calloc(1, sizeof(struct iop_ior));
 			ret = iop_parse_ior(binding->iop_ior, &buf[j], len-j);
 			if (ret < 0)
 				break;
 			j += ret;
-			dprintf("binding->iop_ior->type_id=%#x %#x %#x %#x",
-					binding->iop_ior->type_id[0],
-					binding->iop_ior->type_id[1],
-					binding->iop_ior->type_id[2],
-					binding->iop_ior->type_id[3]);
 
 			binding->child_object_info_length = CONVERT_TO_16(buf[j], buf[j+1]);
 			j += 2;
@@ -272,7 +268,7 @@ static int biop_parse_object_location(struct biop_object_location *ol,
 	return j;
 }
 
-static int biop_parse_connbinder(struct biop_connbinder *cb, const char *buf, uint32_t len)
+int biop_parse_connbinder(struct biop_connbinder *cb, const char *buf, uint32_t len)
 {
 	int i, j = 0;
 	
@@ -315,8 +311,7 @@ static int biop_parse_connbinder(struct biop_connbinder *cb, const char *buf, ui
 	return j;
 }
 
-static int biop_parse_profile_body(struct iop_tagged_profile *profile, 
-	const char *buf, uint32_t len)
+int biop_parse_profile_body(struct iop_tagged_profile *profile, const char *buf, uint32_t len)
 {
 	struct biop_profile_body *pb = calloc(1, sizeof(struct biop_profile_body));
 	int j = 0;
@@ -414,6 +409,7 @@ int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint
 {
 	struct biop_directory_message gateway_msg, empty_dir_msg;
 	struct biop_message_header msg_header;
+	struct dentry *dir_dentry;
 	char object_kind[4];
 	int lookahead_offset, j = 0;
 
