@@ -34,6 +34,7 @@
 #include "fifo.h"
 #include "list.h"
 #include "ts.h"
+#include "biop.h"
 #include "tables/psi.h"
 #include "dsm-cc/dsmcc.h"
 #include "dsm-cc/dii.h"
@@ -130,6 +131,114 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 #endif
 }
 
+bool dii_download_complete(const struct ts_header *header, struct dii_table *dii, 
+		struct demuxfs_data *priv)
+{
+	char buf[PATH_MAX], mod_dir[64];
+	struct dentry *ddb_dentry, *mod_dentry;
+	
+	snprintf(buf, sizeof(buf), "/%s/%#04x", FS_DDB_NAME, header->pid);
+	ddb_dentry = fsutils_get_dentry(priv->root, buf);
+	if (! ddb_dentry) {
+		/* XXX: maybe it's under another PID? */
+		return false;
+	}
+	ddb_dentry = fsutils_get_current(ddb_dentry);
+	assert(ddb_dentry);
+
+	for (uint16_t i=0; i<dii->number_of_modules; ++i) {
+		struct dii_module *mod = &dii->modules[i];
+		if (mod->module_size == 0)
+			continue;
+
+		sprintf(mod_dir, "/module_%02d", mod->module_id);
+		mod_dentry = fsutils_get_dentry(ddb_dentry, mod_dir);
+		if (! mod_dentry || mod_dentry->size != mod->module_size)
+			return false;
+	}
+	return true;
+}
+
+int dii_create_filesystem(const struct ts_header *header, struct dii_table *dii, 
+	struct demuxfs_data *priv)
+{
+	char buf[PATH_MAX], mod_dir[64], block_dir[64];
+	struct dentry *ddb_dentry, *dsmcc_dentry, *ait_dentry, *app_dentry = NULL;
+
+	dprintf("*** Creating filesystem ***");
+	dii->_filesystem_created = true;
+	
+	snprintf(buf, sizeof(buf), "/%s/%#04x", FS_DDB_NAME, header->pid);
+	ddb_dentry = fsutils_get_dentry(priv->root, buf);
+	assert(ddb_dentry);
+
+	ddb_dentry = fsutils_get_current(ddb_dentry);
+	assert(ddb_dentry);
+
+	dsmcc_dentry = CREATE_DIRECTORY(priv->root, FS_DSMCC_NAME);
+	assert(dsmcc_dentry);
+
+	/* Try to get the application name from the AIT */
+	snprintf(buf, sizeof(buf), "/%s", FS_AIT_NAME);
+	ait_dentry = fsutils_get_dentry(priv->root, buf);
+	if (ait_dentry) {
+		ait_dentry = fsutils_get_current(ait_dentry);
+		assert(ait_dentry);
+		for (uint16_t i=1; i < UINT16_MAX; ++i) {
+			sprintf(buf, "/Application_%02d", i);
+			ait_dentry = fsutils_get_dentry(ait_dentry, buf);
+			if (! ait_dentry)
+				break;
+
+			sprintf(buf, "/APPLICATION_NAME/APPLICATION_NAME_01/application_name");
+			ait_dentry = fsutils_get_dentry(ait_dentry, buf);
+			if (ait_dentry) {
+				app_dentry = CREATE_DIRECTORY(dsmcc_dentry, ait_dentry->contents);
+				break;
+			}
+		}
+	}
+	if (! app_dentry)
+		app_dentry = CREATE_DIRECTORY(dsmcc_dentry, FS_UNNAMED_APPLICATION_NAME);
+
+	/* For each module, get all of its blocks and expose their virtual filesystem */
+	for (uint16_t i=0; i<dii->number_of_modules; ++i) {
+		struct dentry *mod_dentry, *block_dentry;
+		struct dii_module *mod = &dii->modules[i];
+
+		if (mod->module_size == 0)
+			continue;
+
+		sprintf(mod_dir, "/module_%02d", mod->module_id);
+		mod_dentry = fsutils_get_dentry(ddb_dentry, mod_dir);
+		assert(mod_dentry);
+		
+		int remaining = (mod->module_size % dii->block_size) ? 1 : 0;
+		uint32_t block_count = mod->module_size / dii->block_size + remaining;
+		uint32_t blocks_parsed = 0;
+
+		char *download_data = malloc(block_count * dii->block_size);
+		char *download_ptr = download_data;
+		assert(download_data);
+
+		for (uint16_t b=0; b < UINT16_MAX && blocks_parsed < block_count; ++b) {
+			sprintf(block_dir, "/block_%02d.bin", b);
+			block_dentry = fsutils_get_dentry(mod_dentry, block_dir);
+			if (! block_dentry)
+				continue;
+			memcpy(download_ptr, block_dentry->contents, block_dentry->size);
+			download_ptr += block_dentry->size;
+			blocks_parsed++;
+		}
+
+		/* Parse blocks and create filesystem entries */
+		uint32_t download_len = download_ptr-download_data+1;
+		biop_create_filesystem_dentries(app_dentry, download_data, download_len);
+		free(download_data);
+	}
+	return 0;
+}
+
 int dii_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
@@ -182,6 +291,8 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	current_dii = hashtable_get(priv->psi_tables, dii->dentry->inode);
 	if (! dii->current_next_indicator || (current_dii && current_dii->version_number == dii->version_number)) {
 		dii_free(dii);
+		if (current_dii && !current_dii->_filesystem_created && dii_download_complete(header, current_dii, priv))
+			dii_create_filesystem(header, current_dii, priv);
 		return 0;
 	}
 
