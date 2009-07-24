@@ -149,6 +149,22 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	_dentry; \
 	})
 
+#define CREATE_SIMPLE_FILE(parent,_name,_size) \
+	({ \
+	 	struct dentry *_dentry = fsutils_get_child(parent, _name); \
+	 	if (! _dentry) { \
+	 		_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+	 		_dentry->contents = malloc(_size); \
+			_dentry->name = strdup(_name); \
+			_dentry->size = _size; \
+			_dentry->mode = S_IFREG | 0444; \
+	 		_dentry->obj_type = OBJ_TYPE_FILE; \
+			CREATE_COMMON((parent),_dentry); \
+			xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false); \
+	 	} \
+	 	_dentry; \
+	})
+
 #define CREATE_SYMLINK(parent,sname,target) \
 	({ \
 	 	struct dentry *_dentry = fsutils_get_child(parent, sname); \
