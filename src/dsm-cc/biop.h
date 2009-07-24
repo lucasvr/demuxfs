@@ -71,6 +71,7 @@ struct biop_binding {
 	uint64_t content_size;	/* Only used if name.kind_data == 0x66696c00 */
 	char *_content_type;    /* Content (MIME) type */
 	uint64_t _timestamp;    /* Last modified time (UTC time) */
+	ino_t _inode;			/* Inode number (DemuxFS extension) */
 };
 
 struct biop_directory_message {
