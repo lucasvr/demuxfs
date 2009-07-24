@@ -23,7 +23,7 @@ struct dsi_group_info_indication {
 };
 
 struct dsi_service_gateway_info {
-	struct iop_ior iop_ior;
+	struct iop_ior *iop_ior;
 	uint8_t download_taps_count;
 	char *download_taps;
 	uint8_t service_context_list_count;

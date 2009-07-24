@@ -53,7 +53,7 @@ static void dsi_free(struct dsi_table *dsi)
 		free(dsi->group_info_indication);
 	}
 	if (dsi->service_gateway_info) {
-		iop_free_ior(&dsi->service_gateway_info->iop_ior);
+		iop_free_ior(dsi->service_gateway_info->iop_ior);
 		free(dsi->service_gateway_info);
 	}
 	/* Free Private data */
@@ -99,7 +99,7 @@ static void dsi_create_dentries(struct dentry *parent, struct dsi_table *dsi, st
 void dsi_create_dii_symlink(const struct ts_header *header, struct dsi_table *dsi, 
 		struct demuxfs_data *priv)
 {
-	struct iop_ior *ior = &dsi->service_gateway_info->iop_ior;
+	struct iop_ior *ior = dsi->service_gateway_info->iop_ior;
 	struct biop_profile_body *pb = ior->tagged_profiles->profile_body;
 	struct dsmcc_tap *tap = pb && pb->connbinder.tap_count ? &pb->connbinder.taps[0] : NULL;
 	char search_dir[PATH_MAX], target[PATH_MAX], subdir[PATH_MAX];
@@ -281,11 +281,11 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	} else {
 		/* Object Carousel: BIOP::ServiceGatewayInformation */
 		struct dentry *sgi_dentry = CREATE_DIRECTORY(version_dentry, FS_BIOP_SERVICE_GATEWAY_INFORMATION_DIRNAME);
-		struct iop_ior *ior;
+		struct iop_ior *ior = calloc(1, sizeof(struct iop_ior));
 
 		/* Parse IOP::IOR() */
 		dsi->service_gateway_info = calloc(1, sizeof(struct dsi_service_gateway_info));
-		ior = &dsi->service_gateway_info->iop_ior;
+		dsi->service_gateway_info->iop_ior = ior;
 		j += iop_parse_ior(ior, &payload[j], payload_len-j);
 		iop_create_ior_dentries(sgi_dentry, ior);
 

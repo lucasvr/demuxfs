@@ -69,7 +69,10 @@ static int biop_parse_message_sub_header(struct biop_message_sub_header *sub_hea
 	sub_header->object_info_length = CONVERT_TO_16(buf[j+8], buf[j+9]);
 	j += 10;
 
-	dprintf("object_kind_data = %#x", sub_header->object_kind_data);
+	dprintf("object_key_len = %#x (%#x %#x %#x %#x)", obj_key->object_key_length,
+			obj_key->object_key[0], obj_key->object_key[1],
+			obj_key->object_key[2], obj_key->object_key[3]);
+
 	if (sub_header->object_kind_data == 0x66696c00) { /* "fil" */
 		struct biop_file_object_info *file_info = calloc(1, sizeof(struct biop_file_object_info));
 		file_info->content_size = CONVERT_TO_64(buf[j], buf[j+1], buf[j+2], buf[j+3],
@@ -77,7 +80,7 @@ static int biop_parse_message_sub_header(struct biop_message_sub_header *sub_hea
 		j += 8;
 		sub_header->object_info_length -= 8;
 		sub_header->obj_info.file_object_info = file_info;
-		dprintf("-------> file object with content_size=%lld", file_info->content_size);
+		dprintf("file object with content_size=%lld", file_info->content_size);
 	}
 
 	/* We don't need to parse the descriptors once again; parent did that for us already */
@@ -117,14 +120,14 @@ static int biop_parse_name(struct biop_name *name, const char *buf, uint32_t len
 	name->kind_length = buf[j];
 	name->kind_data = CONVERT_TO_32(buf[j+1], buf[j+2], buf[j+3], buf[j+4]);
 
-	dprintf("name_component_count=%d", name->name_component_count);
-	dprintf("name_id_length=%d", name->id_length);
-	dprintf("name_id_byte=%s", name->id_byte);
-	dprintf("kind_length=%d", name->kind_length);
-	dprintf("kind_data=%#x (%c%c%c)", name->kind_data, 
+//	dprintf("name_component_count=%d", name->name_component_count);
+//	dprintf("name_id_length=%d", name->id_length);
+	dprintf("name_id_byte=%s (%c%c%c)", name->id_byte,
 		(name->kind_data>>24) & 0xff,
 		(name->kind_data>>16) & 0xff,
 		(name->kind_data>>8) & 0xff);
+//	dprintf("kind_length=%d", name->kind_length);
+//	dprintf("kind_data=%#x", name->kind_data);
 
 	return j + 5;
 }
@@ -176,17 +179,22 @@ static int biop_parse_directory_message(struct biop_directory_message *msg,
 		for (uint16_t i=0; i<msg_body->bindings_count; ++i) {
 			struct biop_binding *binding = &msg_body->bindings[i];
 
-			dprintf("-- NAME %d -- (j=%#x)", i+1, j);
+			dprintf("-- NAME %d --", i+1);
 			ret = biop_parse_name(&binding->name, &buf[j], len-j);
 			if (ret < 0)
 				break;
 			j += ret;
 
 			binding->binding_type = buf[j++];
-			ret = iop_parse_ior(&binding->iop_ior, &buf[j], len-j);
+			ret = iop_parse_ior(binding->iop_ior, &buf[j], len-j);
 			if (ret < 0)
 				break;
 			j += ret;
+			dprintf("binding->iop_ior->type_id=%#x %#x %#x %#x",
+					binding->iop_ior->type_id[0],
+					binding->iop_ior->type_id[1],
+					binding->iop_ior->type_id[2],
+					binding->iop_ior->type_id[3]);
 
 			binding->child_object_info_length = CONVERT_TO_16(buf[j], buf[j+1]);
 			j += 2;
@@ -307,7 +315,7 @@ static int biop_parse_connbinder(struct biop_connbinder *cb, const char *buf, ui
 	return j;
 }
 
-static int biop_parse_profile_body(struct biop_tagged_profile *profile, 
+static int biop_parse_profile_body(struct iop_tagged_profile *profile, 
 	const char *buf, uint32_t len)
 {
 	struct biop_profile_body *pb = calloc(1, sizeof(struct biop_profile_body));
@@ -331,53 +339,6 @@ static int biop_parse_profile_body(struct biop_tagged_profile *profile,
 	return j;
 }
 
-/* Returns how many bytes were parsed */
-int biop_parse_tagged_profiles(struct biop_tagged_profile *profile, uint32_t count, 
-	const char *buf, uint32_t len)
-{
-	int j = 0, x = 0;
-	uint32_t i;
-
-	for (i=0; i<count; ++i) {
-		struct biop_tagged_profile *p = &profile[i];
-
-		/* Prefetch identification tag and data length */
-		uint32_t id_tag = CONVERT_TO_32(buf[j], buf[j+1], buf[j+2], buf[j+3]);
-		uint32_t data_length = CONVERT_TO_32(buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
-
-		switch (id_tag) {
-			case 0x42494F50: /* "BIOP" */
-				dprintf("BIOP parser not implemented");
-				break;
-			case 0x49534f05: /* Lite Options profile */
-				dprintf("Lite Options profile parser not implemented");
-				break;
-			case 0x49534f06: /* BIOP profile */
-				x = biop_parse_profile_body(p, &buf[j], len-j);
-				break;
-			case 0x49534f40: /* ConnBinder */
-				if (! p->profile_body) {
-					dprintf("ConnBinder parser invoked, but structure has no profile_body!");
-					break;
-				}
-				dprintf("Invoking ConnBinder parser");
-				x = biop_parse_connbinder(&p->profile_body->connbinder, &buf[j], len-j);
-				break;
-			case 0x49534f46: /* Service location */
-				dprintf("Service Location parser not implemented");
-				break;
-			case 0x49534f50: /* Object location */
-				dprintf("Object Location parser not implemented");
-				break;
-			default:
-				dprintf("Unknown profile, cannot parse");
-		}
-		j += 8 + data_length;
-	}
-
-	return j;
-}
-
 static int biop_create_biop_msg_header_dentries(struct dentry *parent, 
 	struct biop_message_header *msg_header)
 {
@@ -390,84 +351,6 @@ static int biop_create_biop_msg_header_dentries(struct dentry *parent,
 	CREATE_FILE_NUMBER(biop_dentry, msg_header, message_size);
 	return 0;
 }
-
-/* Returns 0 on success, -1 on error */
-int biop_create_tagged_profiles_dentries(struct dentry *parent, struct biop_tagged_profile *profile)
-{
-	if (profile->profile_body) {
-		struct dentry *body_dentry = CREATE_DIRECTORY(parent, FS_BIOP_PROFILE_BODY_DIRNAME);
-		struct biop_profile_body *pb = profile->profile_body;
-	
-		CREATE_FILE_NUMBER(body_dentry, pb, profile_id_tag);
-		CREATE_FILE_NUMBER(body_dentry, pb, profile_data_length);
-		CREATE_FILE_NUMBER(body_dentry, pb, profile_data_byte_order);
-		CREATE_FILE_NUMBER(body_dentry, pb, component_count);
-		if (pb->profile_data_byte_order != 0)
-			TS_WARNING("profile_data_byte_order != 0");
-
-		struct dentry *obj_dentry = CREATE_DIRECTORY(body_dentry, FS_BIOP_OBJECT_LOCATION_DIRNAME);
-		struct biop_object_location *ol = &pb->object_location;
-		
-		CREATE_FILE_NUMBER(obj_dentry, ol, object_location_tag);
-		CREATE_FILE_NUMBER(obj_dentry, ol, object_location_length);
-		CREATE_FILE_NUMBER(obj_dentry, ol, carousel_id);
-		CREATE_FILE_NUMBER(obj_dentry, ol, module_id);
-		CREATE_FILE_NUMBER(obj_dentry, ol, version_major);
-		CREATE_FILE_NUMBER(obj_dentry, ol, version_minor);
-		CREATE_FILE_NUMBER(obj_dentry, ol, object_key_length);
-		CREATE_FILE_NUMBER(obj_dentry, ol, object_key);
-		if (ol->object_location_tag != 0x49534f50)
-			TS_WARNING("object_location_tag != 0x49534f50");
-		if (ol->module_id >= 0xfff0 && ol->module_id <= 0xffff)
-			TS_WARNING("module_id contains a reserved value");
-		if (ol->version_major != 0x01)
-			TS_WARNING("version_major != 0x01");
-		if (ol->version_minor != 0x00)
-			TS_WARNING("version_minor != 0x00");
-
-		/* TODO: carousel_id must match with DII->download_id and DDB->download_id */
-
-		struct dentry *cb_dentry = CREATE_DIRECTORY(body_dentry, FS_BIOP_CONNBINDER_DIRNAME);
-		struct biop_connbinder *cb = &pb->connbinder;
-
-		CREATE_FILE_NUMBER(cb_dentry, cb, connbinder_tag);
-		CREATE_FILE_NUMBER(cb_dentry, cb, connbinder_length);
-		CREATE_FILE_NUMBER(cb_dentry, cb, tap_count);
-		if (cb->connbinder_tag != 0x49534f40)
-			TS_WARNING("connbinder_tag != 0x49534f40");
-
-		for (int i=0; i<cb->tap_count; ++i) {
-			struct dentry *tap_dentry = CREATE_DIRECTORY(cb_dentry, "tap_%02d", i+1);
-			struct dsmcc_tap *tap = &cb->taps[i];
-			
-			CREATE_FILE_NUMBER(tap_dentry, tap, tap_id);
-			CREATE_FILE_NUMBER(tap_dentry, tap, tap_use);
-			CREATE_FILE_NUMBER(tap_dentry, tap, association_tag);
-			if (tap->tap_id != 0xffff)
-				TS_WARNING("tap_id != 0xffff");
-
-			if (tap->message_selector) {
-				struct dentry *selector_dentry = CREATE_DIRECTORY(tap_dentry, 
-						FS_DSMCC_MESSAGE_SELECTOR_DIRNAME);
-				struct message_selector *ms = tap->message_selector;
-
-				CREATE_FILE_NUMBER(selector_dentry, ms, selector_length);
-				CREATE_FILE_NUMBER(selector_dentry, ms, selector_type);
-				CREATE_FILE_NUMBER(selector_dentry, ms, transaction_id);
-				CREATE_FILE_NUMBER(selector_dentry, ms, timeout);
-				if (ms->selector_length != 0x0a)
-					TS_WARNING("selector_length != 0x0a");
-				if (ms->selector_type != 0x01)
-					TS_WARNING("selector_type != 0x01");
-			}
-		}
-	} else if (profile->lite_body) {
-		/* TODO */
-		dprintf("LiteBody profile parser not implemented");
-	}
-	return 0;
-}
-
 
 /* Returns how many bytes were parsed */
 int biop_parse_module_info(struct biop_module_info *modinfo, const char *buf, uint32_t len)
