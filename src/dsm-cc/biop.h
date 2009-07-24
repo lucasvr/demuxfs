@@ -65,7 +65,7 @@ struct biop_name {
 struct biop_binding {
 	struct biop_name name;
 	uint8_t binding_type;
-	struct iop_ior iop_ior;
+	struct iop_ior *iop_ior;
 	uint16_t child_object_info_length;
 	uint64_t content_size;	/* Only used if name.kind_data == 0x66696c00 */
 	char *_content_type;    /* Content (MIME) type */
@@ -144,13 +144,6 @@ struct biop_profile_body {
 	struct biop_connbinder connbinder;
 };
 
-struct biop_tagged_profile {
-	struct biop_profile_body *profile_body;
-	struct lite_options_profile_body {
-		int not_implemented;
-	} *lite_body;
-};
-
 int biop_create_filesystem_dentries(struct dentry *parent,
 		const char *buf, uint32_t len);
 
@@ -158,10 +151,5 @@ int biop_parse_module_info(struct biop_module_info *modinfo,
 		const char *buf, uint32_t len);
 int biop_create_module_info_dentries(struct dentry *parent,
 		struct biop_module_info *modinfo);
-
-int biop_parse_tagged_profiles(struct biop_tagged_profile *profile, 
-		uint32_t count, const char *buf, uint32_t len);
-int biop_create_tagged_profiles_dentries(struct dentry *parent,
-		struct biop_tagged_profile *profile);
 
 #endif /* __biop_h */
