@@ -1,6 +1,8 @@
 #ifndef __biop_h
 #define __biop_h
 
+#include "iop.h"
+
 /*
  * A complete description of DSM-CC is found in the following URL:
  * http://www.interactivetvweb.org/tutorials/dtv_intro/dsmcc/object_carousel
@@ -23,9 +25,71 @@ struct biop_message_header {
 	uint8_t byte_order;
 	uint8_t message_type;
 	uint32_t message_size;
-	uint8_t object_key_length;
-	char *object_key_data;
-	uint8_t object_kind[4];
+};
+
+struct biop_file_object_info {
+	uint64_t content_size;
+	char *file_object_info_descriptor;
+};
+
+struct biop_message_sub_header {
+	struct biop_object_key {
+		uint8_t object_key_length;
+		char *object_key;
+	} object_key;
+
+	uint32_t object_kind_length;
+	uint32_t object_kind_data;
+	uint16_t object_info_length;
+	union {
+		char *dir_object_info_descriptor;
+		struct biop_file_object_info *file_object_info;
+	} obj_info;
+
+	uint8_t service_context_list_count;
+	struct biop_service_context {
+		uint32_t context_id;
+		uint16_t context_data_length;
+		char *context_data;
+	} *service_context;
+};
+
+struct biop_name {
+	uint8_t name_component_count;
+	uint8_t id_length;
+	char *id_byte;
+	uint8_t kind_length;
+	uint32_t kind_data;
+};
+
+struct biop_binding {
+	struct biop_name name;
+	uint8_t binding_type;
+	struct iop_ior iop_ior;
+	uint16_t child_object_info_length;
+	uint64_t content_size;	/* Only used if name.kind_data == 0x66696c00 */
+	char *_content_type;    /* Content (MIME) type */
+	uint64_t _timestamp;    /* Last modified time (UTC time) */
+};
+
+struct biop_directory_message {
+	struct biop_message_header header;
+	struct biop_message_sub_header sub_header;
+	uint32_t message_body_length;
+	struct biop_directory_message_body {
+		uint16_t bindings_count;
+		struct biop_binding *bindings;
+	} message_body;
+};
+
+struct biop_file_message {
+	struct biop_message_header header;
+	struct biop_message_sub_header sub_header;
+	uint32_t message_body_length;
+	struct biop_file_message_body {
+		uint32_t content_length;
+		const char *contents;
+	} message_body;
 };
 
 struct biop_module_info {
@@ -87,6 +151,8 @@ struct biop_tagged_profile {
 	} *lite_body;
 };
 
+int biop_create_filesystem_dentries(struct dentry *parent,
+		const char *buf, uint32_t len);
 
 int biop_parse_module_info(struct biop_module_info *modinfo,
 		const char *buf, uint32_t len);

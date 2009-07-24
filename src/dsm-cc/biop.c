@@ -31,7 +31,9 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "biop.h"
+#include "iop.h"
 #include "ts.h"
+#include "debug.h"
 
 static int biop_parse_message_header(struct biop_message_header *msg,
 	const char *buf, uint32_t len)
@@ -44,18 +46,187 @@ static int biop_parse_message_header(struct biop_message_header *msg,
 	msg->byte_order = buf[j+6];
 	msg->message_type = buf[j+7];
 	msg->message_size = CONVERT_TO_32(buf[j+8], buf[j+9], buf[j+10], buf[j+11]);
-	msg->object_key_length = buf[j+12];
-	if (msg->object_key_length) {
-		msg->object_key_data = calloc(msg->object_key_length, sizeof(char));
-		memcpy(msg->object_key_data, &buf[j+13], msg->object_key_length);
-	}
-	j += 13 + msg->object_key_length;
-	msg->object_kind[0] = buf[j];
-	msg->object_kind[1] = buf[j+1];
-	msg->object_kind[2] = buf[j+2];
-	msg->object_kind[3] = buf[j+3];
+	j += 12;
 
-	return j+4;
+	return j;
+}
+
+static int biop_parse_message_sub_header(struct biop_message_sub_header *sub_header,
+	const char *buf, uint32_t len)
+{
+	struct biop_object_key *obj_key = &sub_header->object_key;
+	int j = 0;
+
+	obj_key->object_key_length = buf[j];
+	if (obj_key->object_key_length) {
+		obj_key->object_key = calloc(obj_key->object_key_length, sizeof(char));
+		memcpy(obj_key->object_key, &buf[j+1], obj_key->object_key_length);
+	}
+	j += 1 + obj_key->object_key_length;
+
+	sub_header->object_kind_length = CONVERT_TO_32(buf[j], buf[j+1], buf[j+2], buf[j+3]);
+	sub_header->object_kind_data = CONVERT_TO_32(buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
+	sub_header->object_info_length = CONVERT_TO_16(buf[j+8], buf[j+9]);
+	j += 10;
+
+	dprintf("object_kind_data = %#x", sub_header->object_kind_data);
+	if (sub_header->object_kind_data == 0x66696c00) { /* "fil" */
+		struct biop_file_object_info *file_info = calloc(1, sizeof(struct biop_file_object_info));
+		file_info->content_size = CONVERT_TO_64(buf[j], buf[j+1], buf[j+2], buf[j+3],
+			buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
+		j += 8;
+		sub_header->object_info_length -= 8;
+		sub_header->obj_info.file_object_info = file_info;
+		dprintf("-------> file object with content_size=%lld", file_info->content_size);
+	}
+
+	/* We don't need to parse the descriptors once again; parent did that for us already */
+	j += sub_header->object_info_length;
+
+	sub_header->service_context_list_count = buf[j];
+	j += 1;
+	if (sub_header->service_context_list_count) {
+		sub_header->service_context = calloc(sub_header->service_context_list_count, sizeof(struct biop_service_context));
+		for (uint8_t i=0; i<sub_header->service_context_list_count; ++i) {
+			struct biop_service_context *ctx = &sub_header->service_context[i];
+
+			ctx->context_id = CONVERT_TO_32(buf[j], buf[j+1], buf[j+2], buf[j+3]);
+			ctx->context_data_length = CONVERT_TO_16(buf[j+4], buf[j+5]);
+			if (ctx->context_data_length) {
+				ctx->context_data = calloc(ctx->context_data_length, sizeof(char));
+				memcpy(ctx->context_data, &buf[j+6], ctx->context_data_length);
+			}
+			j += 6 + ctx->context_data_length;
+		}
+	}
+	return j;
+}
+
+static int biop_parse_name(struct biop_name *name, const char *buf, uint32_t len)
+{
+	int j = 0;
+
+	name->name_component_count = buf[j];
+	name->id_length = buf[j+1];
+	if (name->id_length) {
+		name->id_byte = calloc(name->id_length+1, sizeof(char));
+		memcpy(name->id_byte, &buf[j+2], name->id_length);
+	}
+	j += 2 + name->id_length;
+
+	name->kind_length = buf[j];
+	name->kind_data = CONVERT_TO_32(buf[j+1], buf[j+2], buf[j+3], buf[j+4]);
+
+	dprintf("name_component_count=%d", name->name_component_count);
+	dprintf("name_id_length=%d", name->id_length);
+	dprintf("name_id_byte=%s", name->id_byte);
+	dprintf("kind_length=%d", name->kind_length);
+	dprintf("kind_data=%#x (%c%c%c)", name->kind_data, 
+		(name->kind_data>>24) & 0xff,
+		(name->kind_data>>16) & 0xff,
+		(name->kind_data>>8) & 0xff);
+
+	return j + 5;
+}
+
+static int biop_parse_descriptor(struct biop_binding *binding, const char *buf, uint32_t len)
+{
+	int j = 0;
+	
+	uint8_t descriptor_tag = buf[j];
+	uint8_t descriptor_length = buf[j+1];
+	
+	/* TODO: check for mandatory vs optional descriptors */
+	switch (descriptor_tag) {
+		case 0x72: /* Content type */
+			binding->_content_type = calloc(descriptor_length+1, sizeof(char));
+			memcpy(binding->_content_type, &buf[j+2], descriptor_length);
+			dprintf("content_type='%s'", binding->_content_type);
+			break;
+		case 0x81: /* Time stamp */
+			binding->_timestamp = CONVERT_TO_64(buf[j+2], buf[j+3], buf[j+4],
+				buf[j+5], buf[j+6], buf[j+7], buf[j+8], buf[j+9]);
+			dprintf("time_stamp='%#llx'", binding->_timestamp);
+			break;
+		default:
+			dprintf("Unsupported descriptor tag '%#x'", descriptor_tag);
+	}
+	j += 2 + descriptor_length;
+
+	return j;
+}
+
+/* The MessageHeader is expected to have been already parsed */
+static int biop_parse_directory_message(struct biop_directory_message *msg,
+	const char *buf, uint32_t len)
+{
+	struct biop_directory_message_body *msg_body = &msg->message_body;
+	struct biop_message_sub_header *sub_header = &msg->sub_header;
+	int ret, retval, x = 0, j = 0;
+
+	j += biop_parse_message_sub_header(sub_header, &buf[j], len-j);
+
+	msg->message_body_length = CONVERT_TO_32(buf[j], buf[j+1], buf[j+2], buf[j+3]);
+	msg_body->bindings_count = CONVERT_TO_16(buf[j+4], buf[j+5]);
+	retval = msg->message_body_length + j + 4;
+	j += 6;
+
+	if (msg_body->bindings_count) {
+		msg_body->bindings = calloc(msg_body->bindings_count, sizeof(struct biop_binding));
+		for (uint16_t i=0; i<msg_body->bindings_count; ++i) {
+			struct biop_binding *binding = &msg_body->bindings[i];
+
+			dprintf("-- NAME %d -- (j=%#x)", i+1, j);
+			ret = biop_parse_name(&binding->name, &buf[j], len-j);
+			if (ret < 0)
+				break;
+			j += ret;
+
+			binding->binding_type = buf[j++];
+			ret = iop_parse_ior(&binding->iop_ior, &buf[j], len-j);
+			if (ret < 0)
+				break;
+			j += ret;
+
+			binding->child_object_info_length = CONVERT_TO_16(buf[j], buf[j+1]);
+			j += 2;
+			if (binding->name.kind_data == 0x66696c00) { /* "fil" */
+				binding->content_size = CONVERT_TO_64(buf[j], buf[j+1], 
+					buf[j+2], buf[j+3],	buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
+				j += 8;
+				dprintf("content_size=%#llx", binding->content_size);
+				while (x < binding->child_object_info_length-8)
+					x += biop_parse_descriptor(binding, &buf[j+x], len-j-x);
+			} else {
+				while (x < binding->child_object_info_length)
+					x += biop_parse_descriptor(binding, &buf[j+x], len-j-x);
+			}
+			j += x;
+			dprintf("child_object_info_length=%#x", binding->child_object_info_length);
+		}
+	}
+
+	return retval;
+}
+
+/* The MessageHeader is expected to have been already parsed */
+static int biop_parse_file_message(struct biop_file_message *msg,
+	const char *buf, uint32_t len)
+{
+	struct biop_file_message_body *msg_body = &msg->message_body;
+	struct biop_message_sub_header *sub_header = &msg->sub_header;
+	int j = 0;
+
+	j += biop_parse_message_sub_header(sub_header, &buf[j], len-j);
+
+	msg->message_body_length = CONVERT_TO_32(buf[j], buf[j+1], buf[j+2], buf[j+3]);
+	msg_body->content_length = CONVERT_TO_32(buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
+	if (msg_body->content_length)
+		/* Points to the user provided buffer */
+		msg_body->contents = &buf[j+8];
+	j += 8 + msg_body->content_length;
+
+	return j;
 }
 
 static int biop_parse_object_location(struct biop_object_location *ol,
@@ -86,6 +257,7 @@ static int biop_parse_object_location(struct biop_object_location *ol,
 			break;
 		default:
 			dprintf("object_key_length indicates more than 4 bytes, cannot parse object_key");
+			ol->object_key_length = 4;
 	}
 	j += ol->object_key_length;
 
@@ -163,14 +335,15 @@ static int biop_parse_profile_body(struct biop_tagged_profile *profile,
 int biop_parse_tagged_profiles(struct biop_tagged_profile *profile, uint32_t count, 
 	const char *buf, uint32_t len)
 {
-	int j = 0;
+	int j = 0, x = 0;
 	uint32_t i;
 
 	for (i=0; i<count; ++i) {
 		struct biop_tagged_profile *p = &profile[i];
 
-		/* Prefetch identification tag */
+		/* Prefetch identification tag and data length */
 		uint32_t id_tag = CONVERT_TO_32(buf[j], buf[j+1], buf[j+2], buf[j+3]);
+		uint32_t data_length = CONVERT_TO_32(buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
 
 		switch (id_tag) {
 			case 0x42494F50: /* "BIOP" */
@@ -180,8 +353,7 @@ int biop_parse_tagged_profiles(struct biop_tagged_profile *profile, uint32_t cou
 				dprintf("Lite Options profile parser not implemented");
 				break;
 			case 0x49534f06: /* BIOP profile */
-				dprintf("Invoking BIOP profile parser");
-				j += biop_parse_profile_body(p, &buf[j], len-j);
+				x = biop_parse_profile_body(p, &buf[j], len-j);
 				break;
 			case 0x49534f40: /* ConnBinder */
 				if (! p->profile_body) {
@@ -189,7 +361,7 @@ int biop_parse_tagged_profiles(struct biop_tagged_profile *profile, uint32_t cou
 					break;
 				}
 				dprintf("Invoking ConnBinder parser");
-				j += biop_parse_connbinder(&p->profile_body->connbinder, &buf[j], len-j);
+				x = biop_parse_connbinder(&p->profile_body->connbinder, &buf[j], len-j);
 				break;
 			case 0x49534f46: /* Service location */
 				dprintf("Service Location parser not implemented");
@@ -200,6 +372,7 @@ int biop_parse_tagged_profiles(struct biop_tagged_profile *profile, uint32_t cou
 			default:
 				dprintf("Unknown profile, cannot parse");
 		}
+		j += 8 + data_length;
 	}
 
 	return j;
@@ -215,9 +388,6 @@ static int biop_create_biop_msg_header_dentries(struct dentry *parent,
 	CREATE_FILE_NUMBER(biop_dentry, msg_header, byte_order);
 	CREATE_FILE_NUMBER(biop_dentry, msg_header, message_type);
 	CREATE_FILE_NUMBER(biop_dentry, msg_header, message_size);
-	CREATE_FILE_NUMBER(biop_dentry, msg_header, object_key_length);
-	CREATE_FILE_BIN(biop_dentry, msg_header, object_key_data, msg_header->object_key_length);
-	CREATE_FILE_BIN(biop_dentry, msg_header, object_kind, 4);
 	return 0;
 }
 
@@ -293,6 +463,7 @@ int biop_create_tagged_profiles_dentries(struct dentry *parent, struct biop_tagg
 		}
 	} else if (profile->lite_body) {
 		/* TODO */
+		dprintf("LiteBody profile parser not implemented");
 	}
 	return 0;
 }
@@ -352,6 +523,58 @@ int biop_create_module_info_dentries(struct dentry *parent, struct biop_module_i
 	CREATE_FILE_NUMBER(mod_dentry, modinfo, user_info_length);
 	if (modinfo->user_info_length)
 		CREATE_FILE_BIN(mod_dentry, modinfo, user_info, modinfo->user_info_length);
+
+	return 0;
+}
+
+int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint32_t len)
+{
+	struct biop_directory_message gateway_msg, empty_dir_msg;
+	struct biop_message_header msg_header;
+	char object_kind[4];
+	int lookahead_offset, j = 0;
+
+	memset(&gateway_msg, 0, sizeof(gateway_msg));
+	memset(&empty_dir_msg, 0, sizeof(empty_dir_msg));
+
+	while (j < len) {
+		j += biop_parse_message_header(&msg_header, &buf[j], len-j);
+		if (j >= len)
+			break;
+
+		/* Lookahead object kind */
+		lookahead_offset = j + 1 + (buf[j+1] & 0xff) + 4 + 4;
+		memcpy(object_kind, &buf[lookahead_offset], sizeof(object_kind));
+
+		if (! strncmp(object_kind, "srg", 3)) {
+			dprintf("--> gateway");
+			if (memcmp(&gateway_msg, &empty_dir_msg, sizeof(gateway_msg))) {
+				dprintf("Error: more than one Gateway Service provided");
+				break;
+			}
+			memcpy(&gateway_msg.header, &msg_header, sizeof(msg_header));
+			j += biop_parse_directory_message(&gateway_msg, &buf[j], len-j);
+	//		biop_create_directory_dentries(parent, &gateway_msg);
+
+		} else if (! strncmp(object_kind, "dir", 3)) {
+			dprintf("--> directory");
+			struct biop_directory_message dir_msg;
+			memset(&dir_msg, 0, sizeof(dir_msg));
+			memcpy(&dir_msg.header, &msg_header, sizeof(msg_header));
+			j += biop_parse_directory_message(&dir_msg, &buf[j], len-j);
+
+		} else if (! strncmp(object_kind, "fil", 3)) {
+			dprintf("--> file");
+			struct biop_file_message file_msg;
+			memset(&file_msg, 0, sizeof(file_msg));
+			memcpy(&file_msg.header, &msg_header, sizeof(msg_header));
+			j += biop_parse_file_message(&file_msg, &buf[j], len-j);
+
+		} else {
+			dprintf("Parser for object kind '0x%02x%02x%02x%02x' not implemented", 
+				object_kind[0], object_kind[1], object_kind[2], object_kind[3]);
+		}
+	}
 
 	return 0;
 }
