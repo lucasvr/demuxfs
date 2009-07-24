@@ -1,7 +1,7 @@
 #ifndef _iop_ior
 #define _iop_ior
 
-#include "biop.h"
+struct biop_profile_body;
 
 /* IOP::TaggedProfile() */
 struct iop_tagged_profile {

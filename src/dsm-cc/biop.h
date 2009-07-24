@@ -1,7 +1,8 @@
 #ifndef __biop_h
 #define __biop_h
 
-#include "iop.h"
+struct iop_ior;
+struct iop_tagged_profile;
 
 /*
  * A complete description of DSM-CC is found in the following URL:
