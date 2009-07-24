@@ -77,6 +77,10 @@ struct dentry {
 	char *name;
 	/* UNIX mode (file, symlink, directory) */
 	mode_t mode;
+	/* Timestamps */
+	time_t atime;
+	time_t ctime;
+	time_t mtime;
 	/* DemuxFS object type (FIFO, snapshot, regular file, directory) */
 	int obj_type;
 	/* Reference count */

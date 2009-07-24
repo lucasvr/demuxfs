@@ -53,6 +53,9 @@ static int do_getattr(struct dentry *dentry, struct stat *stbuf)
 		stbuf->st_size = 0xffffff;
 	else if (! DEMUXFS_IS_DIR(dentry))
 		stbuf->st_size = dentry->size;
+	stbuf->st_atime = dentry->atime;
+	stbuf->st_ctime = dentry->ctime;
+	stbuf->st_mtime = dentry->mtime;
 	stbuf->st_nlink = 1;
     stbuf->st_blksize = 128;
     stbuf->st_dev = DEMUXFS_SUPER_MAGIC;
