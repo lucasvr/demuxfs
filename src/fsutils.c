@@ -286,6 +286,26 @@ struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 	return prev;
 }
 
+struct dentry * fsutils_find_by_inode(struct dentry *root, ino_t inode)
+{
+	struct dentry *ptr, *ret = NULL;
+	
+	if (! root)
+		return NULL;
+	else if (root->inode == inode)
+		return root;
+
+	list_for_each_entry(ptr, &root->children, list) {
+		if (ptr->mode & S_IFDIR)
+			ret = fsutils_find_by_inode(ptr, inode);
+		else if (ptr->inode == inode)
+			ret = ptr;
+		if (ret)
+			return ret;
+	}
+	return NULL;
+}
+
 struct dentry * fsutils_create_version_dir(struct dentry *parent, int version)
 {
 	char version_dir[32];
