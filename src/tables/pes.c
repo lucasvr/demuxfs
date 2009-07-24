@@ -137,23 +137,18 @@ int pes_parse_audio(const struct ts_header *header, const char *payload, uint32_
 		struct demuxfs_data *priv)
 {
 	struct dentry *pes_dentry;
-	int pes_ret;
 
 	pes_dentry = pes_get_dentry(header, FS_PES_FIFO_NAME, priv);
 	if (! pes_dentry)
 		return -ENOENT;
 
-	pes_ret = pes_append_to_fifo(pes_dentry, false, payload, payload_len);
-	if (pes_ret < 0)
-		return pes_ret;
-	return 0;
+	return pes_append_to_fifo(pes_dentry, false, payload, payload_len);
 }
 
 int pes_parse_video(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
 	struct dentry *es_dentry, *pes_dentry;
-	int es_ret, pes_ret;
 
 	if (header->payload_unit_start_indicator && payload_len < 6) {
 		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
@@ -233,13 +228,7 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 		dprintf("dentry = NULL");
 		return -ENOENT;
 	}
-	pes_ret = pes_append_to_fifo(pes_dentry, header->payload_unit_start_indicator, payload, payload_len);
-
-	if (es_ret < 0)
-		return es_ret;
-	else if (pes_ret < 0)
-		return pes_ret;
-	return 0;
+	return pes_append_to_fifo(pes_dentry, header->payload_unit_start_indicator, payload, payload_len);
 }
 
 int pes_parse_other(const struct ts_header *header, const char *payload, uint32_t payload_len,
