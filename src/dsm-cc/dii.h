@@ -32,6 +32,7 @@ struct dii_table {
 	struct dii_module *modules;
 	uint16_t private_data_length;
 	char *private_data_bytes;
+	bool _filesystem_created;
 	uint32_t crc;
 } __attribute__((__packed__));
 
