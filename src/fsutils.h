@@ -16,12 +16,14 @@
 #define FS_DII_NAME                     "DII"
 #define FS_DSI_NAME                     "DSI"
 #define FS_DDB_NAME                     "DDB"
+#define FS_DSMCC_NAME                   "DSM-CC"
 
 #define FS_PROGRAMS_NAME                "Programs"
 #define FS_CURRENT_NAME                 "Current"
 #define FS_PRIMARY_NAME                 "Primary"
 #define FS_SECONDARY_NAME               "Secondary"
 #define FS_BROKEN_SYMLINK_NAME          "BrokenSymlink"
+#define FS_UNNAMED_APPLICATION_NAME     "UnnamedApplication"
 
 #define FS_VIDEO_SNAPSHOT_NAME          "snapshot.ppm"
 #define FS_STREAMS_NAME                 "Streams"
