@@ -34,6 +34,7 @@
 #include "fifo.h"
 #include "list.h"
 #include "ts.h"
+#include "iop.h"
 #include "biop.h"
 #include "tables/psi.h"
 #include "dsm-cc/dsmcc.h"
@@ -52,10 +53,7 @@ static void dsi_free(struct dsi_table *dsi)
 		free(dsi->group_info_indication);
 	}
 	if (dsi->service_gateway_info) {
-		/* TODO: follow the allocations performed in biop.c and deallocate them here */
-		struct iop_ior *iop = &dsi->service_gateway_info->iop_ior;
-		if (iop->type_id)
-			free(iop->type_id);
+		iop_free_ior(&dsi->service_gateway_info->iop_ior);
 		free(dsi->service_gateway_info);
 	}
 	/* Free Private data */
@@ -101,8 +99,8 @@ static void dsi_create_dentries(struct dentry *parent, struct dsi_table *dsi, st
 void dsi_create_dii_symlink(const struct ts_header *header, struct dsi_table *dsi, 
 		struct demuxfs_data *priv)
 {
-	struct iop_ior *iop = &dsi->service_gateway_info->iop_ior;
-	struct biop_profile_body *pb = iop->tagged_profiles->profile_body;
+	struct iop_ior *ior = &dsi->service_gateway_info->iop_ior;
+	struct biop_profile_body *pb = ior->tagged_profiles->profile_body;
 	struct dsmcc_tap *tap = pb && pb->connbinder.tap_count ? &pb->connbinder.taps[0] : NULL;
 	char search_dir[PATH_MAX], target[PATH_MAX], subdir[PATH_MAX];
 
@@ -282,36 +280,16 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	
 	} else {
 		/* Object Carousel: BIOP::ServiceGatewayInformation */
-		dsi->service_gateway_info = calloc(1, sizeof(struct dsi_service_gateway_info));
-
-		/* IOP::IOR() */
 		struct dentry *sgi_dentry = CREATE_DIRECTORY(version_dentry, FS_BIOP_SERVICE_GATEWAY_INFORMATION_DIRNAME);
-		struct iop_ior *iop = &dsi->service_gateway_info->iop_ior;
+		struct iop_ior *ior;
 
-		iop->type_id_length = CONVERT_TO_32(payload[j], payload[j+1], payload[j+2], payload[j+3]);
-		iop->type_id = calloc(iop->type_id_length+1, sizeof(char));
-		memcpy(iop->type_id, &payload[j+4], iop->type_id_length);
-		CREATE_FILE_NUMBER(sgi_dentry, iop, type_id_length);
-		CREATE_FILE_STRING(sgi_dentry, iop, type_id, XATTR_FORMAT_STRING);
-		j += 4 + iop->type_id_length;
+		/* Parse IOP::IOR() */
+		dsi->service_gateway_info = calloc(1, sizeof(struct dsi_service_gateway_info));
+		ior = &dsi->service_gateway_info->iop_ior;
+		j += iop_parse_ior(ior, &payload[j], payload_len-j);
+		iop_create_ior_dentries(sgi_dentry, ior);
 
-		uint8_t gap_bytes = iop->type_id_length % 4;
-		if (gap_bytes) {
-			memcpy(iop->alignment_gap, &payload[j], gap_bytes);
-			CREATE_FILE_BIN(sgi_dentry, iop, alignment_gap, gap_bytes);
-			j += gap_bytes;
-		}
-		
-		iop->tagged_profiles_count = CONVERT_TO_32(payload[j], payload[j+1], payload[j+2], payload[j+3]);
-		CREATE_FILE_NUMBER(sgi_dentry, iop, tagged_profiles_count);
-		j += 4;
-		if (iop->tagged_profiles_count) {
-			/* Parse and create tagged profiles */
-			iop->tagged_profiles = calloc(iop->tagged_profiles_count, sizeof(struct biop_tagged_profile));
-			j += biop_parse_tagged_profiles(iop->tagged_profiles, iop->tagged_profiles_count, 
-				&payload[j], payload_len-j);
-			biop_create_tagged_profiles_dentries(sgi_dentry, iop->tagged_profiles);
-
+		if (ior->tagged_profiles_count) {
 			/* Check if DSI transaction_id matches DII transaction_id and create a symlink accordingly */
 			dsi_create_dii_symlink(header, dsi, priv);
 		}

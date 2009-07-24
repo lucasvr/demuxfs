@@ -2,6 +2,7 @@
 #define __dsi_h
 
 #include "biop.h"
+#include "iop.h"
 
 /**
  * DSI - Download Server Initiate
@@ -22,13 +23,7 @@ struct dsi_group_info_indication {
 };
 
 struct dsi_service_gateway_info {
-	struct iop_ior {              /* IOP::IOR() */
-		uint32_t type_id_length;
-		char *type_id;
-		char alignment_gap[4];
-		uint32_t tagged_profiles_count;
-		struct biop_tagged_profile *tagged_profiles;
-	} iop_ior;
+	struct iop_ior iop_ior;
 	uint8_t download_taps_count;
 	char *download_taps;
 	uint8_t service_context_list_count;
