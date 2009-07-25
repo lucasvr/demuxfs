@@ -155,7 +155,7 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	struct dentry *_dentry = fsutils_get_child(parent, _name); \
 	 	if (! _dentry) { \
 	 		_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-	 		_dentry->contents = malloc(_size); \
+	 		_dentry->contents = _size ? malloc(_size) : NULL; \
 			_dentry->name = strdup(_name); \
 			_dentry->size = _size; \
 			_dentry->mode = S_IFREG | 0444; \
