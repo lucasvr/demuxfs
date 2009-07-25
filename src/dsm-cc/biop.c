@@ -35,6 +35,19 @@
 #include "ts.h"
 #include "debug.h"
 
+static ino_t biop_get_sub_header_inode(struct biop_message_sub_header *sub_header)
+{
+	ino_t inode = 0;
+	if (sub_header)
+		inode = CONVERT_TO_32(
+			sub_header->object_key.object_key[0],
+			sub_header->object_key.object_key[1],
+			sub_header->object_key.object_key[2],
+			sub_header->object_key.object_key[3]
+		);
+	return inode;
+}
+
 static int biop_parse_message_header(struct biop_message_header *msg,
 	const char *buf, uint32_t len)
 {
@@ -159,6 +172,16 @@ static int biop_parse_descriptor(struct biop_binding *binding, const char *buf, 
 	return j;
 }
 
+static void biop_free_directory_message(struct biop_directory_message *msg)
+{
+	// TODO
+}
+
+static void biop_free_file_message(struct biop_file_message *msg)
+{
+	// TODO
+}
+
 /* The MessageHeader is expected to have been already parsed */
 static int biop_parse_directory_message(struct biop_directory_message *msg,
 	const char *buf, uint32_t len)
@@ -215,6 +238,9 @@ static int biop_parse_directory_message(struct biop_directory_message *msg,
 		}
 	}
 
+	if (retval != j)
+		dprintf("Parsed %d elements, but message_body_length is %d", j, retval);
+
 	return retval;
 }
 
@@ -224,19 +250,24 @@ static int biop_parse_file_message(struct biop_file_message *msg,
 {
 	struct biop_file_message_body *msg_body = &msg->message_body;
 	struct biop_message_sub_header *sub_header = &msg->sub_header;
-	int j = 0;
+	int retval, j = 0;
 
 	j += biop_parse_message_sub_header(sub_header, &buf[j], len-j);
 
 	msg->message_body_length = CONVERT_TO_32(buf[j], buf[j+1], buf[j+2], buf[j+3]);
 	msg_body->content_length = CONVERT_TO_32(buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
+	retval = msg->message_body_length + j + 4;
+
 	if (msg_body->content_length) {
 		/* Points to the user provided buffer */
 		msg_body->contents = &buf[j+8];
 	}
 	j += 8 + msg_body->content_length;
 
-	return j;
+	if (retval != j)
+		dprintf("Parsed %d elements, but message_body_length is %d", j, retval);
+
+	return retval;
 }
 
 static int biop_parse_object_location(struct biop_object_location *ol,
@@ -411,31 +442,42 @@ int biop_create_module_info_dentries(struct dentry *parent, struct biop_module_i
 	return 0;
 }
 
-static int biop_update_file_dentry(struct dentry *parent, struct biop_file_message *msg)
+static int biop_update_file_dentry(struct dentry *root, 
+	struct dentry *stepfather, struct biop_file_message *msg)
 {
 	struct biop_message_sub_header *sub_header = &msg->sub_header;
 	struct dentry *dentry;
 	ino_t inode;
 	
-	inode = CONVERT_TO_32(
-			sub_header->object_key.object_key[0],
-			sub_header->object_key.object_key[1],
-			sub_header->object_key.object_key[2],
-			sub_header->object_key.object_key[3]
-			);
-	dentry = fsutils_find_by_inode(parent, inode);
+	inode = biop_get_sub_header_inode(sub_header);
+	dentry = fsutils_find_by_inode(root, inode);
 	if (! dentry) {
-		dprintf("Could not find inode '%#llx'", inode);
-		return -1;
+		dentry = fsutils_find_by_inode(stepfather, inode);
+		if (! dentry) {
+			dprintf("Could not find inode '%#llx'", inode);
+			return -1;
+		}
 	}
 	memcpy(dentry->contents, msg->message_body.contents, dentry->size);
 	return 0;
 }
 
-static int biop_create_children_dentries(struct dentry *parent, struct biop_directory_message *msg)
+static int biop_create_children_dentries(struct dentry *root, 
+	struct dentry *stepfather, struct biop_directory_message *msg)
 {
 	struct biop_directory_message_body *msg_body = &msg->message_body;
+	struct biop_message_sub_header *sub_header = &msg->sub_header;
+	ino_t parent_inode, *priv_data;
+	bool found_parent = true;
+	struct dentry *parent;
 	uint16_t i;
+
+	parent_inode = biop_get_sub_header_inode(sub_header);
+	parent = fsutils_find_by_inode(root, parent_inode);
+	if (! parent) {
+		parent = stepfather;
+		found_parent = false;
+	}
 
 	for (i=0; i<msg_body->bindings_count; ++i) {
 		struct biop_binding *binding = &msg_body->bindings[i];
@@ -443,71 +485,119 @@ static int biop_create_children_dentries(struct dentry *parent, struct biop_dire
 		struct dentry *entry = NULL;
 
 		if (binding->name.kind_data == 0x66696c00) {
-			dprintf("--> creating file '%s' of size '%lld' and inode '%#llx'", 
-					name->id_byte, binding->content_size, binding->_inode);
+			dprintf("--> creating file '%s' of size '%lld' and inode '%#llx' and parent '%#llx' (%s)", 
+					name->id_byte, binding->content_size, binding->_inode, parent_inode,
+					found_parent ? "found" : "not found");
 			entry = CREATE_SIMPLE_FILE(parent, name->id_byte, binding->content_size);
-			//	if (msg_body->contents)
-			//		memcpy(entry->contents, msg_body->contents, binding->content_size);
 		} else {
-			dprintf("--> creating directory '%s'", name->id_byte);
+			dprintf("--> creating directory '%s' with inode '%#llx' and parent '%#llx' (%s)", 
+					name->id_byte, binding->_inode, parent_inode,
+					found_parent ? "found" : "not found");
 			entry = CREATE_DIRECTORY(parent, name->id_byte);
 		}
 		entry->atime = binding->_timestamp;
 		entry->ctime = binding->_timestamp;
 		entry->mtime = binding->_timestamp;
 		entry->inode = binding->_inode;
+		if (! found_parent) {
+			/* 
+			 * Possibly the parent wasn't scanned yet. Save the parent inode
+			 * number in the child's dentry private field to reparent it
+			 * later on.
+			 */
+			priv_data = malloc(sizeof(ino_t));
+			*priv_data = parent_inode;
+			entry->priv = priv_data;
+		}
 	}
 	return 0;
 }
 
 int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint32_t len)
 {
-	struct biop_directory_message gateway_msg, empty_dir_msg;
+	enum p_state { PARSING_GATEWAY, PARSING_DIRS, PARSING_FILES, DONE_PARSING } state;
+	struct biop_directory_message gateway_msg;
 	struct biop_message_header msg_header;
+	struct dentry stepfather;
 	char object_kind[4];
 	int lookahead_offset, j = 0;
 
 	memset(&gateway_msg, 0, sizeof(gateway_msg));
-	memset(&empty_dir_msg, 0, sizeof(empty_dir_msg));
+	INIT_LIST_HEAD(&stepfather.children);
+	state = PARSING_GATEWAY;
 
-	while (j < len) {
-		j += biop_parse_message_header(&msg_header, &buf[j], len-j);
-		if (j >= len)
-			break;
+	while (true) {
+		if (j < len)
+			j += biop_parse_message_header(&msg_header, &buf[j], len-j);
+		if (j >= len) {
+			/* Shift state or break if done */
+			if (++state == DONE_PARSING)
+				break;
+			j = 0;
+			continue;
+		}
 
 		/* Lookahead object kind */
 		lookahead_offset = j + 1 + (buf[j+1] & 0xff) + 4 + 4;
 		memcpy(object_kind, &buf[lookahead_offset], sizeof(object_kind));
 
 		if (! strncmp(object_kind, "srg", 3)) {
-			dprintf("--> gateway");
-			if (memcmp(&gateway_msg, &empty_dir_msg, sizeof(gateway_msg))) {
-				dprintf("Error: more than one Gateway Service provided");
-				break;
-			}
-			memcpy(&gateway_msg.header, &msg_header, sizeof(msg_header));
-			j += biop_parse_directory_message(&gateway_msg, &buf[j], len-j);
-			biop_create_children_dentries(parent, &gateway_msg);
+			if (state == PARSING_GATEWAY) {
+				dprintf("----------------- gateway ----------------");
+				memcpy(&gateway_msg.header, &msg_header, sizeof(msg_header));
+				j += biop_parse_directory_message(&gateway_msg, &buf[j], len-j);
+				parent->inode = biop_get_sub_header_inode(&gateway_msg.sub_header);
+				biop_create_children_dentries(parent, &stepfather, &gateway_msg);
+				biop_free_directory_message(&gateway_msg);
+			} else
+				j += msg_header.message_size;
 
 		} else if (! strncmp(object_kind, "dir", 3)) {
-			dprintf("--> directory");
-			struct biop_directory_message dir_msg;
-			memset(&dir_msg, 0, sizeof(dir_msg));
-			memcpy(&dir_msg.header, &msg_header, sizeof(msg_header));
-			j += biop_parse_directory_message(&dir_msg, &buf[j], len-j);
-			biop_create_children_dentries(parent, &dir_msg);
+			if (state == PARSING_DIRS) {
+				dprintf("----------------- directory ----------------");
+				struct biop_directory_message dir_msg;
+				memset(&dir_msg, 0, sizeof(dir_msg));
+				memcpy(&dir_msg.header, &msg_header, sizeof(msg_header));
+				j += biop_parse_directory_message(&dir_msg, &buf[j], len-j);
+				biop_create_children_dentries(parent, &stepfather, &dir_msg);
+				biop_free_directory_message(&dir_msg);
+			} else
+				j += msg_header.message_size;
 
 		} else if (! strncmp(object_kind, "fil", 3)) {
-			dprintf("--> file");
-			struct biop_file_message file_msg;
-			memset(&file_msg, 0, sizeof(file_msg));
-			memcpy(&file_msg.header, &msg_header, sizeof(msg_header));
-			j += biop_parse_file_message(&file_msg, &buf[j], len-j);
-			biop_update_file_dentry(parent, &file_msg);
+			if (state == PARSING_FILES) {
+				struct biop_file_message file_msg;
+				memset(&file_msg, 0, sizeof(file_msg));
+				memcpy(&file_msg.header, &msg_header, sizeof(msg_header));
+				j += biop_parse_file_message(&file_msg, &buf[j], len-j);
+				biop_update_file_dentry(parent, &stepfather, &file_msg);
+				biop_free_file_message(&file_msg);
+			} else
+				j += msg_header.message_size;
 
 		} else {
 			dprintf("Parser for object kind '0x%02x%02x%02x%02x' not implemented", 
 				object_kind[0], object_kind[1], object_kind[2], object_kind[3]);
+			break;
+		}
+	}
+
+	/* Reparent orphaned dentries */
+	struct dentry *entry, *aux;
+	list_for_each_entry_safe(entry, aux, &stepfather.children, list) {
+		struct dentry *real_parent;
+		ino_t real_parent_inode;
+		
+		real_parent_inode = *(ino_t *) entry->priv;
+		real_parent = fsutils_find_by_inode(parent, real_parent_inode);
+		if (! real_parent) {
+			dprintf("'%s' is definitely orphaned for its parent '%#llx' is missing", 
+				entry->name, real_parent_inode);
+			fsutils_dispose_node(entry);
+		} else {
+			list_move_tail(&entry->list, &real_parent->children);
+			free(entry->priv);
+			entry->priv = NULL;
 		}
 	}
 
