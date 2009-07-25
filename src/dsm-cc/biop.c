@@ -458,6 +458,10 @@ static int biop_update_file_dentry(struct dentry *root,
 			return -1;
 		}
 	}
+	if (dentry->size != msg->message_body.content_length)
+		dprintf("'%s': directory object said size=%d, file object says %d",
+		dentry->name, dentry->size, msg->message_body.content_length);
+
 	memcpy(dentry->contents, msg->message_body.contents, dentry->size);
 	return 0;
 }
@@ -511,6 +515,34 @@ static int biop_create_children_dentries(struct dentry *root,
 		}
 	}
 	return 0;
+}
+
+static void biop_reparent_orphaned_dentries(struct dentry *root,
+	struct dentry *stepfather)
+{
+	struct dentry *entry, *aux;
+
+	list_for_each_entry_safe(entry, aux, &stepfather->children, list) {
+		struct dentry *real_parent;
+		ino_t real_parent_inode;
+		
+		real_parent_inode = *(ino_t *) entry->priv;
+		real_parent = fsutils_find_by_inode(root, real_parent_inode);
+		if (! real_parent) {
+			/* It's possible that the real parent is also in the stepfather list */
+			real_parent = fsutils_find_by_inode(stepfather, real_parent_inode);
+		}
+
+		if (! real_parent) {
+			dprintf("'%s' is definitely orphaned for its parent '%#llx' is missing", 
+					entry->name, real_parent_inode);
+			fsutils_dispose_node(entry);
+		} else {
+			list_move_tail(&entry->list, &real_parent->children);
+			free(entry->priv);
+			entry->priv = NULL;
+		}
+	}
 }
 
 int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint32_t len)
@@ -582,24 +614,7 @@ int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint
 		}
 	}
 
-	/* Reparent orphaned dentries */
-	struct dentry *entry, *aux;
-	list_for_each_entry_safe(entry, aux, &stepfather.children, list) {
-		struct dentry *real_parent;
-		ino_t real_parent_inode;
-		
-		real_parent_inode = *(ino_t *) entry->priv;
-		real_parent = fsutils_find_by_inode(parent, real_parent_inode);
-		if (! real_parent) {
-			dprintf("'%s' is definitely orphaned for its parent '%#llx' is missing", 
-				entry->name, real_parent_inode);
-			fsutils_dispose_node(entry);
-		} else {
-			list_move_tail(&entry->list, &real_parent->children);
-			free(entry->priv);
-			entry->priv = NULL;
-		}
-	}
+	biop_reparent_orphaned_dentries(parent, &stepfather);
 
 	return 0;
 }
