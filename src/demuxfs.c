@@ -41,8 +41,9 @@
 #include "backends/filesrc.h"
 #include "backends/ce2110.h"
 
-static void * demuxfs_init(struct fuse_conn_info *conn);
-static void demuxfs_destroy(void *data);
+/* FUSE methods implemented in main.c */
+extern void * demuxfs_init(struct fuse_conn_info *conn);
+extern void demuxfs_destroy(void *data);
 
 static int do_getattr(struct dentry *dentry, struct stat *stbuf)
 {
@@ -351,9 +352,11 @@ static int demuxfs_removexattr(const char *path, const char *name)
 	return ret;
 }
 
-static struct fuse_operations demuxfs_ops = {
+struct fuse_operations demuxfs_ops = {
+	/* Implemented in main.c */
 	.init        = demuxfs_init,
 	.destroy     = demuxfs_destroy,
+	/* Implemented in this file */
 	.getattr     = demuxfs_getattr,
 	.fgetattr    = demuxfs_fgetattr,
 	.open        = demuxfs_open,
@@ -369,125 +372,21 @@ static struct fuse_operations demuxfs_ops = {
 	.getxattr    = demuxfs_getxattr,
 	.listxattr   = demuxfs_listxattr,
 	.removexattr = demuxfs_removexattr,
-#if 0
-	.statfs      = demuxfs_statfs,
-	/* These should not be supported anytime soon */
-	.fsync       = demuxfs_fsync,
-	.utimens     = demuxfs_utimens,
-	.symlink     = demuxfs_symlink,
-	.link        = demuxfs_link,
-	.chmod       = demuxfs_chmod,
-	.chown       = demuxfs_chown,
-	.create      = demuxfs_create,
-	.truncate    = demuxfs_truncate,
-	.ftruncate   = demuxfs_ftruncate,
-	.unlink      = demuxfs_unlink,
-	.rename      = demuxfs_rename,
-	.mkdir       = demuxfs_mkdir,
-	.rmdir       = demuxfs_rmdir,
-	.fsyncdir    = demuxfs_fsyncdir,
-	.write       = demuxfs_write,
-#endif
+	.statfs      = NULL,
+	/* Not implemented on DemuxFS */
+	.fsync       = NULL,
+	.utimens     = NULL,
+	.symlink     = NULL,
+	.link        = NULL,
+	.chmod       = NULL,
+	.chown       = NULL,
+	.create      = NULL,
+	.truncate    = NULL,
+	.ftruncate   = NULL,
+	.unlink      = NULL,
+	.rename      = NULL,
+	.mkdir       = NULL,
+	.rmdir       = NULL,
+	.fsyncdir    = NULL,
+	.write       = NULL,
 };
-
-/**
- * Available backends
- */
-#if defined(USE_FILESRC)
-static struct backend_ops *backend = &filesrc_backend_ops;
-#elif defined(USE_CE2110_GST)
-static struct backend_ops *backend = &ce2110_backend_ops;
-#endif
-
-/**
- * ts_parser_thread: consumes transport stream packets from the input and processes them.
- * @userdata: private data
- */
-void * ts_parser_thread(void *userdata)
-{
-	struct demuxfs_data *priv = (struct demuxfs_data *) userdata;
-	int ret;
-    
-	while (backend->keep_alive(priv)) {
-        ret = backend->read(priv);
-		if (ret < 0) {
-			dprintf("read error");
-			break;
-		}
-		ret = backend->process(priv);
-		if (ret < 0 && ret != -ENOBUFS) {
-			dprintf("Error processing packet: %s", strerror(-ret));
-			break;
-		}
-    }
-    backend->destroy(priv);
-	pthread_exit(NULL);
-}
-
-static struct dentry * create_rootfs(const char *name, struct demuxfs_data *priv)
-{
-	struct dentry *dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
-
-	dentry->name = strdup(name);
-	dentry->inode = 1;
-	dentry->mode = S_IFDIR | 0555;
-	INIT_LIST_HEAD(&dentry->children);
-	INIT_LIST_HEAD(&dentry->xattrs);
-	INIT_LIST_HEAD(&dentry->list);
-
-	return dentry;
-}
-
-static void demuxfs_destroy(void *data)
-{
-	struct demuxfs_data *priv = fuse_get_context()->private_data;
-	descriptors_destroy(priv->ts_descriptors);
-	dsmcc_descriptors_destroy(priv->dsmcc_descriptors);
-	hashtable_destroy(priv->pes_parsers, NULL);
-	hashtable_destroy(priv->psi_parsers, NULL);
-	hashtable_destroy(priv->pes_tables, NULL);
-	hashtable_destroy(priv->psi_tables, (hashtable_free_function_t) free);
-	hashtable_destroy(priv->packet_buffer, (hashtable_free_function_t) buffer_destroy);
-	fsutils_dispose_tree(priv->root);
-}
-
-static void * demuxfs_init(struct fuse_conn_info *conn)
-{
-	struct demuxfs_data *priv = fuse_get_context()->private_data;
-
-#ifdef USE_FFMPEG
-	avcodec_init();
-	avcodec_register_all();
-#endif
-	priv->psi_tables = hashtable_new(DEMUXFS_MAX_PIDS);
-	priv->pes_tables = hashtable_new(DEMUXFS_MAX_PIDS);
-	priv->psi_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
-	priv->pes_parsers = hashtable_new(DEMUXFS_MAX_PIDS);
-	priv->packet_buffer = hashtable_new(DEMUXFS_MAX_PIDS);
-	priv->ts_descriptors = descriptors_init(priv);
-	priv->dsmcc_descriptors = dsmcc_descriptors_init(priv);
-	priv->root = create_rootfs("/", priv);
-
-	pthread_t tid;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	pthread_create(&tid, &attr, ts_parser_thread, priv);
-
-	return priv;
-}
-
-int main(int argc, char **argv)
-{
-	struct demuxfs_data *priv = (struct demuxfs_data *) calloc(1, sizeof(struct demuxfs_data));
-	assert(priv);
-
-	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-    int ret = backend->create(&args, priv);
-	if (ret < 0)
-		return 1;
-
-	priv->mount_point = strdup(argv[argc-1]);
-	fuse_opt_add_arg(&args, "-ointr");
-	return fuse_main(args.argc, args.argv, &demuxfs_ops, priv);
-}
