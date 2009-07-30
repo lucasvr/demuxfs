@@ -66,27 +66,40 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 
 /* Macros to ease the creation of files and directories */
 #define CREATE_COMMON(_parent,_dentry) \
-		INIT_LIST_HEAD(&(_dentry)->children); \
-		INIT_LIST_HEAD(&(_dentry)->xattrs); \
-		pthread_mutex_init(&(_dentry)->mutex, NULL); \
-		sem_init(&(_dentry)->semaphore, 0, 0); \
-		if ((_dentry)->obj_type != OBJ_TYPE_FIFO) \
-			_parent->size += (_dentry)->size; \
-		(_dentry)->parent = _parent; \
-		list_add_tail(&(_dentry)->list, &((_parent)->children));
+	INIT_LIST_HEAD(&(_dentry)->children); \
+	INIT_LIST_HEAD(&(_dentry)->xattrs); \
+	pthread_mutex_init(&(_dentry)->mutex, NULL); \
+	sem_init(&(_dentry)->semaphore, 0, 0); \
+	if ((_dentry)->obj_type != OBJ_TYPE_FIFO) \
+		_parent->size += (_dentry)->size; \
+	(_dentry)->parent = _parent; \
+	list_add_tail(&(_dentry)->list, &((_parent)->children));
 
 #define UPDATE_COMMON(_dentry,_new_contents,_new_size) \
- 		pthread_mutex_lock(&_dentry->mutex); \
- 		if (_dentry->size != _new_size) { \
- 			free(_dentry->contents); \
-			_dentry->contents = malloc(_new_size); \
-			memcpy(_dentry->contents, _new_contents, _new_size); \
-			_dentry->parent->size -= _dentry->size; \
-			_dentry->parent->size += _new_size; \
- 			_dentry->size = _new_size; \
- 		} else \
- 			memcpy(_dentry->contents, _new_contents, _dentry->size); \
- 		pthread_mutex_unlock(&_dentry->mutex);
+ 	pthread_mutex_lock(&_dentry->mutex); \
+ 	if (_dentry->size != _new_size) { \
+ 		free(_dentry->contents); \
+		_dentry->contents = malloc(_new_size); \
+		memcpy(_dentry->contents, _new_contents, _new_size); \
+		_dentry->parent->size -= _dentry->size; \
+		_dentry->parent->size += _new_size; \
+ 		_dentry->size = _new_size; \
+ 	} else \
+ 		memcpy(_dentry->contents, _new_contents, _dentry->size); \
+ 	pthread_mutex_unlock(&_dentry->mutex);
+
+#define UPDATE_NAME(_dentry,_name) \
+	free(_dentry->name); \
+	_dentry->name = strdup(_name)
+
+#define UPDATE_PARENT(_dentry,_parent) \
+	if (_dentry->parent != _parent) { \
+		list_del(&(_dentry)->list); \
+ 		if ((_dentry)->obj_type != OBJ_TYPE_FIFO) \
+ 			_parent->size += (_dentry)->size; \
+ 		(_dentry)->parent = _parent; \
+		list_add_tail(&(_dentry)->list, &_parent->children); \
+	}
 
 #define CREATE_FILE_BIN(parent,header,member,_size) \
 	({ \
@@ -150,18 +163,23 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	_dentry; \
 	})
 
-#define CREATE_SIMPLE_FILE(parent,_name,_size) \
+#define CREATE_SIMPLE_FILE(_parent,_name,_size,_inode) \
 	({ \
-	 	struct dentry *_dentry = fsutils_get_child(parent, _name); \
-	 	if (! _dentry) { \
+	    struct dentry *_dentry = fsutils_find_by_inode(_parent, _inode); \
+	 	if (! _dentry) _dentry = fsutils_get_child(_parent, _name); \
+	 	if (! _dentry || _dentry->inode != _inode) { \
 	 		_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 	 		_dentry->contents = _size ? malloc(_size) : NULL; \
 			_dentry->name = strdup(_name); \
 			_dentry->size = _size; \
+	 		_dentry->inode = _inode; \
 			_dentry->mode = S_IFREG | 0444; \
 	 		_dentry->obj_type = OBJ_TYPE_FILE; \
-			CREATE_COMMON((parent),_dentry); \
+			CREATE_COMMON((_parent),_dentry); \
 			xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false); \
+	 	} else { \
+	 		UPDATE_NAME(_dentry,_name); \
+	 		UPDATE_PARENT(_dentry,_parent); \
 	 	} \
 	 	_dentry; \
 	})
@@ -232,18 +250,25 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	_dentry; \
 	})
 
-#define CREATE_DIRECTORY(parent,dname...) \
+#define CREATE_DIRECTORY(_parent,_dname...) \
 	({ \
 	 	char _dbuf[PATH_MAX]; \
 	 	struct dentry *_dentry; \
-	 	snprintf(_dbuf, sizeof(_dbuf), dname); \
-	 	_dentry = fsutils_get_child(parent, _dbuf); \
+	 	snprintf(_dbuf, sizeof(_dbuf), _dname); \
+	 	_dentry = fsutils_get_child(_parent, _dbuf); \
 	 	if (! _dentry) { \
 			_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 			_dentry->name = strdup(_dbuf); \
 			_dentry->mode = S_IFDIR | 0555; \
 	 		_dentry->obj_type = OBJ_TYPE_DIR; \
-			CREATE_COMMON((parent),_dentry); \
+			CREATE_COMMON((_parent),_dentry); \
+	 	} else if (_dentry->parent != _parent) { \
+	 		/* Update parent */ \
+	 		list_del(&_dentry->list); \
+	 		if ((_dentry)->obj_type != OBJ_TYPE_FIFO) \
+	 			_parent->size += (_dentry)->size; \
+	 		(_dentry)->parent = _parent; \
+	 		list_add_tail(&(_dentry)->list, &((_parent)->children)); \
 	 	} \
 	 	_dentry; \
 	})
