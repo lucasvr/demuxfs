@@ -202,6 +202,10 @@ int dii_create_filesystem(const struct ts_header *header, struct dii_table *dii,
 		app_dentry = CREATE_DIRECTORY(dsmcc_dentry, FS_UNNAMED_APPLICATION_NAME);
 
 	/* For each module, get all of its blocks and expose their virtual filesystem */
+	struct dentry stepfather_dentry;
+	memset(&stepfather_dentry, 0, sizeof(stepfather_dentry));
+	INIT_LIST_HEAD(&stepfather_dentry.children);
+
 	for (uint16_t i=0; i<dii->number_of_modules; ++i) {
 		struct dentry *mod_dentry, *block_dentry;
 		struct dii_module *mod = &dii->modules[i];
@@ -233,9 +237,12 @@ int dii_create_filesystem(const struct ts_header *header, struct dii_table *dii,
 
 		/* Parse blocks and create filesystem entries */
 		uint32_t download_len = download_ptr-download_data+1;
-		biop_create_filesystem_dentries(app_dentry, download_data, download_len);
+		biop_create_filesystem_dentries(app_dentry, &stepfather_dentry, 
+			download_data, download_len);
 		free(download_data);
 	}
+	biop_reparent_orphaned_dentries(app_dentry, &stepfather_dentry);
+
 	return 0;
 }
 

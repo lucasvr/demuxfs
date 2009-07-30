@@ -147,7 +147,10 @@ struct biop_profile_body {
 };
 
 int biop_create_filesystem_dentries(struct dentry *parent,
+		struct dentry *stepfather,
 		const char *buf, uint32_t len);
+void biop_reparent_orphaned_dentries(struct dentry *root, 
+		struct dentry *stepfather);
 
 int biop_parse_module_info(struct biop_module_info *modinfo,
 		const char *buf, uint32_t len);
