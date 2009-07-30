@@ -454,8 +454,11 @@ static int biop_update_file_dentry(struct dentry *root,
 	if (! dentry) {
 		dentry = fsutils_find_by_inode(stepfather, inode);
 		if (! dentry) {
-			dprintf("Could not find inode '%#llx'", inode);
-			return -1;
+			/* 
+			 * Create dentry with no name in the hope that it will be
+			 * updated by a directory message later on.
+			 */
+			dentry = CREATE_SIMPLE_FILE(stepfather, "", msg->message_body.content_length, inode);
 		}
 	}
 	if (dentry->size != msg->message_body.content_length)
@@ -486,23 +489,43 @@ static int biop_create_children_dentries(struct dentry *root,
 	for (i=0; i<msg_body->bindings_count; ++i) {
 		struct biop_binding *binding = &msg_body->bindings[i];
 		struct biop_name *name = &binding->name;
-		struct dentry *entry = NULL;
+		struct dentry *entry = NULL, *tmp_entry;
 
 		if (binding->name.kind_data == 0x66696c00) {
 			dprintf("--> creating file '%s' of size '%lld' and inode '%#llx' and parent '%#llx' (%s)", 
 					name->id_byte, binding->content_size, binding->_inode, parent_inode,
 					found_parent ? "found" : "not found");
-			entry = CREATE_SIMPLE_FILE(parent, name->id_byte, binding->content_size);
+			/* 
+			 * First add to stepfather then move to real parent if they differ to
+			 * make sure we don't end up with half file info in &stepfather->children
+			 * and the other in &parent->children list.
+			 */
+			entry = CREATE_SIMPLE_FILE(stepfather, name->id_byte, binding->content_size, binding->_inode);
+			if (found_parent) {
+				tmp_entry = entry;
+				entry = CREATE_SIMPLE_FILE(parent, name->id_byte, binding->content_size, binding->_inode);
+				if (tmp_entry) {
+					memcpy(entry->contents, tmp_entry->contents, tmp_entry->size);
+					fsutils_dispose_node(tmp_entry);
+				}
+			}
 		} else {
 			dprintf("--> creating directory '%s' with inode '%#llx' and parent '%#llx' (%s)", 
 					name->id_byte, binding->_inode, parent_inode,
 					found_parent ? "found" : "not found");
-			entry = CREATE_DIRECTORY(parent, name->id_byte);
+
+			entry = fsutils_find_by_inode(stepfather, binding->_inode);
+			if (entry) {
+				UPDATE_NAME(entry, name->id_byte);
+				UPDATE_PARENT(entry, parent);
+			} else {
+				entry = CREATE_DIRECTORY(parent, name->id_byte);
+				entry->inode = binding->_inode;
+			}
 		}
 		entry->atime = binding->_timestamp;
 		entry->ctime = binding->_timestamp;
 		entry->mtime = binding->_timestamp;
-		entry->inode = binding->_inode;
 		if (! found_parent) {
 			/* 
 			 * Possibly the parent wasn't scanned yet. Save the parent inode
@@ -517,8 +540,7 @@ static int biop_create_children_dentries(struct dentry *root,
 	return 0;
 }
 
-static void biop_reparent_orphaned_dentries(struct dentry *root,
-	struct dentry *stepfather)
+void biop_reparent_orphaned_dentries(struct dentry *root, struct dentry *stepfather)
 {
 	struct dentry *entry, *aux;
 
@@ -526,6 +548,13 @@ static void biop_reparent_orphaned_dentries(struct dentry *root,
 		struct dentry *real_parent;
 		ino_t real_parent_inode;
 		
+		if (! entry->priv) {
+			dprintf("oops, orphaned entry '%s' (%#llx) doesn't contain private data",
+				entry->name, entry->inode);
+			fsutils_dispose_node(entry);
+			continue;
+		}
+
 		real_parent_inode = *(ino_t *) entry->priv;
 		real_parent = fsutils_find_by_inode(root, real_parent_inode);
 		if (! real_parent) {
@@ -536,6 +565,10 @@ static void biop_reparent_orphaned_dentries(struct dentry *root,
 		if (! real_parent) {
 			dprintf("'%s' is definitely orphaned for its parent '%#llx' is missing", 
 					entry->name, real_parent_inode);
+			dprintf("--- stepfather list ---");
+			fsutils_dump_tree(stepfather);
+			dprintf("--- rootfs list ---");
+			fsutils_dump_tree(root);
 			fsutils_dispose_node(entry);
 		} else {
 			list_move_tail(&entry->list, &real_parent->children);
@@ -543,19 +576,21 @@ static void biop_reparent_orphaned_dentries(struct dentry *root,
 			entry->priv = NULL;
 		}
 	}
+
+//	fsutils_dump_tree(stepfather);
+//	fsutils_dump_tree(root);
 }
 
-int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint32_t len)
+int biop_create_filesystem_dentries(struct dentry *parent, struct dentry *stepfather,
+	const char *buf, uint32_t len)
 {
 	enum p_state { PARSING_GATEWAY, PARSING_DIRS, PARSING_FILES, DONE_PARSING } state;
 	struct biop_directory_message gateway_msg;
 	struct biop_message_header msg_header;
-	struct dentry stepfather;
 	char object_kind[4];
 	int lookahead_offset, j = 0;
 
 	memset(&gateway_msg, 0, sizeof(gateway_msg));
-	INIT_LIST_HEAD(&stepfather.children);
 	state = PARSING_GATEWAY;
 
 	while (true) {
@@ -579,7 +614,7 @@ int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint
 				memcpy(&gateway_msg.header, &msg_header, sizeof(msg_header));
 				j += biop_parse_directory_message(&gateway_msg, &buf[j], len-j);
 				parent->inode = biop_get_sub_header_inode(&gateway_msg.sub_header);
-				biop_create_children_dentries(parent, &stepfather, &gateway_msg);
+				biop_create_children_dentries(parent, stepfather, &gateway_msg);
 				biop_free_directory_message(&gateway_msg);
 			} else
 				j += msg_header.message_size;
@@ -591,7 +626,7 @@ int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint
 				memset(&dir_msg, 0, sizeof(dir_msg));
 				memcpy(&dir_msg.header, &msg_header, sizeof(msg_header));
 				j += biop_parse_directory_message(&dir_msg, &buf[j], len-j);
-				biop_create_children_dentries(parent, &stepfather, &dir_msg);
+				biop_create_children_dentries(parent, stepfather, &dir_msg);
 				biop_free_directory_message(&dir_msg);
 			} else
 				j += msg_header.message_size;
@@ -602,7 +637,7 @@ int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint
 				memset(&file_msg, 0, sizeof(file_msg));
 				memcpy(&file_msg.header, &msg_header, sizeof(msg_header));
 				j += biop_parse_file_message(&file_msg, &buf[j], len-j);
-				biop_update_file_dentry(parent, &stepfather, &file_msg);
+				biop_update_file_dentry(parent, stepfather, &file_msg);
 				biop_free_file_message(&file_msg);
 			} else
 				j += msg_header.message_size;
@@ -613,8 +648,6 @@ int biop_create_filesystem_dentries(struct dentry *parent, const char *buf, uint
 			break;
 		}
 	}
-
-	biop_reparent_orphaned_dentries(parent, &stepfather);
 
 	return 0;
 }
