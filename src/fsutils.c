@@ -91,18 +91,22 @@ static void _fsutils_dump_tree(struct dentry *dentry, int spaces)
 	if (! dentry)
 		return;
 	if (spaces == 0) {
-		printf("%s [%s]\n", dentry->name, 
+		fprintf(stderr, "%s [%s] inode=%#llx\n", 
+				dentry->name ? dentry->name : "(null)", 
 				dentry->mode & S_IFDIR ? "dir" : 
-				dentry->mode & S_IFREG ? "file" : "symlink");
+				dentry->mode & S_IFREG ? "file" : "symlink",
+				dentry->inode);
 		spaces += 2;
 	}
 	struct dentry *ptr;
 	list_for_each_entry(ptr, &dentry->children, list) {
 		for (i=0; i<spaces; ++i)
-			printf(" ");
-		printf("%s [%s]\n", ptr->name, 
+			fprintf(stderr, " ");
+		fprintf(stderr, "%s [%s] inode=%#llx\n", 
+				ptr->name ? ptr->name : "(null)", 
 				ptr->mode & S_IFDIR ? "dir" : 
-				ptr->mode & S_IFREG ? "file" : "symlink");
+				ptr->mode & S_IFREG ? "file" : "symlink",
+				ptr->inode);
 		if (ptr->mode & S_IFDIR)
 			_fsutils_dump_tree(ptr, spaces+2);
 	}
