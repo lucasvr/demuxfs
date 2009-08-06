@@ -82,18 +82,13 @@ static int biop_parse_message_sub_header(struct biop_message_sub_header *sub_hea
 	sub_header->object_info_length = CONVERT_TO_16(buf[j+8], buf[j+9]);
 	j += 10;
 
-//	dprintf("object_key_len = %#x (%#x %#x %#x %#x)", obj_key->object_key_length,
-//			obj_key->object_key[0], obj_key->object_key[1],
-//			obj_key->object_key[2], obj_key->object_key[3]);
-
 	if (sub_header->object_kind_data == 0x66696c00) { /* "fil" */
 		struct biop_file_object_info *file_info = calloc(1, sizeof(struct biop_file_object_info));
 		file_info->content_size = CONVERT_TO_64(buf[j], buf[j+1], buf[j+2], buf[j+3],
 			buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
-		j += 8;
-		sub_header->object_info_length -= 8;
 		sub_header->obj_info.file_object_info = file_info;
-	//	dprintf("file object with content_size=%lld", file_info->content_size);
+		sub_header->object_info_length -= 8;
+		j += 8;
 	}
 
 	/* We don't need to parse the descriptors once again; parent did that for us already */
@@ -190,8 +185,10 @@ static int biop_parse_directory_message(struct biop_directory_message *msg,
 	struct biop_message_sub_header *sub_header = &msg->sub_header;
 	int ret, retval, x = 0, j = 0;
 
+	/* MessageSubHeader() */
 	j += biop_parse_message_sub_header(sub_header, &buf[j], len-j);
 
+	/* DirectoryMessageBody() */
 	msg->message_body_length = CONVERT_TO_32(buf[j], buf[j+1], buf[j+2], buf[j+3]);
 	msg_body->bindings_count = CONVERT_TO_16(buf[j+4], buf[j+5]);
 	retval = msg->message_body_length + j + 4;
@@ -220,13 +217,18 @@ static int biop_parse_directory_message(struct biop_directory_message *msg,
 				binding->content_size = CONVERT_TO_64(buf[j], buf[j+1], 
 					buf[j+2], buf[j+3],	buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
 				j += 8;
-				while (x < binding->child_object_info_length-8)
-					x += biop_parse_descriptor(binding, &buf[j+x], len-j-x);
+				if (binding->content_size & 0xffffffff00000000)
+					TS_WARNING("binding %d has invalid content size: %#llx",
+						i+1, binding->content_size);
+				if (binding->child_object_info_length < 8)
+					TS_WARNING("binding->child_object_info_length < 8 (%d)", 
+						binding->child_object_info_length);
+				for (x=0; x<binding->child_object_info_length-8; ++x)
+					j += biop_parse_descriptor(binding, &buf[j], len-j);
 			} else {
-				while (x < binding->child_object_info_length)
-					x += biop_parse_descriptor(binding, &buf[j+x], len-j-x);
+				for (x=0; x<binding->child_object_info_length; ++x)
+					j += biop_parse_descriptor(binding, &buf[j], len-j);
 			}
-			j += x;
 
 			for (x=0; x<binding->iop_ior->tagged_profiles_count; ++x) {
 				struct biop_profile_body *pb = binding->iop_ior->tagged_profiles[x].profile_body;
@@ -338,12 +340,16 @@ int biop_parse_connbinder(struct biop_connbinder *cb, const char *buf, uint32_t 
 				 * doesn't expect more than 1 tap. We need to verify what SBTVD, ISDB and DVB
 				 * presume here.
 				 */
-				dprintf("BIOP_OBJECT_USE parser not implemented");
+				if ((buf[j] & 0xff) != 0)
+					dprintf("BIOP_OBJECT_USE: selector_length != 0 (%d)", buf[j] & 0xff);
+				j++;
 			} else {
 				dprintf("Unsupported tap_use value %#x, cannot parse selector() field.", tap->tap_use);
 			}
 		}
 	}
+	if (j != 5+cb->connbinder_length)
+		dprintf("Parsed %d bytes, expected connbinder_lenght=%d+5", j, cb->connbinder_length);
 
 	return j;
 }
@@ -358,6 +364,9 @@ int biop_parse_profile_body(struct iop_tagged_profile *profile, const char *buf,
 	pb->profile_data_byte_order = buf[j+8];
 	pb->component_count = buf[j+9];
 	j += 10;
+
+	if (pb->profile_id_tag != 0x49534f06)
+		dprintf("Parsing profile body but profile_id_tag=%#x", pb->profile_id_tag);
 
 	j += biop_parse_object_location(&pb->object_location, &buf[j], len-j);
 	j += biop_parse_connbinder(&pb->connbinder, &buf[j], len-j);
