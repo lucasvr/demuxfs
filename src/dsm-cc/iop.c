@@ -180,6 +180,8 @@ int iop_parse_tagged_profiles(struct iop_tagged_profile *profile, uint32_t count
 				dprintf("Unknown profile, cannot parse");
 		}
 		j += 8 + data_length;
+		if (data_length+8 != x)
+			dprintf("Error: Parsed %d bytes, data_length=%d+8", x, data_length);
 	}
 
 	return j;
