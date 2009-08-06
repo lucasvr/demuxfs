@@ -21,7 +21,7 @@ static inline void hexdump(const char *buf, int len)
 	printf("00000000    ");
 	for (x=1; x<=len; ++x) {
 		shown_last_ascii = false;
-		printf("%02x ", buf[x] & 0xff);
+		printf("%02x ", buf[x-1] & 0xff);
 		
 		if ((x % 16) == 0) {
 			printf(" ");
