@@ -28,12 +28,37 @@
  */
 #include "demuxfs.h"
 #include "fsutils.h"
+#include "byteops.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
+
+struct formatted_descriptor {
+	uint32_t carousel_id;
+	char *private_data;
+};
 
 /* CAROUSEL_ID_DESCRIPTOR parser */
 int descriptor_0x13_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct dentry *dentry;
+	struct formatted_descriptor f;
+
+	if (! descriptor_is_parseable(parent, payload[0], 6, len))
+		return -ENODATA;
+
+	dentry = CREATE_DIRECTORY(parent, "CAROUSEL_IDENTIFIER");
+	f.carousel_id = CONVERT_TO_32(payload[2], payload[3], payload[4], payload[5]);
+	CREATE_FILE_NUMBER(dentry, &f, carousel_id);
+
+	if (len > 6) {
+		size_t file_size = len-6;
+		f.private_data = malloc(file_size * sizeof(char));
+		memcpy(f.private_data, &payload[6], file_size);
+		CREATE_FILE_BIN(dentry, &f, private_data, file_size);
+		free(f.private_data);
+	}
+
+    return 0;
 }
 
