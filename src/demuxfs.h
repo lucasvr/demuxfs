@@ -164,6 +164,8 @@ struct demuxfs_data {
 	void *shared_data;
 	/* DemuxFS mount point */
 	char *mount_point;
+	/* TS parser thread handle */
+	pthread_t ts_parser_id;
 	/* User-defined options */
 	struct user_options options;
 };
