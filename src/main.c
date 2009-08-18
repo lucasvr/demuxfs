@@ -53,6 +53,9 @@ static struct backend_ops *backend = &ce2110_backend_ops;
 /* Defined in demuxfs.c */
 extern struct fuse_operations demuxfs_ops;
 
+/* Globals */
+static bool main_thread_stopped;
+
 /**
  * ts_parser_thread: consumes transport stream packets from the input and processes them.
  * @userdata: private data
@@ -62,7 +65,7 @@ void * ts_parser_thread(void *userdata)
 	struct demuxfs_data *priv = (struct demuxfs_data *) userdata;
 	int ret;
     
-	while (backend->keep_alive(priv)) {
+	while (backend->keep_alive(priv) && !main_thread_stopped) {
         ret = backend->read(priv);
 		if (ret < 0) {
 			dprintf("read error");
@@ -98,6 +101,10 @@ static struct dentry * create_rootfs(const char *name, struct demuxfs_data *priv
 void demuxfs_destroy(void *data)
 {
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
+
+	main_thread_stopped = true;
+	pthread_join(priv->ts_parser_id, NULL);
+
 	descriptors_destroy(priv->ts_descriptors);
 	dsmcc_descriptors_destroy(priv->dsmcc_descriptors);
 	hashtable_destroy(priv->pes_parsers, NULL);
@@ -127,12 +134,7 @@ void * demuxfs_init(struct fuse_conn_info *conn)
 	priv->ts_descriptors = descriptors_init(priv);
 	priv->dsmcc_descriptors = dsmcc_descriptors_init(priv);
 	priv->root = create_rootfs("/", priv);
-
-	pthread_t tid;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	pthread_create(&tid, &attr, ts_parser_thread, priv);
+	pthread_create(&priv->ts_parser_id, NULL, ts_parser_thread, priv);
 
 	return priv;
 }
