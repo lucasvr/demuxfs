@@ -53,6 +53,7 @@
 #define FS_BIOP_MODULE_INFO_DIRNAME                 "biopModuleInfo"
 
 char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size);
+char *fsutils_realpath(struct dentry *dentry, char *buf, size_t size, struct demuxfs_data *priv);
 void fsutils_dump_tree(struct dentry *dentry);
 struct dentry *fsutils_get_child(struct dentry *dentry, const char *name);
 struct dentry *fsutils_get_dentry(struct dentry *root, const char *path);
@@ -202,21 +203,14 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	({ \
 	 	struct dentry *_dentry = fsutils_get_child(parent, fname); \
 	 	if (! _dentry) { \
-	 		char path2es[PATH_MAX], *ptr, *start = NULL; \
+	 		char _path2es[PATH_MAX]; \
 	 		struct snapshot_priv *_priv = (struct snapshot_priv *) calloc(1, sizeof(struct snapshot_priv)); \
 			_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
 			_dentry->name = strdup(fname); \
 			_dentry->mode = S_IFREG | 0444; \
+	 		_dentry->size = 0xffffff; \
 	 		_dentry->obj_type = OBJ_TYPE_SNAPSHOT; \
-	 		ptr = fsutils_path_walk(es_dentry, path2es, sizeof(path2es)); \
-	 		if (ptr) { \
-	 			start = ptr - strlen(priv->mount_point); \
-	 			if (start < path2es) \
-	 				start = NULL; \
-	 			else  \
-	 				memcpy(start, priv->mount_point, strlen(priv->mount_point)); \
-	 		} \
-	 		_priv->path_to_es = start ? strdup(start) : NULL; \
+	 		_priv->path = strdup(fsutils_realpath(_dentry, _path2es, sizeof(_path2es), priv)); \
 	 		_priv->borrowed_es_dentry = es_dentry; \
 	 		_dentry->priv = _priv ; \
 			CREATE_COMMON((parent),_dentry); \
@@ -224,28 +218,30 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	_dentry; \
 	})
 
-#define CREATE_FIFO(parent,ftype,fname) \
+#define CREATE_FIFO(parent,ftype,fname,priv) \
 	({ \
-	 	char fifo_size[128]; \
+	 	char _fifo_size[128], _fifo_path[PATH_MAX]; \
 	 	struct dentry *_dentry = fsutils_get_child(parent, fname); \
+	 	struct fifo *_fifo; \
 	 	if (! _dentry) { \
 	 		_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-	 		_dentry->size = 0xffffffff; \
+	 		_dentry->size = fifo_get_default_size(); \
 	 		_dentry->name = strdup(fname); \
-	 		_dentry->mode = S_IFREG | 0777; \
+	 		_dentry->mode = fifo_get_type() | 0777; \
 	 		_dentry->obj_type = ftype; \
-	 		if (ftype == OBJ_TYPE_FIFO) { \
-	 			struct fifo_priv *_priv = (struct fifo_priv *) calloc(1, sizeof(struct fifo_priv)); \
-	 			_priv->fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
-	 			_dentry->priv = _priv; \
-	 		} else if (ftype == OBJ_TYPE_VIDEO_FIFO) { \
+	 		if (ftype == OBJ_TYPE_VIDEO_FIFO) { \
 	 			struct video_fifo_priv *_priv = (struct video_fifo_priv *) calloc(1, sizeof(struct video_fifo_priv)); \
-	 			_priv->fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
+	 			_priv->fifo = _fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
+	 			_dentry->priv = _priv; \
+	 		} else { \
+	 			struct fifo_priv *_priv = (struct fifo_priv *) calloc(1, sizeof(struct fifo_priv)); \
+	 			_priv->fifo = _fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
 	 			_dentry->priv = _priv; \
 	 		} \
-	 		sprintf(fifo_size, "%d", MAX_TS_PACKETS_IN_A_FIFO); \
+	 		sprintf(_fifo_size, "%d", MAX_TS_PACKETS_IN_A_FIFO); \
 	 		CREATE_COMMON((parent),_dentry); \
-			xattr_add(_dentry, XATTR_FIFO_SIZE, fifo_size, strlen(fifo_size), true); \
+			xattr_add(_dentry, XATTR_FIFO_SIZE, _fifo_size, strlen(_fifo_size), true); \
+	 		fifo_set_path(_fifo, fsutils_realpath(_dentry, _fifo_path, sizeof(_fifo_path), priv)); \
 	 	} \
 	 	_dentry; \
 	})

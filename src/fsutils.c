@@ -35,7 +35,7 @@
 static void _fsutils_dump_tree(struct dentry *dentry, int spaces);
 
 /**
- * Resolve the full pathname for a given dentry.
+ * Resolve the full pathname for a given dentry up to DemuxFS' root dentry.
  * @dentry: dentry to resolve.
  * @buf: input work buffer.
  * @size: input work buffer size.
@@ -75,6 +75,26 @@ char *fsutils_path_walk(struct dentry *dentry, char *buf, size_t size)
 	}
 	return ptr;
 }
+
+/**
+ * Resolve the full pathname for a given dentry up to the real rootfs directory.
+ * @dentry: dentry to resolve.
+ * @buf: input work buffer.
+ * @size: input work buffer size.
+ *
+ * Returns a pointer to the start of the string in the input buffer on
+ * success or NULL if the dentry could not be resolved to a path.
+ */
+char *fsutils_realpath(struct dentry *dentry, char *buf, size_t size, struct demuxfs_data *priv)
+{
+	char *start = fsutils_path_walk(dentry, buf, size);
+	if (start) {
+		start -= strlen(priv->mount_point);
+		memcpy(start, priv->mount_point, strlen(priv->mount_point));
+	}
+	return start;
+}
+
 
 /**
  * Dump the filesystem tree starting at a given dentry.
@@ -126,6 +146,8 @@ void fsutils_dispose_node(struct dentry *dentry)
 				struct snapshot_priv *priv = (struct snapshot_priv *) dentry->priv;
 				priv->borrowed_es_dentry = NULL;
 				priv->snapshot_ctx = NULL;
+				if (priv->path)
+					free(priv->path);
 				free(priv);
 				break;
 			}

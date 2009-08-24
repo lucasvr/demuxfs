@@ -28,13 +28,15 @@ PKG_CHECK_MODULES([FUSE_MODULE],
 FUSE_LIBS=`$PKG_CONFIG --libs fuse`
 FUSE_CFLAGS=`$PKG_CONFIG --cflags fuse`
 
+
 dnl
 dnl Check for FFMPEG (optional)
 dnl
+jpeg_found=
 ffmpeg_found=
 AC_MSG_CHECKING([ffmpeg])
 PKG_CHECK_MODULES([LIBAVCODEC_MODULE], [libavcodec >= 52.7.0], ffmpeg_found="yes", 
-				  AC_MSG_RESULT([no. DemuxFS snapshot feature will not be compiled.]))
+				  AC_MSG_RESULT([Support for snapshots will be disabled.]))
 if test ! -z "${ffmpeg_found}"
 then
 	dnl
@@ -54,7 +56,6 @@ then
 	dnl
 	FFMPEG_LIBS=`$PKG_CONFIG --libs libavformat`
 	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavformat`
-	CFLAGS="${CFLAGS} -DUSE_FFMPEG"
 
 	AC_MSG_CHECKING([libavformat])
 	PKG_CHECK_MODULES([LIBAVFORMAT_MODULE], [libavformat >= 0.7.1], libavformat_found="yes", 
@@ -77,6 +78,16 @@ then
 	AC_SUBST(PDK_LDFLAGS)
 fi
 
+dnl
+dnl Verify native support for FIFOs
+dnl
+mkfifo_found=
+AC_CHECK_LIB([c], [mkfifo], [mkfifo_found=yes], AC_MSG_RESULT([Will emulate FIFOs.]))
+if test ! -z "${mkfifo_found}"
+then
+	CFLAGS="${CFLAGS} -DUSE_POSIX_FIFOS"
+fi
+AM_CONDITIONAL(USE_POSIX_FIFOS, test "${mkfifo_found}" = "yes")
 
 dnl
 dnl Select backend. Available options are "filesrc" and "ce2110-gst".
@@ -166,13 +177,11 @@ fi
 AM_CONDITIONAL(USE_FILESRC, test "${backend}" = "filesrc")
 AM_CONDITIONAL(USE_CE2110_GST, test "${backend}" = "ce2110-gst")
 
-
 dnl
 dnl Update flags
 dnl
-CFLAGS="${CFLAGS} ${FUSE_CFLAGS} ${FFMPEG_CFLAGS} -ggdb -O0 -Wall -std=c99"
+CFLAGS="${CFLAGS} ${FUSE_CFLAGS} ${FFMPEG_CFLAGS} -ggdb -O3 -Wall -std=c99"
 LDFLAGS="${LDFLAGS} ${FUSE_LIBS} ${FFMPEG_LIBS} ${SWSCALE_LIBS} ${AVFORMAT_LIBS}"
-
 
 dnl
 dnl Output files

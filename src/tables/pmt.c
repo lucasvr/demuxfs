@@ -134,11 +134,11 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 		int obj_type = stream_type_is_video(stream->stream_type_identifier) ? 
 			OBJ_TYPE_VIDEO_FIFO : OBJ_TYPE_AUDIO_FIFO;
 
-		CREATE_FIFO((*subdir), obj_type, FS_PES_FIFO_NAME);
+		CREATE_FIFO((*subdir), obj_type, FS_PES_FIFO_NAME, priv);
 
 		if (priv->options.parse_pes) {
 			/* Create a FIFO which will contain this stream's ES contents */
-			struct dentry *es_dentry = CREATE_FIFO((*subdir), obj_type, FS_ES_FIFO_NAME);
+			struct dentry *es_dentry = CREATE_FIFO((*subdir), obj_type, FS_ES_FIFO_NAME, priv);
 #ifdef USE_FFMPEG
 			if (stream_type_is_video(stream->stream_type_identifier))
 				/* Create a file named snapshot.ppm */

@@ -50,17 +50,14 @@ static int do_getattr(struct dentry *dentry, struct stat *stbuf)
 	memset(stbuf, 0, sizeof(struct stat));
 	stbuf->st_ino = dentry->inode;
 	stbuf->st_mode = dentry->mode;
-	if (DEMUXFS_IS_FIFO(dentry) || DEMUXFS_IS_SNAPSHOT(dentry))
-		stbuf->st_size = 0xffffff;
-	else if (! DEMUXFS_IS_DIR(dentry))
-		stbuf->st_size = dentry->size;
+	stbuf->st_size = dentry->size;
 	stbuf->st_atime = dentry->atime;
 	stbuf->st_ctime = dentry->ctime;
 	stbuf->st_mtime = dentry->mtime;
 	stbuf->st_nlink = 1;
-    stbuf->st_blksize = 128;
-    stbuf->st_dev = DEMUXFS_SUPER_MAGIC;
-    stbuf->st_rdev = 0;
+	stbuf->st_blksize = 128;
+	stbuf->st_dev = DEMUXFS_SUPER_MAGIC;
+	stbuf->st_rdev = 0;
 	return 0;
 }
 
@@ -92,19 +89,20 @@ static int demuxfs_open(const char *path, struct fuse_file_info *fi)
 
 	pthread_mutex_lock(&dentry->mutex);
 	if (DEMUXFS_IS_FIFO(dentry)) {
+		struct fifo_priv *fifo_priv = (struct fifo_priv *) dentry->priv;
+		struct fifo *fifo = fifo_priv->fifo;
+
 		/* 
 		 * Mimic a FIFO. This is a special file which gets filled up periodically
 		 * by the PES parsers and consumed on read. Tell FUSE as such. Also, we
 		 * only support one reader at a time.
 		 */
-		if (dentry->refcount > 0) {
-			ret = -EBUSY;
+		ret = fifo_open(fifo);
+		if (ret < 0)
 			goto out;
-		}
 
 		/* Make sure the FIFO is flushed */
-		struct fifo_priv *fifo_priv = (struct fifo_priv *) dentry->priv;
-		fifo_flush(fifo_priv->fifo);
+		fifo_flush(fifo);
 		fi->direct_io = 1;
 #if FUSE_USE_VERSION >= 29
 		fi->nonseekable = 1;
@@ -134,7 +132,7 @@ static int demuxfs_release(const char *path, struct fuse_file_info *fi)
 	dentry->refcount--;
 	if (DEMUXFS_IS_FIFO(dentry)) {
 		struct fifo_priv *fifo_priv = (struct fifo_priv *) dentry->priv;
-		fifo_flush(fifo_priv->fifo);
+		fifo_close(fifo_priv->fifo);
 	} else if (DEMUXFS_IS_SNAPSHOT(dentry)) {
 		struct snapshot_priv *snapshot_priv = (struct snapshot_priv *) dentry->priv;
 		struct fifo_priv *fifo_priv = snapshot_priv->borrowed_es_dentry->priv;
@@ -145,7 +143,7 @@ static int demuxfs_release(const char *path, struct fuse_file_info *fi)
 	return 0;
 }
 
-static int _read_from_fifo(struct dentry *dentry, char *buf, size_t size)
+static int _demuxfs_read_from_fifo(struct dentry *dentry, char *buf, size_t size)
 {
 	struct fifo_priv *priv = (struct fifo_priv *) dentry->priv;
 	size_t n;
@@ -178,7 +176,7 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 
 	if (DEMUXFS_IS_FIFO(dentry)) {
 		while (read_size < size) {
-			ret = _read_from_fifo(dentry, buf+read_size, size-read_size);
+			ret = _demuxfs_read_from_fifo(dentry, buf+read_size, size-read_size);
 			if (ret == -EINTR)
 				return 0;
 			read_size += ret;
