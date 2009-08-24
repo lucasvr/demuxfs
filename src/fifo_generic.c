@@ -29,7 +29,24 @@
 #include "demuxfs.h"
 #include "fifo.h"
 
+struct fifo {
+	struct list_head list;
+	uint32_t num_elements;
+	uint32_t max_elements;
+	bool flushed;
+	bool is_open;
+	pthread_mutex_t head_mutex;
+};
+
+struct fifo_element {
+	struct list_head list;
+	char *data;
+	char *read_ptr;
+	uint32_t size;
+};
+
 static struct fifo_element *get_head(struct fifo *fifo);
+static void fifo_flush_unlocked(struct fifo *fifo);
 
 struct fifo *fifo_init(uint32_t max_elements)
 {
@@ -40,8 +57,69 @@ struct fifo *fifo_init(uint32_t max_elements)
 	fifo->max_elements = max_elements;
 	fifo->num_elements = 0;
 	fifo->flushed = true;
+	fifo->is_open = false;
 	pthread_mutex_init(&fifo->head_mutex, NULL);
 	return fifo;
+}
+
+void fifo_destroy(struct fifo *fifo)
+{
+	fifo_flush(fifo);
+	pthread_mutex_destroy(&fifo->head_mutex);
+	free(fifo);
+}
+
+size_t fifo_get_default_size()
+{
+	return 0xffffffff;
+}
+
+int fifo_get_type()
+{
+	return S_IFREG;
+}
+
+int fifo_set_path(struct fifo *fifo, char *path)
+{
+	(void) fifo;
+	(void) path;
+	return 0;
+}
+
+const char *fifo_get_path(struct fifo *fifo)
+{
+	return NULL;
+}
+
+int fifo_open(struct fifo *fifo)
+{
+	int ret = 0;
+
+	pthread_mutex_lock(&fifo->head_mutex);
+	if (fifo->is_open)
+		ret = -EBUSY;
+	else
+		fifo->is_open = true;
+	pthread_mutex_unlock(&fifo->head_mutex);
+
+	return ret;
+}
+
+void fifo_close(struct fifo *fifo)
+{
+	pthread_mutex_lock(&fifo->head_mutex);
+	fifo_flush_unlocked(fifo);
+	fifo->is_open = false;
+	pthread_mutex_unlock(&fifo->head_mutex);
+}
+
+bool fifo_is_open(struct fifo *fifo)
+{
+	bool is_open;
+	pthread_mutex_lock(&fifo->head_mutex);
+	is_open = fifo->is_open;
+	pthread_mutex_unlock(&fifo->head_mutex);
+	return is_open;
 }
 
 void fifo_set_max_elements(struct fifo *fifo, uint32_t max_elements)
@@ -51,10 +129,9 @@ void fifo_set_max_elements(struct fifo *fifo, uint32_t max_elements)
 	pthread_mutex_unlock(&fifo->head_mutex);
 }
 
-void fifo_flush(struct fifo *fifo)
+static void fifo_flush_unlocked(struct fifo *fifo)
 {
 	struct fifo_element *entry, *aux;
-	pthread_mutex_lock(&fifo->head_mutex);
 	list_for_each_entry_safe(entry, aux, &fifo->list, list) {
 		list_del(&entry->list);
 		free(entry->data);
@@ -62,6 +139,12 @@ void fifo_flush(struct fifo *fifo)
 	}
 	fifo->num_elements = 0;
 	fifo->flushed = true;
+}
+
+void fifo_flush(struct fifo *fifo)
+{
+	pthread_mutex_lock(&fifo->head_mutex);
+	fifo_flush_unlocked(fifo);
 	pthread_mutex_unlock(&fifo->head_mutex);
 }
 
@@ -69,16 +152,9 @@ bool fifo_is_flushed(struct fifo *fifo)
 {
 	bool flushed;
 	pthread_mutex_lock(&fifo->head_mutex);
-	flushed = fifo->flushed == true;
+	flushed = fifo->flushed;
 	pthread_mutex_unlock(&fifo->head_mutex);
 	return flushed;
-}
-
-void fifo_destroy(struct fifo *fifo)
-{
-	fifo_flush(fifo);
-	pthread_mutex_destroy(&fifo->head_mutex);
-	free(fifo);
 }
 
 bool fifo_is_empty(struct fifo *fifo)
@@ -187,4 +263,3 @@ out_unlock:
 
 	return element;
 }
-

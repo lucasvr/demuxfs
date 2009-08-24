@@ -28,6 +28,8 @@
  */
 #include "demuxfs.h"
 #include "snapshot.h"
+#include "fifo.h"
+#include "priv.h"
 
 #ifdef USE_FFMPEG
 static int _snapshot_save_to_dentry(struct dentry *dentry)
@@ -132,7 +134,8 @@ void snapshot_destroy_video_context(struct dentry *dentry)
 
 int snapshot_init_video_context(struct dentry *dentry)
 {
-	int i, ret;
+	int i, ret, video_stream = -1;
+	bool ffmpeg_initialized = false;
 	struct snapshot_priv *priv_data = (struct snapshot_priv *) dentry->priv;
 	struct snapshot_context *ctx = calloc(1, sizeof(struct snapshot_context));
 	if (! ctx) {
@@ -140,7 +143,6 @@ int snapshot_init_video_context(struct dentry *dentry)
 		return -ENOMEM;
 	}
 	
-	static bool ffmpeg_initialized = false;
 	if (! ffmpeg_initialized) {
 		av_register_all();
 		ffmpeg_initialized = true;
@@ -155,7 +157,12 @@ int snapshot_init_video_context(struct dentry *dentry)
 		goto out_free;
 	}
 
-	char *path_to_fifo = ((struct snapshot_priv *) dentry->priv)->path_to_es;
+	struct fifo_priv *fifo_priv = (struct fifo_priv *) priv_data->borrowed_es_dentry->priv;
+	struct fifo *fifo = fifo_priv ? fifo_priv->fifo : NULL;
+	const char *path_to_fifo = fifo_get_path(fifo);
+	if (! path_to_fifo)
+		goto out_free;
+
 	ret = av_open_input_file(&ctx->format_context, path_to_fifo, ctx->input_format, 0, NULL);
 	if (ret != 0) {
         dprintf("H.264 input stream not found");
@@ -168,7 +175,6 @@ int snapshot_init_video_context(struct dentry *dentry)
 		goto out_free;
 	}
 
-	int video_stream = -1;
 	for (i=0; i < ctx->format_context->nb_streams; i++)
 		if (ctx->format_context->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO) {
 			video_stream = i;

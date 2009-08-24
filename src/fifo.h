@@ -1,20 +1,7 @@
 #ifndef __fifo_h
 #define __fifo_h
 
-struct fifo {
-	struct list_head list;
-	uint32_t num_elements;
-	uint32_t max_elements;
-	bool flushed;
-	pthread_mutex_t head_mutex;
-};
-
-struct fifo_element {
-	struct list_head list;
-	char *data;
-	char *read_ptr;
-	uint32_t size;
-};
+struct fifo;
 
 /**
  * fifo_init - Initializes a new FIFO
@@ -26,6 +13,13 @@ struct fifo_element {
 struct fifo *fifo_init(uint32_t max_elements);
 
 /**
+ * fifo_destroy - Destroys a FIFO and all resources allocated by it.
+ *
+ * @fifo: the FIFO.
+ */
+void fifo_destroy(struct fifo *fifo);
+
+/**
  * fifo_set_max_elements - Updates the FIFO maximum number of elements
  *
  * @fifo: the FIFO.
@@ -34,18 +28,57 @@ struct fifo *fifo_init(uint32_t max_elements);
 void fifo_set_max_elements(struct fifo *fifo, uint32_t max_elements);
 
 /**
+ * fifo_get_default_size - Returns the default size for when creating a new dentry.
+ */
+size_t fifo_get_default_size();
+
+/**
+ * fifo_get_type - Returns the default type which will be assigned to the dentry.
+ */
+int fifo_get_type();
+
+/**
+ * fifo_set_path - Configures the path to the FIFO in the real filesystem
+ *
+ * @fifo: the FIFO.
+ * @path: NULL terminator path to the FIFO, starting from the filesystem's real 
+ * root directory.
+ *
+ * Returns 0 on success or a negative value on error.
+ */
+int fifo_set_path(struct fifo *fifo, char *path);
+
+/**
+ * fifo_get_path - Get the path to the FIFO in the real filesystem
+ *
+ * @fifo: the FIFO.
+ *
+ * Returns a pointer to the path or NULL on error.
+ */
+const char *fifo_get_path(struct fifo *fifo);
+
+/**
+ * fifo_open - Open a FIFO.
+ *
+ * @fifo: the FIFO.
+ *
+ * Returns 0 on success or -EBUSY if the FIFO is already open.
+ */
+int fifo_open(struct fifo *fifo);
+
+/**
+ * fifo_close - Close a FIFO.
+ *
+ * @fifo: the FIFO.
+ */
+void fifo_close(struct fifo *fifo);
+
+/**
  * fifo_flush - Removes remaining elements stored in a FIFO
  *
  * @fifo: the FIFO.
  */
 void fifo_flush(struct fifo *fifo);
-
-/**
- * fifo_destroy - Destroys a FIFO and all resources allocated by it.
- *
- * @fifo: the FIFO.
- */
-void fifo_destroy(struct fifo *fifo);
 
 /**
  * fifo_is_empty - Tells if a FIFO is empty

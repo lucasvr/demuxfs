@@ -104,29 +104,33 @@ static struct dentry *pes_get_dentry(const struct ts_header *header,
 static int pes_append_to_fifo(struct dentry *dentry, bool pusi,
 		const char *payload, uint32_t payload_len)
 {
+	struct fifo_priv *priv_data;
+	struct fifo *fifo;
 	int ret = 0;
 
 	if (! dentry || payload_len == 0)
 		return 0;
+	
+	priv_data = (struct fifo_priv *) dentry->priv;
+	fifo = priv_data->fifo;
 
-	pthread_mutex_lock(&dentry->mutex);
 	/* Do not feed the FIFO if no process wants to read from it */
-	if (dentry->refcount > 0) {
+	if (fifo_is_open(fifo)) {
 		bool append = true;
-		struct fifo_priv *priv_data = (struct fifo_priv *) dentry->priv;
 
-		if (fifo_is_flushed(priv_data->fifo) && !IS_NAL_IDC_REFERENCE(payload)) {
+		if (fifo_is_flushed(fifo) && !IS_NAL_IDC_REFERENCE(payload)) {
 			/* Skip delta frames before start feeding the FIFO */
 			append = false;
 		}
 		
 		if (append) {
-			ret = fifo_append(priv_data->fifo, payload, payload_len);
+			ret = fifo_append(fifo, payload, payload_len);
 			/* Awake reader, if any */
+			pthread_mutex_lock(&dentry->mutex);
 			sem_post(&dentry->semaphore);
+			pthread_mutex_unlock(&dentry->mutex);
 		}
 	}
-	pthread_mutex_unlock(&dentry->mutex);
 
 	if (ret < 0)
 		dprintf("Error writing to the FIFO: %d", ret);

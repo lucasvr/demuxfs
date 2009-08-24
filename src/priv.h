@@ -13,7 +13,7 @@ struct video_fifo_priv {
 };
 
 struct snapshot_priv {
-	char *path_to_es;
+	char *path; /* Path to ES file on the filesystem */
 	struct dentry *borrowed_es_dentry;
 	struct snapshot_context *snapshot_ctx;
 };
