@@ -238,21 +238,28 @@ static int biop_parse_directory_message(struct biop_directory_message *msg,
 
 			binding->child_object_info_length = CONVERT_TO_16(buf[j], buf[j+1]);
 			j += 2;
-			if (binding->name.kind_data == 0x66696c00) { /* "fil" */
-				binding->content_size = CONVERT_TO_64(buf[j], buf[j+1], 
-					buf[j+2], buf[j+3],	buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
-				j += 8;
-				if (binding->content_size & 0xffffffff00000000)
-					TS_WARNING("binding %d has invalid content size: %#llx",
-						i+1, binding->content_size);
-				if (binding->child_object_info_length < 8)
-					TS_WARNING("binding->child_object_info_length < 8 (%d)", 
-						binding->child_object_info_length);
-				for (x=0; x<binding->child_object_info_length-8; ++x)
-					j += biop_parse_descriptor(binding, &buf[j], len-j);
-			} else {
-				for (x=0; x<binding->child_object_info_length; ++x)
-					j += biop_parse_descriptor(binding, &buf[j], len-j);
+			if (binding->child_object_info_length) {
+				if (binding->name.kind_data == 0x66696c00) { /* "fil" */
+					binding->content_size = CONVERT_TO_64(buf[j], buf[j+1], 
+						buf[j+2], buf[j+3], buf[j+4], buf[j+5], buf[j+6], buf[j+7]);
+					j += 8;
+
+					if (binding->content_size & 0xffffffff00000000)
+						TS_WARNING("binding %d has invalid content size: %#llx",
+							i+1, binding->content_size);
+					if (binding->child_object_info_length < 8)
+						TS_WARNING("binding->child_object_info_length < 8 (%d)", 
+							binding->child_object_info_length);
+					if (binding->binding_type != 0x01)
+						TS_WARNING("binding->binding_type != 0x01 (%#x)",
+							binding->binding_type);
+
+					for (x=0; x<binding->child_object_info_length-8; ++x)
+						j += biop_parse_descriptor(binding, &buf[j], len-j);
+				} else {
+					for (x=0; x<binding->child_object_info_length; ++x)
+						j += biop_parse_descriptor(binding, &buf[j], len-j);
+				}
 			}
 
 			for (x=0; x<binding->iop_ior->tagged_profiles_count; ++x) {
@@ -511,9 +518,22 @@ static int biop_update_file_dentry(struct dentry *root,
 			dentry = CREATE_SIMPLE_FILE(stepfather, "", msg->message_body.content_length, inode);
 		}
 	}
-	if (dentry->size != msg->message_body.content_length)
-		dprintf("'%s': directory object said size=%d, file object says %d",
-		dentry->name, dentry->size, msg->message_body.content_length);
+	if (dentry->size != msg->message_body.content_length) {
+		dprintf("'%s': directory object said size=%d, file object says %d (contents=%p, inode=%#llx)",
+		dentry->name, dentry->size, msg->message_body.content_length, dentry->contents, dentry->inode);
+		if (! dentry->size) {
+			/* 
+			 * The directory message didn't specify file size or had binding->child_object_info_length=0, 
+			 * so we need to set that now.
+			 */
+			if (dentry->contents) {
+				dprintf("warning: object key repeats for more than one object!");
+			} else {
+				dentry->contents = malloc(msg->message_body.content_length);
+				dentry->size = msg->message_body.content_length;
+			}
+		}
+	}
 
 	memcpy(dentry->contents, msg->message_body.contents, dentry->size);
 	return 0;
@@ -641,7 +661,7 @@ int biop_create_filesystem_dentries(struct dentry *parent, struct dentry *stepfa
 
 	memset(&gateway_msg, 0, sizeof(gateway_msg));
 
-	while (j < len) {
+	while (j < len-1) {
 		j += biop_parse_message_header(&msg_header, &buf[j], len-j);
 		if (j >= len)
 			break;
