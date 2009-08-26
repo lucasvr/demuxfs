@@ -97,13 +97,11 @@ void fifo_set_max_elements(struct fifo *fifo, uint32_t max_elements)
 int fifo_set_path(struct fifo *fifo, char *path)
 {
 	fifo->path = strdup(path);
-	dprintf("path = %s", path);
 	return 0;
 }
 
 const char *fifo_get_path(struct fifo *fifo)
 {
-	dprintf("path = %s", fifo->path ? fifo->path : "Null");
 	return fifo->path;
 }
 
