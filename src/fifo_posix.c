@@ -137,17 +137,21 @@ size_t fifo_read(struct fifo *fifo, char *buf, size_t size)
 
 int fifo_append(struct fifo *fifo, const char *data, uint32_t size)
 {
-	int ret = write(fifo->fd, data, size);
-	int err = errno;
+	int err, ret;
 	
-	pthread_mutex_lock(&fifo->mutex);
-	if (ret > 0)
-		fifo->flushed = false;
-	else if (err != EAGAIN) {
-		fifo->flushed = true;
-		fifo->fd = -1;
-	}
-	pthread_mutex_unlock(&fifo->mutex);
+	do {
+		ret = write(fifo->fd, data, size);
+		err = ret < 0 ? errno : 0;
+
+		pthread_mutex_lock(&fifo->mutex);
+		if (ret > 0)
+			fifo->flushed = false;
+		else if (err != EAGAIN) {
+			fifo->flushed = true;
+			fifo->fd = -1;
+		}
+		pthread_mutex_unlock(&fifo->mutex);
+	} while (err == EAGAIN);
 
 	return 0;
 }
