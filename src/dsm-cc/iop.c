@@ -192,14 +192,13 @@ int iop_parse_ior(struct iop_ior *ior, const char *payload, uint32_t len)
 	int j = 0;
 
 	ior->type_id_length = CONVERT_TO_32(payload[j], payload[j+1], payload[j+2], payload[j+3]);
-	if (ior->type_id_length != 4) {
-		dprintf("Error: ior->type_id_length != 4 (%#x)", ior->type_id_length);
-		return -1;
-	}
+	if (ior->type_id_length != 4)
+		TS_WARNING("ior->type_id_length != 4 (%#x)", ior->type_id_length);
+	j += 4;
 
 	ior->type_id = calloc(ior->type_id_length+1, sizeof(char));
-	memcpy(ior->type_id, &payload[j+4], ior->type_id_length);
-	j += 4 + ior->type_id_length;
+	memcpy(ior->type_id, &payload[j], ior->type_id_length);
+	j += ior->type_id_length;
 	
 	uint8_t gap_bytes = ior->type_id_length % 4;
 	if (gap_bytes) {
