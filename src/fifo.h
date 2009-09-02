@@ -81,6 +81,15 @@ void fifo_close(struct fifo *fifo);
 void fifo_flush(struct fifo *fifo);
 
 /**
+ * fifo_is_open - Tells if a FIFO is open
+ * 
+ * @fifo: the FIFO.
+ *
+ * Returns true if the FIFO is open or false if it's not.
+ */
+bool fifo_is_open(struct fifo *fifo);
+
+/**
  * fifo_is_empty - Tells if a FIFO is empty
  *
  * @fifo: the FIFO.
