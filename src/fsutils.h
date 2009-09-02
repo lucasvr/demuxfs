@@ -269,4 +269,26 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	_dentry; \
 	})
 
+#define CREATE_SIMPLE_DIRECTORY(_parent,_dname,_inode) \
+	({ \
+	    struct dentry *_dentry = fsutils_find_by_inode(_parent, _inode); \
+	 	if (! _dentry) _dentry = fsutils_get_child(_parent, _dname); \
+	 	if (! _dentry || _dentry->inode != _inode) { \
+			_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
+			_dentry->name = strdup(_dname); \
+			_dentry->mode = S_IFDIR | 0555; \
+	 		_dentry->obj_type = OBJ_TYPE_DIR; \
+	 		_dentry->inode = _inode; \
+			CREATE_COMMON((_parent),_dentry); \
+	 	} else if (_dentry->parent != _parent) { \
+	 		/* Update parent */ \
+	 		list_del(&_dentry->list); \
+	 		if ((_dentry)->obj_type != OBJ_TYPE_FIFO) \
+	 			_parent->size += (_dentry)->size; \
+	 		(_dentry)->parent = _parent; \
+	 		list_add_tail(&(_dentry)->list, &((_parent)->children)); \
+	 	} \
+	 	_dentry; \
+	})
+
 #endif /* __fsutils_h */
