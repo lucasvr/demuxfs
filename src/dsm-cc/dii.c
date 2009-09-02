@@ -131,11 +131,28 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 #endif
 }
 
-bool dii_download_complete(const struct ts_header *header, struct dii_table *dii, 
+static bool dii_module_complete(struct dii_table *dii, int module, struct dentry *ddb_dentry)
+{
+	char mod_dir[64];
+	struct dentry *mod_dentry;
+	struct dii_module *mod = &dii->modules[module];
+
+	if (mod->module_size == 0)
+		return true;
+
+	sprintf(mod_dir, "/module_%02d", mod->module_id);
+	mod_dentry = fsutils_get_dentry(ddb_dentry, mod_dir);
+	if (! mod_dentry || mod_dentry->size != mod->module_size)
+		return false;
+
+	return true;
+}
+
+static bool dii_download_complete(const struct ts_header *header, struct dii_table *dii, 
 		struct demuxfs_data *priv)
 {
-	char buf[PATH_MAX], mod_dir[64];
-	struct dentry *ddb_dentry, *mod_dentry;
+	char buf[PATH_MAX];
+	struct dentry *ddb_dentry;
 	
 	snprintf(buf, sizeof(buf), "/%s/%#04x", FS_DDB_NAME, header->pid);
 	ddb_dentry = fsutils_get_dentry(priv->root, buf);
@@ -146,16 +163,10 @@ bool dii_download_complete(const struct ts_header *header, struct dii_table *dii
 	ddb_dentry = fsutils_get_current(ddb_dentry);
 	assert(ddb_dentry);
 
-	for (uint16_t i=0; i<dii->number_of_modules; ++i) {
-		struct dii_module *mod = &dii->modules[i];
-		if (mod->module_size == 0)
-			continue;
-
-		sprintf(mod_dir, "/module_%02d", mod->module_id);
-		mod_dentry = fsutils_get_dentry(ddb_dentry, mod_dir);
-		if (! mod_dentry || mod_dentry->size != mod->module_size)
+	for (uint16_t i=0; i<dii->number_of_modules; ++i)
+		if (! dii_module_complete(dii, i, ddb_dentry))
 			return false;
-	}
+
 	return true;
 }
 
