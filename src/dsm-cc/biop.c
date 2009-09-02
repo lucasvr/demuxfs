@@ -584,13 +584,12 @@ static int biop_create_children_dentries(struct dentry *root,
 					name->id_byte, binding->_inode, parent_inode,
 					found_parent ? "found" : "not found");
 
-			entry = fsutils_find_by_inode(stepfather, binding->_inode);
+			entry = fsutils_find_by_inode(parent, binding->_inode);
 			if (entry) {
 				UPDATE_NAME(entry, name->id_byte);
 				UPDATE_PARENT(entry, parent);
 			} else {
-				entry = CREATE_DIRECTORY(parent, name->id_byte);
-				entry->inode = binding->_inode;
+				entry = CREATE_SIMPLE_DIRECTORY(parent, name->id_byte, binding->_inode);
 			}
 		}
 		entry->atime = binding->_timestamp;
@@ -613,6 +612,7 @@ static int biop_create_children_dentries(struct dentry *root,
 void biop_reparent_orphaned_dentries(struct dentry *root, struct dentry *stepfather)
 {
 	struct dentry *entry, *aux;
+	bool has_orphaned_entries = false;
 
 	list_for_each_entry_safe(entry, aux, &stepfather->children, list) {
 		struct dentry *real_parent;
@@ -635,11 +635,8 @@ void biop_reparent_orphaned_dentries(struct dentry *root, struct dentry *stepfat
 		if (! real_parent) {
 			dprintf("'%s' is definitely orphaned for its parent '%#llx' is missing", 
 					entry->name, real_parent_inode);
-			dprintf("--- stepfather list ---");
-			fsutils_dump_tree(stepfather);
-			dprintf("--- rootfs list ---");
-			fsutils_dump_tree(root);
 			fsutils_dispose_node(entry);
+			has_orphaned_entries = true;
 		} else {
 			list_move_tail(&entry->list, &real_parent->children);
 			free(entry->priv);
@@ -647,8 +644,12 @@ void biop_reparent_orphaned_dentries(struct dentry *root, struct dentry *stepfat
 		}
 	}
 
-//	fsutils_dump_tree(stepfather);
-//	fsutils_dump_tree(root);
+	if (has_orphaned_entries) {
+		dprintf("--- stepfather list ---");
+		fsutils_dump_tree(stepfather);
+		dprintf("--- rootfs list ---");
+		fsutils_dump_tree(root);
+	}
 }
 
 int biop_create_filesystem_dentries(struct dentry *parent, struct dentry *stepfather,
