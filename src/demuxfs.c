@@ -51,9 +51,9 @@ static int do_getattr(struct dentry *dentry, struct stat *stbuf)
 	stbuf->st_ino = dentry->inode;
 	stbuf->st_mode = dentry->mode;
 	stbuf->st_size = dentry->size;
-	stbuf->st_atime = dentry->atime;
-	stbuf->st_ctime = dentry->ctime;
-	stbuf->st_mtime = dentry->mtime;
+	stbuf->st_atime = dentry->atime ? dentry->ctime : time(NULL);
+	stbuf->st_ctime = dentry->ctime ? dentry->ctime : time(NULL);
+	stbuf->st_mtime = dentry->mtime ? dentry->mtime : time(NULL);
 	stbuf->st_nlink = 1;
 	stbuf->st_blksize = 128;
 	stbuf->st_dev = DEMUXFS_SUPER_MAGIC;
