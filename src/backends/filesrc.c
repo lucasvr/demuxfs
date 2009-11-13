@@ -168,6 +168,7 @@ int filesrc_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		priv->options.standard = ATSC_STANDARD;
 	else {
 		fprintf(stderr, "Error: %s is not a valid standard option.\n", p->standard);
+		free(p->packet);
 		fclose(p->fp);
 		free(p);
 		return -1;
