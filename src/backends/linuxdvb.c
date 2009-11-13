@@ -33,8 +33,12 @@
 #include "buffer.h"
 #include "ts.h"
 
+#define LINUXDVB_DEFAULT_DEMUX_DEVICE "/dev/dvb/adapter0/demux0"
+#define LINUXDVB_DEFAULT_DVR_DEVICE   "/dev/dvb/adapter0/dvr0"
+
 struct input_parser {
 	char *demux_device;
+	char *dvr_device;
 	int demux_fd;
 	int dvr_fd;
 	char *packet;
@@ -53,10 +57,13 @@ struct input_parser {
 static void linuxdvb_usage(void)
 {
 	fprintf(stderr, "LINUXDVB options:\n"
-			"    -o demux_device=FILE   demux device\n"
+			"    -o demux_device=FILE   demux device (default=%s)\n"
+			"    -o dvr_device=FILE     DVR device (default=%s)\n"
 			"    -o parse_pes=1|0       parse PES packets (default: 0)\n"
 			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC (default: SBTVD)\n"
 			"    -o tmpdir=DIR          temporary directory in which to store DSM-CC files (default: %s)\n\n",
+			LINUXDVB_DEFAULT_DEMUX_DEVICE,
+			LINUXDVB_DEFAULT_DVR_DEVICE,
 			FS_DEFAULT_TMPDIR);
 }
 
@@ -65,6 +72,7 @@ static void linuxdvb_usage(void)
 enum { KEY_HELP };
 
 static struct fuse_opt linuxdvb_opts[] = {
+	LINUXDVB_OPT("demux_device=%s", demux_device, 0),
 	LINUXDVB_OPT("demux_device=%s", demux_device, 0),
 	LINUXDVB_OPT("parse_pes=%d",    parse_pes, 0),
 	LINUXDVB_OPT("standard=%s",     standard, 0),
@@ -107,11 +115,8 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		return -1;
 	}
 
-	if (! p->demux_device) {
-		fprintf(stderr, "Error: missing '-o demux_device=FILE' option\n");
-		free(p);
-		return -1;
-	}
+	if (! p->demux_device)
+		p->demux_device = LINUXDVB_DEFAULT_DEMUX_DEVICE;
 
 	p->demux_fd = open(p->demux_device, O_RDWR);
 	if (p->demux_fd < 0) {
@@ -120,9 +125,12 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		return -1;
 	}
 
-	p->dvr_fd = open("/dev/dvb/adapter0/dvr0", O_RDONLY);
+	if (! p->dvr_device)
+		p->dvr_device = LINUXDVB_DEFAULT_DVR_DEVICE;
+
+	p->dvr_fd = open(p->dvr_device, O_RDONLY);
 	if (p->dvr_fd < 0) {
-		perror("dvr0");
+		perror(p->dvr_device);
 		close(p->demux_fd);
 		free(p);
 		return -1;
@@ -139,6 +147,7 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 	if (ret < 0) {
 		perror("DMX_SET_PES_FILTER");
 		close(p->demux_fd);
+		close(p->dvr_fd);
 		free(p);
 		return -1;
 	}
@@ -158,6 +167,7 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 	else {
 		fprintf(stderr, "Error: %s is not a valid standard option.\n", p->standard);
 		close(p->demux_fd);
+		close(p->dvr_fd);
 		free(p->packet);
 		free(p);
 		return -1;
@@ -184,6 +194,7 @@ int linuxdvb_destroy_parser(struct demuxfs_data *priv)
 		perror("DMX_STOP");
 
 	close(p->demux_fd);
+	close(p->dvr_fd);
 	free(p->packet);
 	free(p);
 	return 0;
