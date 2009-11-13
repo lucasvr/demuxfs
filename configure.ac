@@ -90,23 +90,36 @@ fi
 AM_CONDITIONAL(USE_POSIX_FIFOS, test "${mkfifo_found}" = "yes")
 
 dnl
-dnl Select backend. Available options are "filesrc" and "ce2110-gst".
+dnl Select backend. Available options are "filesrc", "ce2110-gst" and "linuxdvb".
 dnl
-backend="filesrc"
-AC_ARG_WITH(backend, [  --with-backend[[=filesrc|=ce2110-gst]]   (default=filesrc)])
-case "${with_backend}" in
-	"" | "filesrc") backend="filesrc"    ;;
-	"ce2110-gst")   backend="ce2110-gst" ;;
-	*)              AC_MSG_ERROR([invalid option ${with_backend}])
-esac
+validbackend=false
+AC_ARG_WITH(backend, [  --with-backend=[[filesrc|linuxdvb|ce2110-gst] (default=filesrc)]])
 
-if [ test "${backend}" = "filesrc" ]
+use_filesrc=false
+if [ test "${with_backend}" = "filesrc" ]
 then
 	dnl
 	dnl set USE_FILESRC
 	dnl
 	CFLAGS="${CFLAGS} -DUSE_FILESRC"
-else
+	use_filesrc=true
+	validbackend=true
+fi
+
+use_linuxdvb=false
+if [ test "${with_backend}" = "linuxdvb" ]
+then
+	dnl
+	dnl set USE_LINUXDVB
+	dnl
+	CFLAGS="${CFLAGS} -DUSE_LINUXDVB"
+	use_linuxdvb=true
+	validbackend=true
+fi
+
+use_ce2110_gst=false
+if [ test "${with_backend}" = "ce2110-gst" ]
+then
 	dnl
 	dnl Check for GLib
 	dnl
@@ -173,14 +186,23 @@ else
 	dnl set USE_CE2110_GST
 	dnl
 	CFLAGS="${CFLAGS} -DUSE_CE2110_GST"
+	use_ce2110_gst=true
+	validbackend=true
 fi
-AM_CONDITIONAL(USE_FILESRC, test "${backend}" = "filesrc")
-AM_CONDITIONAL(USE_CE2110_GST, test "${backend}" = "ce2110-gst")
+
+AM_CONDITIONAL(USE_FILESRC, test "${use_filesrc}" = "true")
+AM_CONDITIONAL(USE_LINUXDVB, test "${use_linuxdvb}" = "true")
+AM_CONDITIONAL(USE_CE2110_GST, test "${use_ce2110_gst}" = "true")
+
+if [ test -z "$validbackend" ]
+then
+	AC_MSG_ERROR([Invalid backend selected.])
+fi
 
 dnl
 dnl Update flags
 dnl
-CFLAGS="${CFLAGS} ${FUSE_CFLAGS} ${FFMPEG_CFLAGS} -ggdb -O3 -Wall -std=c99"
+CFLAGS="${CFLAGS} ${FUSE_CFLAGS} ${FFMPEG_CFLAGS} -ggdb -O3 -Wall"
 LDFLAGS="${LDFLAGS} ${FUSE_LIBS} ${FFMPEG_LIBS} ${SWSCALE_LIBS} ${AVFORMAT_LIBS}"
 
 dnl
