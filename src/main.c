@@ -66,7 +66,7 @@ void * ts_parser_thread(void *userdata)
 	int ret;
     
 	while (backend->keep_alive(priv) && !main_thread_stopped) {
-        ret = backend->read(priv);
+		ret = backend->read(priv);
 		if (ret < 0) {
 			dprintf("read error");
 			break;
@@ -76,8 +76,8 @@ void * ts_parser_thread(void *userdata)
 			dprintf("Error processing packet: %s", strerror(-ret));
 			break;
 		}
-    }
-    backend->destroy(priv);
+	}
+	backend->destroy(priv);
 	pthread_exit(NULL);
 }
 
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
 	assert(priv);
 
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-    int ret = backend->create(&args, priv);
+	int ret = backend->create(&args, priv);
 	if (ret < 0)
 		return 1;
 
