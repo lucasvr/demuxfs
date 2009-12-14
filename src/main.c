@@ -40,7 +40,6 @@
 /* Platform headers */
 #include "backends/filesrc.h"
 #include "backends/linuxdvb.h"
-#include "backends/ce2110.h"
 
 /**
  * Available backends
@@ -49,8 +48,6 @@
 static struct backend_ops *backend = &filesrc_backend_ops;
 #elif defined(USE_LINUXDVB)
 static struct backend_ops *backend = &linuxdvb_backend_ops;
-#elif defined(USE_CE2110_GST)
-static struct backend_ops *backend = &ce2110_backend_ops;
 #endif
 
 /* Defined in demuxfs.c */

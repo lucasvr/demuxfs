@@ -39,7 +39,6 @@
 
 /* Platform headers */
 #include "backends/filesrc.h"
-#include "backends/ce2110.h"
 
 /* FUSE methods implemented in main.c */
 extern void * demuxfs_init(struct fuse_conn_info *conn);
