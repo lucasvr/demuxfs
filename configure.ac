@@ -65,20 +65,6 @@ fi
 AM_CONDITIONAL(USE_FFMPEG, test "${ffmpeg_found}" = "yes")
 
 dnl
-dnl Check for CE2110 headers (optional)
-dnl
-AC_ARG_WITH(pdkroot, [  --with-pdkroot[[=PATH]]   Path to CE2110 PDK (default=not set)])
-if [ test ! -z "${with_pdkroot}" ]
-then
-	PDK_ROOT="${with_pdkroot}"
-	PDK_CFLAGS="-I${PDK_ROOT}/include -I${PDK_ROOT}/include/linux_user -I${PDK_ROOT}/include -I${PDK_ROOT}/../edl/include"
-	PDK_LDFLAGS="-L${PDK_ROOT}/lib -L${PDK_ROOT}/../edl/lib"
-	AC_SUBST(PDK_ROOT)
-	AC_SUBST(PDK_CFLAGS)
-	AC_SUBST(PDK_LDFLAGS)
-fi
-
-dnl
 dnl Verify native support for FIFOs
 dnl
 mkfifo_found=
@@ -117,82 +103,8 @@ then
 	validbackend=true
 fi
 
-use_ce2110_gst=false
-if [ test "${with_backend}" = "ce2110-gst" ]
-then
-	dnl
-	dnl Check for GLib
-	dnl
-	AM_PATH_GLIB_2_0(2.8.0, [true], [AC_MSG_ERROR([cannot find glib])], [gmodule gobject gthread])
-	
-	dnl
-	dnl Check for Gstreamer
-	dnl
-	PKG_CHECK_MODULES([GST], [gstreamer-0.10], [have_gst="true"], AC_MSG_ERROR([cannot find gstreamer]))
-
-	dnl
-	dnl Check for apm_psd_user library
-	dnl
-	CPPFLAGS_save="${CPPFLAGS}"
-	CPPFLAGS="${CPPFLAGS} ${PDK_CFLAGS}"
-	AC_CHECK_HEADERS([ismd_audio_defs.h], 
-		[have_apm_psd_user="true"],
-		AC_MSG_ERROR([ismd_audio_defs.h was not found! Please check the directory passed to '--with-pdkroot='.]))
-	CPPFLAGS="${CPPFLAGS_save}"
-
-	LDFLAGS_save="${LDFLAGS}"
-	APM_PSD_USER_LIBS="${PDK_LDFLAGS} -lapm_psd_user -lsmd_user_lib_new"
-	LDFLAGS="${LDFLAGS} ${APM_PSD_USER_LIBS}"
-	AC_CHECK_LIB([apm_psd_user -lsmd_user_lib_new], [ismd_audio_stream_open], 
-		[have_apm_psd_user=true], 
-		AC_MSG_ERROR([libapm_psd_user was not found! Please check the directory passed to '--with-pdkroot='.]))
-	LDFLAGS="${LDFLAGS_save}"
-	AC_SUBST(APM_PSD_USER_LIBS)
-
-	dnl
-	dnl Check for idl_i2c library
-	dnl
-	CPPFLAGS_save="${CPPFLAGS}"
-	CPPFLAGS="${CPPFLAGS} ${PDK_CFLAGS}"
-
-	AC_CHECK_HEADERS([idl_i2c.h], 
-		[have_idl_i2c=true], 
-		AC_MSG_ERROR([idl_i2c.h was not found! Please check the directory passed to '--with-pdkroot='.]))
-
-	LDFLAGS_save="${LDFLAGS}"
-	IDL_I2C_LIBS="${PDK_LDFLAGS} -lidlerror -lidl_i2c -lidl_gpio -losal -lpthread -lsven_linux_user"
-	LDFLAGS="${LDFLAGS} ${IDL_I2C_LIBS}"
-	AC_CHECK_LIB([idl_i2c], 
-		[idl_i2c_open], 
-		[have_idl_i2c=true], 
-		AC_MSG_ERROR([libidl_i2c was not found! Please check the directory passed to '--with-pdkroot='.]))
-	LDFLAGS="${LDFLAGS_save}"
-	AC_SUBST(IDL_I2C_LIBS)
-	CPPFLAGS="${CPPFLAGS_save}"
-
-	dnl
-	dnl Check for edl_rtc library
-	dnl
-	CPPFLAGS_save="${CPPFLAGS}"
-	CPPFLAGS="${CPPFLAGS} ${PDK_CFLAGS}"
-	AC_CHECK_HEADERS([edl_rtc.h], 
-		[have_edl_rtc=true], 
-		AC_MSG_ERROR([edl_rtc.h was not found! Please check the directory passed to '--with-pdkroot='.]))
-	CPPFLAGS="${CPPFLAGS_save}"
-	EDL_RTC_LIBS="${PDK_LDFLAGS} -ledl_rtc -losal_linux_user -lpal -lpthread"
-	AC_SUBST(EDL_RTC_LIBS)
-
-	dnl
-	dnl set USE_CE2110_GST
-	dnl
-	CFLAGS="${CFLAGS} -DUSE_CE2110_GST"
-	use_ce2110_gst=true
-	validbackend=true
-fi
-
 AM_CONDITIONAL(USE_FILESRC, test "${use_filesrc}" = "true")
 AM_CONDITIONAL(USE_LINUXDVB, test "${use_linuxdvb}" = "true")
-AM_CONDITIONAL(USE_CE2110_GST, test "${use_ce2110_gst}" = "true")
 
 if [ test -z "$validbackend" ]
 then
