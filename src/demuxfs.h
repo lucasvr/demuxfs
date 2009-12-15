@@ -132,6 +132,7 @@ enum transmission_type {
 
 struct descriptor;
 struct dsmcc_descriptor;
+struct backend_ops;
 
 struct user_options {
 	bool parse_pes;
@@ -142,6 +143,11 @@ struct user_options {
 };
 
 struct demuxfs_data {
+    /* command line options */
+	bool opt_parse_pes;
+	char *opt_standard;
+	char *opt_tmpdir;
+	char *opt_backend;
 	/* "psi_tables" holds PSI structures (ie: PAT, PMT, NIT..) */
 	struct hash_table *psi_tables;
 	/* "pes_tables" holds structures from PES packets that we're parsing */
@@ -168,15 +174,8 @@ struct demuxfs_data {
 	pthread_t ts_parser_id;
 	/* User-defined options */
 	struct user_options options;
-};
-
-/* Backend operations */
-struct backend_ops {
-    int (*create)(struct fuse_args *, struct demuxfs_data *);
-    int (*destroy)(struct demuxfs_data *);
-    int (*read)(struct demuxfs_data *);
-    int (*process)(struct demuxfs_data *);
-    bool (*keep_alive)(struct demuxfs_data *);
+	/* Backend implementation */
+	struct backend_ops *backend;
 };
 
 #endif /* __demuxfs_h */
