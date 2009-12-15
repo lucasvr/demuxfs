@@ -76,13 +76,13 @@ fi
 AM_CONDITIONAL(USE_POSIX_FIFOS, test "${mkfifo_found}" = "yes")
 
 dnl
-dnl Select backend. Available options are "filesrc", "ce2110-gst" and "linuxdvb".
+dnl Select backend. Available options are "filesrc"  and "linuxdvb".
 dnl
 validbackend=false
-AC_ARG_WITH(backend, [  --with-backend=[[filesrc|linuxdvb|ce2110-gst] (default=filesrc)]])
+AC_ARG_WITH(backend, [  --with-backend=[[filesrc|linuxdvb|all] (default=all)]])
 
 use_filesrc=false
-if [ test "${with_backend}" = "filesrc" ]
+if test "${with_backend}" = "filesrc" -o "${with_backend}" = "all" -o "${with_backend}" = ""
 then
 	dnl
 	dnl set USE_FILESRC
@@ -93,7 +93,7 @@ then
 fi
 
 use_linuxdvb=false
-if [ test "${with_backend}" = "linuxdvb" ]
+if test "${with_backend}" = "linuxdvb" -o "${with_backend}" = "all" -o "${with_backend}" = ""
 then
 	dnl
 	dnl set USE_LINUXDVB
@@ -106,7 +106,7 @@ fi
 AM_CONDITIONAL(USE_FILESRC, test "${use_filesrc}" = "true")
 AM_CONDITIONAL(USE_LINUXDVB, test "${use_linuxdvb}" = "true")
 
-if [ test -z "$validbackend" ]
+if test -z "$validbackend"
 then
 	AC_MSG_ERROR([Invalid backend selected.])
 fi
