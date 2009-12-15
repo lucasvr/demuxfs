@@ -1,17 +1,21 @@
-bin_PROGRAMS = demuxfs
+noinst_HEADERS = demuxfs.h ts.h snapshot.h fsutils.h hash.h xattr.h fifo.h buffer.h list.h byteops.h crc32.h backend.h
 
-demuxfsSources = main.c demuxfs.c ts.c snapshot.c fsutils.c hash.c xattr.c buffer.c crc32.c
-noinst_HEADERS = demuxfs.h ts.h snapshot.h fsutils.h hash.h xattr.h fifo.h buffer.h list.h byteops.h crc32.h
-
+# DemuxFS Library
+noinst_LTLIBRARIES = libdemuxfs.la
+libdemuxfs_la_SOURCES = demuxfs.c ts.c snapshot.c fsutils.c hash.c xattr.c buffer.c crc32.c
 if USE_POSIX_FIFOS
-demuxfsSources += fifo_posix.c
+libdemuxfs_la_SOURCES += fifo_posix.c
 else
-demuxfsSources += fifo_generic.c
+libdemuxfs_la_SOURCES += fifo_generic.c
 endif
+libdemuxfs_la_DEPENDENCIES = tables/libtables.la 
+libdemuxfs_la_LIBADD = tables/libtables.la 
 
-demuxfs_SOURCES = $(demuxfsSources)
-demuxfs_DEPENDENCIES = backends/libbackends.la tables/libtables.la
-demuxfs_LDADD = backends/libbackends.la tables/libtables.la
-demuxfs_CPPFLAGS = -I backends
+# Executable
+bin_PROGRAMS = demuxfs
+demuxfs_SOURCES = main.c backend.c
+demuxfs_DEPENDENCIES = libdemuxfs.la
+demuxfs_LDADD = libdemuxfs.la
+demuxfs_CPPFLAGS = -I backends -I tables -DLIBDIR="\"@libdir@\""
 
-SUBDIRS = backends dsm-cc tables
+SUBDIRS = dsm-cc tables backends
