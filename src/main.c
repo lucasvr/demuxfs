@@ -33,22 +33,10 @@
 #include "hash.h"
 #include "fifo.h"
 #include "ts.h"
+#include "backend.h"
 #include "snapshot.h"
 #include "tables/descriptors/descriptors.h"
 #include "dsm-cc/descriptors/descriptors.h"
-
-/* Platform headers */
-#include "backends/filesrc.h"
-#include "backends/linuxdvb.h"
-
-/**
- * Available backends
- */
-#if defined(USE_FILESRC)
-static struct backend_ops *backend = &filesrc_backend_ops;
-#elif defined(USE_LINUXDVB)
-static struct backend_ops *backend = &linuxdvb_backend_ops;
-#endif
 
 /* Defined in demuxfs.c */
 extern struct fuse_operations demuxfs_ops;
@@ -63,21 +51,26 @@ static bool main_thread_stopped;
 void * ts_parser_thread(void *userdata)
 {
 	struct demuxfs_data *priv = (struct demuxfs_data *) userdata;
+	struct ts_header header;
+	void *payload = NULL;
 	int ret;
     
-	while (backend->keep_alive(priv) && !main_thread_stopped) {
-		ret = backend->read(priv);
+	while (priv->backend->keep_alive(priv) && !main_thread_stopped) {
+		ret = priv->backend->read(priv);
 		if (ret < 0) {
 			dprintf("read error");
 			break;
 		}
-		ret = backend->process(priv);
+		ret = priv->backend->process(&header, &payload, priv);
+		if (ret < 0)
+			continue;
+		ret = ts_parse_packet(&header, payload, priv);
 		if (ret < 0 && ret != -ENOBUFS) {
 			dprintf("Error processing packet: %s", strerror(-ret));
 			break;
 		}
 	}
-	backend->destroy(priv);
+	priv->backend->destroy(priv);
 	pthread_exit(NULL);
 }
 
@@ -139,17 +132,105 @@ void * demuxfs_init(struct fuse_conn_info *conn)
 	return priv;
 }
 
+/**
+ * Parse command line options.
+ */
+enum { KEY_HELP, KEY_VERSION };
+
+#define DEMUXFS_OPT(templ,offset,value) { templ, offsetof(struct demuxfs_data, offset), value }
+
+static struct fuse_opt demuxfs_options[] = {
+	DEMUXFS_OPT("backend=%s",   opt_backend, 0),
+	DEMUXFS_OPT("parse_pes=%d", opt_parse_pes, 0),
+	DEMUXFS_OPT("standard=%s",  opt_standard, 0),
+	DEMUXFS_OPT("tmpdir=%s",    opt_tmpdir, 0),
+	FUSE_OPT_KEY("-h",          KEY_HELP),
+	FUSE_OPT_KEY("--help",      KEY_HELP),
+	FUSE_OPT_END
+};
+
+static void demuxfs_usage(struct demuxfs_data *priv)
+{
+	fprintf(stderr, "\nDEMUXFS options:\n"
+			"    -o backend=FILE        path to backend shared library\n"
+			"    -o parse_pes=1|0       parse PES packets (default: 0)\n"
+			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC (default: SBTVD)\n"
+			"    -o tmpdir=DIR          temporary directory in which to store DSM-CC files (default: %s)\n",
+			FS_DEFAULT_TMPDIR);
+	backend_print_usage();
+}
+
+static int demuxfs_parse_options(void *priv, const char *arg, int key, struct fuse_args *outargs)
+{
+	struct fuse_operations fake_ops;
+	memset(&fake_ops, 0, sizeof(fake_ops));
+
+	switch (key) {
+		case FUSE_OPT_KEY_OPT:
+		case FUSE_OPT_KEY_NONOPT:
+			break;
+		case KEY_HELP:
+		default:
+			fuse_opt_add_arg(outargs, "-ho");
+			fuse_main(outargs->argc, outargs->argv, &fake_ops, NULL);
+			demuxfs_usage((struct demuxfs_data *) priv);
+			exit(key == KEY_HELP ? 0 : 1);
+	}
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	struct demuxfs_data *priv = (struct demuxfs_data *) calloc(1, sizeof(struct demuxfs_data));
 	assert(priv);
 
+	/* Parse command line options */
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-	int ret = backend->create(&args, priv);
+	int ret = fuse_opt_parse(&args, priv, demuxfs_options, demuxfs_parse_options);
 	if (ret < 0)
 		return 1;
 
+	if (! priv->opt_standard || ! strcasecmp(priv->opt_standard, "SBTVD"))
+		priv->options.standard = SBTVD_STANDARD;
+	else if (! strcasecmp(priv->opt_standard, "ISDB"))
+		priv->options.standard = ISDB_STANDARD;
+	else if (! strcasecmp(priv->opt_standard, "DVB"))
+		priv->options.standard = DVB_STANDARD;
+	else if (! strcasecmp(priv->opt_standard, "ATSC"))
+		priv->options.standard = ATSC_STANDARD;
+	else {
+		fprintf(stderr, "Error: %s is not a valid standard option.\n", priv->opt_standard);
+		return 1;
+	}
+
+	if (! priv->opt_backend) {
+		fprintf(stderr, "Error: no backend was supplied\n");
+		return 1;
+	}
+
+	priv->options.tmpdir = strdup(priv->opt_tmpdir ? priv->opt_tmpdir : FS_DEFAULT_TMPDIR);
+	priv->options.parse_pes = priv->opt_parse_pes;
+
+	/* Load the chosen backend */
+	void *backend_handle = NULL;
+	priv->backend = backend_load(priv->opt_backend, &backend_handle);
+	if (! priv->backend) {
+		fprintf(stderr, "Invalid backend, cannot continue.\n");
+		return 1;
+	}
+
+	/* Initialize the backend */
+	ret = priv->backend->create(&args, priv);
+	if (ret < 0)
+		return 1;
+
+	/* Start the FUSE services */
 	priv->mount_point = strdup(argv[argc-1]);
 	fuse_opt_add_arg(&args, "-ointr");
-	return fuse_main(args.argc, args.argv, &demuxfs_ops, priv);
+	ret = fuse_main(args.argc, args.argv, &demuxfs_ops, priv);
+
+	/* Unload the backend */
+	backend_unload(backend_handle);
+
+	return ret;
 }

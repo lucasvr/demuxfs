@@ -30,6 +30,7 @@
 #include "linuxdvb.h"
 #include "fsutils.h"
 #include "byteops.h"
+#include "backend.h"
 #include "buffer.h"
 #include "ts.h"
 
@@ -44,60 +45,30 @@ struct input_parser {
 	char *packet;
 	bool packet_valid;
 	uint8_t packet_size;
-	int fileloop;
-	bool parse_pes;
-	char *standard;
-	char *tmpdir;
-	struct ts_status ts_status;
 };
 
 /**
  * Command line parsing routines.
  */
-static void linuxdvb_usage(void)
+void linuxdvb_usage(void)
 {
-	fprintf(stderr, "LINUXDVB options:\n"
+	fprintf(stderr, "\nLINUXDVB options:\n"
 			"    -o demux_device=FILE   demux device (default=%s)\n"
-			"    -o dvr_device=FILE     DVR device (default=%s)\n"
-			"    -o parse_pes=1|0       parse PES packets (default: 0)\n"
-			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC (default: SBTVD)\n"
-			"    -o tmpdir=DIR          temporary directory in which to store DSM-CC files (default: %s)\n\n",
+			"    -o dvr_device=FILE     DVR device (default=%s)\n",
 			LINUXDVB_DEFAULT_DEMUX_DEVICE,
-			LINUXDVB_DEFAULT_DVR_DEVICE,
-			FS_DEFAULT_TMPDIR);
+			LINUXDVB_DEFAULT_DVR_DEVICE);
 }
 
 #define LINUXDVB_OPT(templ,offset,value) { templ, offsetof(struct input_parser, offset), value }
 
-enum { KEY_HELP };
-
 static struct fuse_opt linuxdvb_opts[] = {
 	LINUXDVB_OPT("demux_device=%s", demux_device, 0),
 	LINUXDVB_OPT("demux_device=%s", demux_device, 0),
-	LINUXDVB_OPT("parse_pes=%d",    parse_pes, 0),
-	LINUXDVB_OPT("standard=%s",     standard, 0),
-	LINUXDVB_OPT("tmpdir=%s",       tmpdir, 0),
-	FUSE_OPT_KEY("-h",              KEY_HELP),
-	FUSE_OPT_KEY("--help",          KEY_HELP),
 	FUSE_OPT_END
 };
 
 static int linuxdvb_parse_opts(void *priv, const char *arg, int key, struct fuse_args *outargs)
 {
-	struct fuse_operations fake_ops;
-	memset(&fake_ops, 0, sizeof(fake_ops));
-
-	switch (key) {
-		case FUSE_OPT_KEY_OPT:
-		case FUSE_OPT_KEY_NONOPT:
-			break;
-		case KEY_HELP:
-		default:
-			linuxdvb_usage();
-			fuse_opt_add_arg(outargs, "-ho");
-			fuse_main(outargs->argc, outargs->argv, &fake_ops, NULL);
-			exit(key == KEY_HELP ? 0 : 1);
-	}
 	return 1;
 }
 
@@ -152,28 +123,10 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		return -1;
 	}
 	
+	/* Configure packet size */
 	p->packet_size = 188;
 	p->packet = (char *) malloc(p->packet_size);
 
-	/* Propagate user-defined options back to priv->options */
-	if (! p->standard || ! strcasecmp(p->standard, "SBTVD"))
-		priv->options.standard = SBTVD_STANDARD;
-	else if (! strcasecmp(p->standard, "ISDB"))
-		priv->options.standard = ISDB_STANDARD;
-	else if (! strcasecmp(p->standard, "DVB"))
-		priv->options.standard = DVB_STANDARD;
-	else if (! strcasecmp(p->standard, "ATSC"))
-		priv->options.standard = ATSC_STANDARD;
-	else {
-		fprintf(stderr, "Error: %s is not a valid standard option.\n", p->standard);
-		close(p->demux_fd);
-		close(p->dvr_fd);
-		free(p->packet);
-		free(p);
-		return -1;
-	}
-	priv->options.tmpdir = p->tmpdir ? strdup(p->tmpdir) : strdup(FS_DEFAULT_TMPDIR);
-	priv->options.parse_pes = p->parse_pes;
 	priv->options.packet_size = p->packet_size;
 	priv->options.packet_error_correction_bytes = p->packet_size - 188;
 
@@ -220,23 +173,26 @@ int linuxdvb_read_packet(struct demuxfs_data *priv)
 /**
  * linuxdvb_process_parser: backend's process() method.
  */
-int linuxdvb_process_packet(struct demuxfs_data *priv)
+int linuxdvb_process_packet(struct ts_header *header, void **payload, struct demuxfs_data *priv)
 {
 	struct input_parser *p = priv->parser;
-	void *payload = (void *) &p->packet[4];
 	if (! p->packet_valid)
-		return 0;
+		return -EINVAL;
+	else if (! header || ! payload)
+		return -EINVAL;
 
-	struct ts_header header;
-	header.sync_byte                    =  p->packet[0];
-	header.transport_error_indicator    = (p->packet[1] >> 7) & 0x01;
-	header.payload_unit_start_indicator = (p->packet[1] >> 6) & 0x01;
-	header.transport_priority           = (p->packet[1] >> 5) & 0x01;
-	header.pid                          = CONVERT_TO_16(p->packet[1], p->packet[2]) & 0x1fff;
-	header.transport_scrambling_control = (p->packet[3] >> 6) & 0x03;
-	header.adaptation_field             = (p->packet[3] >> 4) & 0x03;
-	header.continuity_counter           = (p->packet[3]) & 0x0f;
-	return ts_parse_packet(&header, payload, priv);
+	*payload = (void *) &p->packet[4];
+
+	header->sync_byte                    =  p->packet[0];
+	header->transport_error_indicator    = (p->packet[1] >> 7) & 0x01;
+	header->payload_unit_start_indicator = (p->packet[1] >> 6) & 0x01;
+	header->transport_priority           = (p->packet[1] >> 5) & 0x01;
+	header->pid                          = CONVERT_TO_16(p->packet[1], p->packet[2]) & 0x1fff;
+	header->transport_scrambling_control = (p->packet[3] >> 6) & 0x03;
+	header->adaptation_field             = (p->packet[3] >> 4) & 0x03;
+	header->continuity_counter           = (p->packet[3]) & 0x0f;
+
+	return 0;
 }
 
 /**
@@ -253,4 +209,10 @@ struct backend_ops linuxdvb_backend_ops = {
 	.read = linuxdvb_read_packet,
 	.process = linuxdvb_process_packet,
 	.keep_alive = linuxdvb_keep_alive,
+	.usage = linuxdvb_usage,
 };
+
+struct backend_ops *backend_get_ops(void)
+{
+	return &linuxdvb_backend_ops;
+}

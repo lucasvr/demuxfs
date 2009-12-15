@@ -1,12 +1,15 @@
-noinst_LTLIBRARIES = libbackends.la
+libdir = @libdir@/demuxfs/backends
 
-libbackends_la_SOURCES =
-libbackends_la_CPPFLAGS = -I. -I..
+lib_LTLIBRARIES = 
 
 if USE_FILESRC
-libbackends_la_SOURCES += filesrc.c filesrc.h
+lib_LTLIBRARIES += libfilesrc.la
+libfilesrc_la_SOURCES = filesrc.c filesrc.h
+libfilesrc_la_CPPFLAGS = -I. -I..
 endif
 
 if USE_LINUXDVB
-libbackends_la_SOURCES += linuxdvb.c linuxdvb.h
+lib_LTLIBRARIES += liblinuxdvb.la
+liblinuxdvb_la_SOURCES = linuxdvb.c linuxdvb.h
+liblinuxdvb_la_CPPFLAGS = -I. -I..
 endif
