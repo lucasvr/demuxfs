@@ -51,6 +51,11 @@ int descriptor_0x13_parser(const char *payload, int len, struct dentry *parent, 
 	f.carousel_id = CONVERT_TO_32(payload[2], payload[3], payload[4], payload[5]);
 	CREATE_FILE_NUMBER(dentry, &f, carousel_id);
 
+	/* 
+	 * TODO: MHP contains a different spec for this descriptor. 
+	 * See Table B.36 on page 505 of MHP Specification 1.1.3.
+	 */
+
 	if (len > 6) {
 		size_t file_size = len-6;
 		f.private_data = malloc(file_size * sizeof(char));
