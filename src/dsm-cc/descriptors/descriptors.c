@@ -87,6 +87,7 @@ struct dsmcc_descriptor *dsmcc_descriptors_find(uint8_t tag, struct demuxfs_data
 
 struct dsmcc_descriptor *dsmcc_descriptors_init(struct demuxfs_data *priv)
 {
+	uint8_t tag;
 	priv->dsmcc_descriptors = (struct dsmcc_descriptor *) calloc(0xff+1, sizeof(struct dsmcc_descriptor));
 
 	/* DSM-CC descriptors and their tag values, defined by ABNT 15606-3 */
@@ -99,7 +100,7 @@ struct dsmcc_descriptor *dsmcc_descriptors_init(struct demuxfs_data *priv)
 	ADD_DESCRIPTOR("LOCATION_DESCRIPTOR",              0x06, priv);
 	ADD_DESCRIPTOR("EST_DOWNLOAD_TIME_DESCRIPTOR",     0x07, priv);
 	ADD_DESCRIPTOR("COMPRESSION_TYPE_DESCRIPTOR",      0xc2, priv);
-	for (uint8_t tag=0x80; tag<=0xbf; ++tag) {
+	for (tag=0x80; tag<=0xbf; ++tag) {
 		struct dsmcc_descriptor *d = &priv->dsmcc_descriptors[tag];
 		d->tag = tag;
 		d->name = strdup("RESERVED_FOR_BROADCASTERS");
@@ -110,8 +111,9 @@ struct dsmcc_descriptor *dsmcc_descriptors_init(struct demuxfs_data *priv)
 
 void dsmcc_descriptors_destroy(struct dsmcc_descriptor *descriptor_list)
 {
+	int i;
 	if (descriptor_list) {
-		for (int i=0; i<0xff+1; ++i)
+		for (i=0; i<0xff+1; ++i)
 			if (descriptor_list[i].name)
 				free(descriptor_list[i].name);
 		free(descriptor_list);
