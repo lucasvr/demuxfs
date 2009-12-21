@@ -99,8 +99,9 @@ struct descriptor *descriptors_find(uint8_t tag, struct demuxfs_data *priv)
 
 void descriptors_destroy(struct descriptor *descriptor_list)
 {
+	int i;
 	if (descriptor_list) {
-		for (int i=0; i<0xff+1; ++i)
+		for (i=0; i<0xff+1; ++i)
 			if (descriptor_list[i].name)
 				free(descriptor_list[i].name);
 		free(descriptor_list);
