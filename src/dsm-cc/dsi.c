@@ -251,8 +251,9 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		j += 2;
 
 		if (gii->number_of_groups) {
+			uint16_t i;
 			gii->dsi_group_info = calloc(gii->number_of_groups, sizeof(struct dsi_group_info));
-			for (uint16_t i=0; i<gii->number_of_groups; ++i) {
+			for (i=0; i<gii->number_of_groups; ++i) {
 				struct dentry *group_dentry = CREATE_DIRECTORY(gii_dentry, "GroupInfo_%02d", i+1);
 				struct dsi_group_info *group_info = &gii->dsi_group_info[i];
 				int len;
