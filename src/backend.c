@@ -11,6 +11,8 @@
 struct backend_ops *backend_load(const char *backend_name, void **backend_handle)
 {
 	int i;
+	char backend[PATH_MAX];
+	struct stat statbuf;
 	struct backend_ops *ops;
 	struct backend_ops *(*backend_get_ops)(void);
 
@@ -21,10 +23,15 @@ struct backend_ops *backend_load(const char *backend_name, void **backend_handle
 		fprintf(stderr, "Error: invalid backend_handle pointer received\n");
 		return NULL;
 	}
+
+	if (stat(backend_name, &statbuf) < 0)
+		snprintf(backend, sizeof(backend), "%s/demuxfs/backends/lib%s.so", LIBDIR, backend_name);
+	else
+		snprintf(backend, sizeof(backend), "%s", backend_name);
 	
-	*backend_handle = dlopen(backend_name, RTLD_LAZY);
+	*backend_handle = dlopen(backend, RTLD_LAZY);
 	if (! *backend_handle) {
-		fprintf(stderr, "Failed to load backend '%s': %s\n", backend_name, dlerror());
+		fprintf(stderr, "Failed to load backend '%s': %s\n", backend, dlerror());
 		return NULL;
 	}
 
