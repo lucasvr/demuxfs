@@ -89,7 +89,7 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 	if (! p->demux_device)
 		p->demux_device = LINUXDVB_DEFAULT_DEMUX_DEVICE;
 
-	p->demux_fd = open(p->demux_device, O_RDWR);
+	p->demux_fd = open(p->demux_device, O_RDWR|O_NONBLOCK);
 	if (p->demux_fd < 0) {
 		perror(p->demux_device);
 		free(p);
@@ -98,7 +98,7 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 
 	if (! p->dvr_device)
 		p->dvr_device = LINUXDVB_DEFAULT_DVR_DEVICE;
-#if 0
+
 	p->dvr_fd = open(p->dvr_device, O_RDONLY);
 	if (p->dvr_fd < 0) {
 		perror(p->dvr_device);
@@ -106,7 +106,7 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 		free(p);
 		return -1;
 	}
-#endif
+
 	struct dmx_pes_filter_params pes_filter;
 	pes_filter.pid      = 0x2000;
 	pes_filter.input    = DMX_IN_FRONTEND;
@@ -159,9 +159,7 @@ int linuxdvb_destroy_parser(struct demuxfs_data *priv)
 int linuxdvb_read_packet(struct demuxfs_data *priv)
 {
 	struct input_parser *p = priv->parser;
-//	ssize_t n = read(p->dvr_fd, p->packet, p->packet_size);
-	ssize_t n = 0;
-	sleep(1);
+	ssize_t n = read(p->dvr_fd, p->packet, p->packet_size);
 	if (n <= 0) {
 		p->packet_valid = false;
 		return 0;
