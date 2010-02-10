@@ -63,7 +63,7 @@ void linuxdvb_usage(void)
 
 static struct fuse_opt linuxdvb_opts[] = {
 	LINUXDVB_OPT("demux_device=%s", demux_device, 0),
-	LINUXDVB_OPT("demux_device=%s", demux_device, 0),
+	LINUXDVB_OPT("dvr_device=%s", dvr_device, 0),
 	FUSE_OPT_END
 };
 
