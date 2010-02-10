@@ -64,8 +64,8 @@ static void pmt_populate(struct pmt_table *pmt, struct dentry *parent,
 static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descriptor_info,
 		struct dentry *version_dentry, struct dentry **subdir, struct demuxfs_data *priv)
 {
-	uint8_t tag = descriptor_info[0];
-	uint8_t component_tag = descriptor_info[2];
+	uint8_t tag = descriptor_info ? descriptor_info[0] : 0;
+	uint8_t component_tag = descriptor_info ? descriptor_info[2] : 0;
 	bool is_primary = false, is_secondary = false;
 	struct dentry *parent = NULL;
 	const char *streams_name = FS_RESERVED_STREAMS_NAME;
@@ -100,6 +100,10 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 		streams_name = FS_MPE_STREAMS_NAME;
 	} else if (stream_type_is_object_carousel(stream->stream_type_identifier)) {
 		streams_name = FS_OBJECT_CAROUSEL_STREAMS_NAME;
+	} else if (stream_type_is_video(stream->stream_type_identifier)) {
+		streams_name = FS_VIDEO_STREAMS_NAME;
+	} else if (stream_type_is_audio(stream->stream_type_identifier)) {
+		streams_name = FS_AUDIO_STREAMS_NAME;
 	}
 
 	parent = CREATE_DIRECTORY(version_dentry, streams_name);
@@ -264,14 +268,19 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		stream.es_information_length = CONVERT_TO_16(payload[offset+3], payload[offset+4]) & 0x0fff;
 
 		uint16_t es_i = 0;
-		while (es_i < stream.es_information_length) {
-			struct dentry *subdir = NULL;
-			const char *descriptor_info = &payload[offset+5+es_i];
-			pmt_populate_stream_dir(&stream, descriptor_info, version_dentry, &subdir, priv);
+		if (! stream.es_information_length) {
+				struct dentry *subdir = NULL;
+				pmt_populate_stream_dir(&stream, NULL, version_dentry, &subdir, priv);
+		} else {
+			while (es_i < stream.es_information_length) {
+				struct dentry *subdir = NULL;
+				const char *descriptor_info = &payload[offset+5+es_i];
+				pmt_populate_stream_dir(&stream, descriptor_info, version_dentry, &subdir, priv);
 
-			priv->shared_data = (void *) &stream;
-			es_i += descriptors_parse(descriptor_info, 1, subdir, priv);
-			priv->shared_data = NULL;
+				priv->shared_data = (void *) &stream;
+				es_i += descriptors_parse(descriptor_info, 1, subdir, priv);
+				priv->shared_data = NULL;
+			}
 		}
 
 		offset += 5 + stream.es_information_length;
