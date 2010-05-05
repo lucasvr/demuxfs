@@ -317,6 +317,21 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				ret = parse_function(header, buffer->data, buffer->current_size, priv);
 			buffer_reset_size(buffer);
 		}
+	} else {
+		int i, found=0;
+		static int idx = 0; 
+		static int pids[100];
+		for (i=0; i<idx; ++i) {
+			if (pids[i] == header->pid) {
+				found=1;
+				break;
+			}
+		}
+		if (! found) {
+			TS_WARNING("Unknown packet with PID %#x", header->pid);
+			if (idx < 100)
+				pids[idx++] = header->pid;
+		}
 	}
 	if (buffer)
 		buffer->continuity_counter = header->continuity_counter;
