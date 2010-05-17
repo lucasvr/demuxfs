@@ -278,6 +278,10 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				buffer_reset_size(buffer);
 
 			start = end + 1;
+			if (start >= (payload_end-1))
+				/* No more data to parse */
+				break;
+
 			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
 			if (IS_STUFFING_PACKET(start) || section_length == 0)
 				/* Nothing to parse */
