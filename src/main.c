@@ -188,7 +188,7 @@ int main(int argc, char **argv)
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	int ret = fuse_opt_parse(&args, priv, demuxfs_options, demuxfs_parse_options);
 	if (ret < 0)
-		return 1;
+		goto out_free;
 
 	if (! priv->opt_standard || ! strcasecmp(priv->opt_standard, "SBTVD"))
 		priv->options.standard = SBTVD_STANDARD;
@@ -200,12 +200,14 @@ int main(int argc, char **argv)
 		priv->options.standard = ATSC_STANDARD;
 	else {
 		fprintf(stderr, "Error: %s is not a valid standard option.\n", priv->opt_standard);
-		return 1;
+		ret = 1;
+		goto out_free;
 	}
 
 	if (! priv->opt_backend) {
 		fprintf(stderr, "Error: no backend was supplied\n");
-		return 1;
+		ret = 1;
+		goto out_free;
 	}
 
 	priv->options.tmpdir = strdup(priv->opt_tmpdir ? priv->opt_tmpdir : FS_DEFAULT_TMPDIR);
@@ -216,21 +218,33 @@ int main(int argc, char **argv)
 	priv->backend = backend_load(priv->opt_backend, &backend_handle);
 	if (! priv->backend) {
 		fprintf(stderr, "Invalid backend, cannot continue.\n");
-		return 1;
+		ret = 1;
+		goto out_free;
 	}
 
 	/* Initialize the backend */
 	ret = priv->backend->create(&args, priv);
 	if (ret < 0)
-		return 1;
+		goto out_unload;
 
 	/* Start the FUSE services */
 	priv->mount_point = strdup(argv[argc-1]);
 	fuse_opt_add_arg(&args, "-ointr");
 	ret = fuse_main(args.argc, args.argv, &demuxfs_ops, priv);
 
+out_unload:
 	/* Unload the backend */
 	backend_unload(backend_handle);
+
+out_free:
+	fuse_opt_free_args(&args);
+	if (priv) {
+		if (priv->mount_point)
+			free(priv->mount_point);
+		if (priv->options.tmpdir)
+			free(priv->options.tmpdir);
+		free(priv);
+	}
 
 	return ret;
 }
