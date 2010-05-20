@@ -92,8 +92,8 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 	p->demux_fd = open(p->demux_device, O_RDWR|O_NONBLOCK);
 	if (p->demux_fd < 0) {
 		perror(p->demux_device);
-		free(p);
-		return -1;
+		ret = -errno;
+		goto out_free;
 	}
 
 	if (! p->dvr_device)
@@ -102,9 +102,8 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 	p->dvr_fd = open(p->dvr_device, O_RDONLY);
 	if (p->dvr_fd < 0) {
 		perror(p->dvr_device);
-		close(p->demux_fd);
-		free(p);
-		return -1;
+		ret = -errno;
+		goto out_free;
 	}
 
 	struct dmx_pes_filter_params pes_filter;
@@ -117,10 +116,7 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 	ret = ioctl(p->demux_fd, DMX_SET_PES_FILTER, &pes_filter);
 	if (ret < 0) {
 		perror("DMX_SET_PES_FILTER");
-		close(p->demux_fd);
-		close(p->dvr_fd);
-		free(p);
-		return -1;
+		goto out_free;
 	}
 	
 	/* Configure packet size */
@@ -132,6 +128,16 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 
 	priv->parser = p;
 	return 0;
+
+out_free:
+	if (p) {
+		if (p->demux_fd >= 0)
+			close(p->demux_fd);
+		if (p->dvr_fd >= 0)
+			close(p->dvr_fd);
+		free(p);
+	}
+	return ret;
 }
 
 /**

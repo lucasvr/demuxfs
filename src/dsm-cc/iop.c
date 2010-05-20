@@ -125,19 +125,6 @@ int iop_create_ior_dentries(struct dentry *parent, struct iop_ior *ior)
 	return 0;
 }
 
-void iop_free_ior(struct iop_ior *ior)
-{
-	if (ior->type_id) {
-		free(ior->type_id);
-		ior->type_id = NULL;
-	}
-	if (ior->tagged_profiles) {
-		free(ior->tagged_profiles);
-		ior->tagged_profiles = NULL;
-	}
-	free(ior);
-}
-
 /* Returns how many bytes were parsed */
 int iop_parse_tagged_profiles(struct iop_tagged_profile *profile, uint32_t count, 
 	const char *buf, uint32_t len)
@@ -185,6 +172,29 @@ int iop_parse_tagged_profiles(struct iop_tagged_profile *profile, uint32_t count
 	}
 
 	return j;
+}
+
+void iop_free_ior(struct iop_ior *ior)
+{
+	int i;
+
+	if (ior->type_id) {
+		free(ior->type_id);
+		ior->type_id = NULL;
+	}
+	if (ior->tagged_profiles) {
+		for (i=0; i<ior->tagged_profiles_count; ++i) {
+			struct iop_tagged_profile *p = &ior->tagged_profiles[i];
+			if (p->profile_body) {
+				biop_free_profile_body(p);
+				p->profile_body = NULL;
+			}
+
+		}
+		free(ior->tagged_profiles);
+		ior->tagged_profiles = NULL;
+	}
+	free(ior);
 }
 
 int iop_parse_ior(struct iop_ior *ior, const char *payload, uint32_t len)

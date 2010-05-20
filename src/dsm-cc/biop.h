@@ -159,7 +159,10 @@ int biop_create_module_info_dentries(struct dentry *parent,
 
 int biop_parse_connbinder(struct biop_connbinder *cb, const char *buf, 
 		uint32_t len);
+void biop_free_connbinder(struct biop_connbinder *cb);
+
 int biop_parse_profile_body(struct iop_tagged_profile *profile, 
 		const char *buf, uint32_t len);
+void biop_free_profile_body(struct iop_tagged_profile *profile);
 
 #endif /* __biop_h */
