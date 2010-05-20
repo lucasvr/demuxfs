@@ -191,14 +191,67 @@ static int biop_parse_descriptor(struct biop_binding *binding, const char *buf, 
 	return j;
 }
 
+static void biop_free_message_sub_header(struct biop_message_sub_header *sub_header)
+{
+	struct biop_object_key *obj_key = &sub_header->object_key;
+	int i;
+
+	if (obj_key->object_key) {
+		free(obj_key->object_key);
+		obj_key->object_key = NULL;
+	}
+	if (sub_header->obj_info.file_object_info) {
+		free(sub_header->obj_info.file_object_info);
+		sub_header->obj_info.file_object_info = NULL;
+	}
+	if (sub_header->service_context) {
+		for (i=0; i<sub_header->service_context_list_count; ++i) {
+			struct biop_service_context *ctx = &sub_header->service_context[i];
+			if (ctx->context_data) {
+				free(ctx->context_data);
+				ctx->context_data = NULL;
+			}
+		}
+		free(sub_header->service_context);
+		sub_header->service_context = NULL;
+	}
+}
+
 static void biop_free_directory_message(struct biop_directory_message *msg)
 {
-	// TODO
+	struct biop_directory_message_body *msg_body = &msg->message_body;
+	int i;
+	
+	/* Free the MessageSubHeader */
+	biop_free_message_sub_header(&msg->sub_header);
+
+	/* Free the DirectoryMessageBody */
+	if (msg_body->bindings) {
+		for (i=0; i<msg_body->bindings_count; ++i) {
+			struct biop_binding *binding = &msg_body->bindings[i];
+			struct biop_name *name = &binding->name;
+			if (name->id_byte) {
+				free(name->id_byte);
+				name->id_byte = NULL;
+			}
+			if (binding->iop_ior) {
+				iop_free_ior(binding->iop_ior);
+				binding->iop_ior = NULL;
+			}
+			if (binding->_content_type) {
+				free(binding->_content_type);
+				binding->_content_type = NULL;
+			}
+		}
+		free(msg_body->bindings);
+		msg_body->bindings = NULL;
+	}
 }
 
 static void biop_free_file_message(struct biop_file_message *msg)
 {
-	// TODO
+	/* Free the MessageSubHeader */
+	biop_free_message_sub_header(&msg->sub_header);
 }
 
 /* The MessageHeader is expected to have been already parsed */
@@ -345,6 +398,21 @@ static int biop_parse_object_location(struct biop_object_location *ol,
 	return j;
 }
 
+void biop_free_connbinder(struct biop_connbinder *cb)
+{
+	int i;
+	if (cb->tap_count) {
+		for (i=0; i<cb->tap_count; ++i) {
+			struct dsmcc_tap *tap = &cb->taps[i];
+			if (tap->message_selector) {
+				free(tap->message_selector);
+				tap->message_selector = NULL;
+			}
+		}
+		free(cb->taps);
+	}
+}
+
 int biop_parse_connbinder(struct biop_connbinder *cb, const char *buf, uint32_t len)
 {
 	int i, j = 0;
@@ -400,6 +468,16 @@ int biop_parse_connbinder(struct biop_connbinder *cb, const char *buf, uint32_t 
 		dprintf("Parsed %d bytes, expected connbinder_lenght=%d+5", j, cb->connbinder_length);
 
 	return j;
+}
+
+void biop_free_profile_body(struct iop_tagged_profile *profile)
+{
+	struct biop_profile_body *pb = profile->profile_body;
+
+	/* Free connbinder */
+	biop_free_connbinder(&pb->connbinder);
+
+	free(pb);
 }
 
 int biop_parse_profile_body(struct iop_tagged_profile *profile, const char *buf, uint32_t len)
