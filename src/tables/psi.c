@@ -70,8 +70,8 @@ static bool psi_check_header(struct psi_common_header *header)
 		ret = false;
 	}
 	if (header->section_length > TS_MAX_SECTION_LENGTH) {
-		TS_WARNING("section_length is greater than %#x bytes: %#x", 
-			TS_MAX_SECTION_LENGTH, header->section_length);
+	//	TS_WARNING("section_length is greater than %#x bytes: %#x", 
+	//		TS_MAX_SECTION_LENGTH, header->section_length);
 		ret = false;
 	}
 	if (header->table_id > TS_LAST_TABLE_ID) {
