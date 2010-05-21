@@ -40,5 +40,6 @@ struct pmt_table {
 
 int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
+void pmt_free(struct pmt_table *pmt);
 
 #endif /* __pmt_h */

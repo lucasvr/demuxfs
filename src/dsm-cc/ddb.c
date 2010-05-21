@@ -38,16 +38,18 @@
 #include "dsm-cc/ddb.h"
 #include "dsm-cc/dii.h"
 
-static void ddb_free(struct ddb_table *ddb)
+void ddb_free(struct ddb_table *ddb)
 {
 	struct dsmcc_download_data_header *data_header;
 	
-	if (! ddb)
-		return;
+	if (ddb->dentry && ddb->dentry->name) {
+		data_header = &ddb->dsmcc_download_data_header;
+		dsmcc_free_download_data_header(data_header);
+		fsutils_dispose_tree(ddb->dentry);
+	} else if (ddb->dentry)
+		/* Dentry has simply been calloc'ed */
+		free(ddb->dentry);
 
-	data_header = &ddb->dsmcc_download_data_header;
-	dsmcc_free_download_data_header(data_header);
-	free(ddb->dentry);
 	free(ddb);
 }
 
@@ -106,8 +108,7 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) ddb, payload, payload_len);
 	if (ret < 0) {
-		free(ddb->dentry);
-		free(ddb);
+		ddb_free(ddb);
 		return 0;
 	}
 	ddb_check_header(ddb);
@@ -119,8 +120,7 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Check whether we should keep processing this packet or not */
 	if (! ddb->current_next_indicator) {
 		dprintf("ddb doesn't have current_next_indicator bit set, skipping it");
-		free(ddb->dentry);
-		free(ddb);
+		ddb_free(ddb);
 		return 0;
 	}
 
@@ -186,7 +186,7 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	if (current_ddb)
 		ddb_free(ddb);
 	else
-		hashtable_add(priv->psi_tables, ddb->dentry->inode, ddb);
+		hashtable_add(priv->psi_tables, ddb->dentry->inode, ddb, (hashtable_free_function_t) ddb_free);
 
 	return 0;
 }

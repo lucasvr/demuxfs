@@ -519,6 +519,14 @@ static int biop_create_biop_msg_header_dentries(struct dentry *parent,
 	return 0;
 }
 
+void biop_free_module_info(struct biop_module_info *modinfo)
+{
+	if (modinfo->taps)
+		free(modinfo->taps);
+	if (modinfo->user_info)
+		free(modinfo->user_info);
+}
+
 /* Returns how many bytes were parsed */
 int biop_parse_module_info(struct biop_module_info *modinfo, const char *buf, uint32_t len)
 {

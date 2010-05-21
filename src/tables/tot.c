@@ -41,6 +41,18 @@
 #include "tables/pes.h"
 #include "tables/pat.h"
 
+void tot_free(struct tot_table *tot)
+{
+	if (tot->dentry && tot->dentry->name)
+		fsutils_dispose_tree(tot->dentry);
+	else if (tot->dentry)
+		/* Dentry has simply been calloc'ed */
+		free(tot->dentry);
+
+	/* Free the tot table structure */
+	free(tot);
+}
+
 static char *convert_string_from_utc(uint64_t utc)
 {
     uint8_t hh, mm, ss;
@@ -177,7 +189,7 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	} else {
 		tot_create_directory(header, tot, priv);
 		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
-		hashtable_add(priv->psi_tables, tot->dentry->inode, tot);
+		hashtable_add(priv->psi_tables, tot->dentry->inode, tot, (hashtable_free_function_t) tot_free);
 	}
 	
 	return 0;

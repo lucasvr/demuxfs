@@ -55,6 +55,18 @@ static void sdtt_check_header(struct sdtt_table *sdtt)
 		TS_WARNING("last_section_number != 0");
 }
 
+void sdtt_free(struct sdtt_table *sdtt)
+{
+	if (sdtt->dentry && sdtt->dentry->name)
+		fsutils_dispose_tree(sdtt->dentry);
+	else if (sdtt->dentry)
+		/* Dentry has simply been calloc'ed */
+		free(sdtt->dentry);
+
+	/* Free the sdtt table structure */
+	free(sdtt);
+}
+
 static void sdtt_create_directory(const struct ts_header *header, struct sdtt_table *sdtt, 
 		struct dentry **version_dentry, struct demuxfs_data *priv)
 {
@@ -86,8 +98,7 @@ int sdtt_parse(const struct ts_header *header, const char *payload, uint32_t pay
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) sdtt, payload, payload_len);
 	if (ret < 0) {
-		free(sdtt->dentry);
-		free(sdtt);
+		sdtt_free(sdtt);
 		return ret;
 	}
 	sdtt_check_header(sdtt);
@@ -98,8 +109,7 @@ int sdtt_parse(const struct ts_header *header, const char *payload, uint32_t pay
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! sdtt->current_next_indicator || (current_sdtt && current_sdtt->version_number == sdtt->version_number)) {
-		free(sdtt->dentry);
-		free(sdtt);
+		sdtt_free(sdtt);
 		return 0;
 	}
 	
@@ -205,10 +215,9 @@ int sdtt_parse(const struct ts_header *header, const char *payload, uint32_t pay
 	if (current_sdtt) {
 		hashtable_del(priv->psi_tables, current_sdtt->dentry->inode);
 		fsutils_migrate_children(current_sdtt->dentry, sdtt->dentry);
-		fsutils_dispose_tree(current_sdtt->dentry);
-		free(current_sdtt);
+		sdtt_free(current_sdtt);
 	}
-	hashtable_add(priv->psi_tables, sdtt->dentry->inode, sdtt);
+	hashtable_add(priv->psi_tables, sdtt->dentry->inode, sdtt, (hashtable_free_function_t) sdtt_free);
 
 	return 0;
 }

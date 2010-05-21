@@ -24,5 +24,6 @@ struct pat_table {
 bool pat_announces_service(uint16_t service_id, struct demuxfs_data *priv);
 int pat_parse(const struct ts_header *header, const char *payload, uint32_t payload_len, 
 		struct demuxfs_data *priv);
+void pat_free(struct pat_table *pat);
 
 #endif /* __pat_h */

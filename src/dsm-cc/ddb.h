@@ -22,5 +22,6 @@ struct ddb_table {
 
 int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
+void ddb_free(struct ddb_table *ddb);
 
 #endif /* __ddb_h */

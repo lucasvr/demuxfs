@@ -38,5 +38,6 @@ struct dii_table {
 
 int dii_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
+void dii_free(struct dii_table *dii);
 
 #endif /* __dii_h */

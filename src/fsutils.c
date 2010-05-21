@@ -151,7 +151,8 @@ void fsutils_dispose_node(struct dentry *dentry)
 				free(priv);
 				break;
 			}
-			case OBJ_TYPE_FIFO: {
+			case OBJ_TYPE_FIFO:
+			case OBJ_TYPE_AUDIO_FIFO: {
 				struct fifo_priv *priv = dentry->priv;
 				if (priv->fifo)
 					fifo_destroy(priv->fifo);
@@ -172,7 +173,8 @@ void fsutils_dispose_node(struct dentry *dentry)
 		free(dentry->contents);
 	list_for_each_entry_safe(xattr, aux, &dentry->xattrs, list)
 		xattr_free(xattr);
-	free(dentry->name);
+	if (dentry->name)
+		free(dentry->name);
 	pthread_mutex_destroy(&dentry->mutex);
 	sem_destroy(&dentry->semaphore);
 	list_del(&dentry->list);

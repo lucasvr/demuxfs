@@ -49,6 +49,20 @@ static void sdt_check_header(struct sdt_table *sdt)
 		TS_WARNING("last_section_number != 0");
 }
 
+void sdt_free(struct sdt_table *sdt)
+{
+	if (sdt->dentry && sdt->dentry->name)
+		fsutils_dispose_tree(sdt->dentry);
+	else if (sdt->dentry)
+		/* Dentry has simply been calloc'ed */
+		free(sdt->dentry);
+
+	/* Free the sdt table structure */
+	if (sdt->_services)
+		free(sdt->_services);
+	free(sdt);
+}
+
 static void sdt_create_directory(const struct ts_header *header, struct sdt_table *sdt, 
 		struct dentry **version_dentry, struct demuxfs_data *priv)
 {
@@ -77,8 +91,7 @@ int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) sdt, payload, payload_len);
 	if (ret < 0) {
-		free(sdt->dentry);
-		free(sdt);
+		sdt_free(sdt);
 		return ret;
 	}
 	sdt_check_header(sdt);
@@ -89,8 +102,7 @@ int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! sdt->current_next_indicator || (current_sdt && current_sdt->version_number == sdt->version_number)) {
-		free(sdt->dentry);
-		free(sdt);
+		sdt_free(sdt);
 		return 0;
 	}
 	
@@ -112,8 +124,7 @@ int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		i += 5 + descriptor_loop_length;
 		if (i > payload_len - 4) {
 			TS_WARNING("descriptor_loop_length exceeds table size");
-			free(sdt->dentry);
-			free(sdt);
+			sdt_free(sdt);
 			return -EINVAL;
 		}
 		sdt->_number_of_services++;
@@ -153,10 +164,9 @@ int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	if (current_sdt) {
 		hashtable_del(priv->psi_tables, current_sdt->dentry->inode);
 		fsutils_migrate_children(current_sdt->dentry, sdt->dentry);
-		fsutils_dispose_tree(current_sdt->dentry);
-		free(current_sdt);
+		sdt_free(current_sdt);
 	}
-	hashtable_add(priv->psi_tables, sdt->dentry->inode, sdt);
+	hashtable_add(priv->psi_tables, sdt->dentry->inode, sdt, (hashtable_free_function_t) sdt_free);
 
 	return 0;
 }

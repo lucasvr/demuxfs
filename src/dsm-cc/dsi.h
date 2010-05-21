@@ -51,5 +51,6 @@ struct dsi_table {
 
 int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
+void dsi_free(struct dsi_table *dsi);
 
 #endif /* __dsi_h */

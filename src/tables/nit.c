@@ -11,7 +11,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in the
  * documentation and/or other materials provided with the distribution.
- * 3. Neither the name of GoboLinux nor the names of its contributors may
+ * 3. Nnither the name of GoboLinux nor the names of its contributors may
  * be used to endorse or promote products derived from this software
  * without specific prior written permission.
  * 
@@ -35,6 +35,18 @@
 #include "descriptors.h"
 #include "tables/psi.h"
 #include "tables/nit.h"
+
+void nit_free(struct nit_table *nit)
+{
+	if (nit->dentry && nit->dentry->name)
+		fsutils_dispose_tree(nit->dentry);
+	else if (nit->dentry)
+		/* Dentry has simply been calloc'ed */
+		free(nit->dentry);
+
+	/* Free the nit table structure */
+	free(nit);
+}
 
 static void nit_create_directory(struct nit_table *nit, struct dentry **version_dentry,
 		struct demuxfs_data *priv)
@@ -62,8 +74,7 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) nit, payload, payload_len);
 	if (ret < 0) {
-		free(nit->dentry);
-		free(nit);
+		nit_free(nit);
 		return ret;
 	}
 
@@ -73,8 +84,7 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/* Check whether we should keep processing this packet or not */
 	if (! nit->current_next_indicator || (current_nit && current_nit->version_number == nit->version_number)) {
-		free(nit->dentry);
-		free(nit);
+		nit_free(nit);
 		return 0;
 	}
 	
@@ -123,10 +133,9 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	if (current_nit) {
 		hashtable_del(priv->psi_tables, current_nit->dentry->inode);
 		fsutils_migrate_children(current_nit->dentry, nit->dentry);
-		fsutils_dispose_tree(current_nit->dentry);
-		free(current_nit);
+		nit_free(current_nit);
 	}
-	hashtable_add(priv->psi_tables, nit->dentry->inode, nit);
+	hashtable_add(priv->psi_tables, nit->dentry->inode, nit, (hashtable_free_function_t) nit_free);
 
 	return 0;
 }
