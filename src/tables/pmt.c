@@ -54,6 +54,19 @@ static void pmt_check_header(struct pmt_table *pmt)
 		TS_WARNING("last_section_number != 0");
 }
 
+void pmt_free(struct pmt_table *pmt)
+{
+	if (pmt->dentry && pmt->dentry->name)
+		fsutils_dispose_tree(pmt->dentry);
+	else if (pmt->dentry)
+		/* Dentry has simply been calloc'ed */
+		free(pmt->dentry);
+
+	/* Free the pmt table structure */
+	pmt->dentry = NULL;
+	free(pmt);
+}
+
 static void pmt_populate(struct pmt_table *pmt, struct dentry *parent, 
 		struct demuxfs_data *priv)
 {
@@ -177,20 +190,20 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 		stream_type_is_object_carousel(stream->stream_type_identifier)) {
 		/* Assign this PID to the DSM-CC parser */
 		if (! hashtable_get(priv->psi_parsers, stream->elementary_stream_pid))
-			hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, dsmcc_parse);
+			hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, dsmcc_parse, NULL);
 	} else if (stream_type_is_audio(stream->stream_type_identifier)) {
 		/* Assign this to the PES audio parser */
 		if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid))
-			hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_audio);
+			hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_audio, NULL);
 	} else if (stream_type_is_video(stream->stream_type_identifier)) {
 		/* Assign this to the PES video parser */
 		if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid))
-			hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_video);
+			hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_video, NULL);
 	} else if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid)) {
 		/* Assign this to the PES generic parser */
 		dprintf("Will parse pid %#x / stream_type %#x using a generic PES parser", 
 				stream->elementary_stream_pid, stream->stream_type_identifier);
-		hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, pes_parse_other);
+		hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, pes_parse_other, NULL);
 	}
 }
 
@@ -225,8 +238,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) pmt, payload, payload_len);
 	if (ret < 0) {
-		free(pmt->dentry);
-		free(pmt);
+		pmt_free(pmt);
 		return 0;
 	}
 	pmt_check_header(pmt);
@@ -237,8 +249,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! pmt->current_next_indicator || (current_pmt && current_pmt->version_number == pmt->version_number)) {
-		free(pmt->dentry);
-		free(pmt);
+		pmt_free(pmt);
 		return 0;
 	}
 	
@@ -291,12 +302,11 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	if (current_pmt) {
 		hashtable_del(priv->psi_tables, current_pmt->dentry->inode);
 		fsutils_migrate_children(current_pmt->dentry, pmt->dentry);
-		fsutils_dispose_tree(current_pmt->dentry);
-		free(current_pmt);
+		pmt_free(current_pmt);
 		/* Invalidate all items from the PES hash table */
 		hashtable_invalidate_contents(priv->pes_tables);
 	}
-	hashtable_add(priv->psi_tables, pmt->dentry->inode, pmt);
+	hashtable_add(priv->psi_tables, pmt->dentry->inode, pmt, (hashtable_free_function_t) pmt_free);
 
 	return 0;
 }

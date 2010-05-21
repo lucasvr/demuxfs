@@ -57,7 +57,9 @@ void hashtable_destroy(struct hash_table *table, hashtable_free_function_t free_
 	for (i=0; i<table->size; ++i) {
 		struct hash_item *item = table->items[i];
 		if (item) {
-			if (free_function && item->data)
+			if (item->free_function && item->data)
+				item->free_function(item->data);
+			else if (free_function && item->data)
 				free_function(item->data);
 			free(item);
 			table->items[i] = NULL;
@@ -98,7 +100,7 @@ void *hashtable_get(struct hash_table *table, ino_t key)
 	return NULL;
 }
 
-bool hashtable_add(struct hash_table *table, ino_t key, void *data)
+bool hashtable_add(struct hash_table *table, ino_t key, void *data, hashtable_free_function_t free_function)
 {
 	int index = key % table->size;
 	struct hash_item *item = table->items[index];
@@ -108,12 +110,14 @@ bool hashtable_add(struct hash_table *table, ino_t key, void *data)
 			item = (struct hash_item *) calloc(1, sizeof(struct hash_item));
 			item->key = key;
 			item->data = data;
+			item->free_function = free_function;
 			table->items[index] = item;
 			return true;
 		} else if (item->key == key) {
 			dprintf("overwriting previous contents (key=%#llx)", key);
 			item->key = key;
 			item->data = data;
+			item->free_function = free_function;
 			return true;
 		} else {
 			index = (index+1) % table->size;

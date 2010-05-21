@@ -84,6 +84,20 @@ struct ginga_j_application_location_descriptor {
 	char *initial_class;
 };
 
+void ait_free(struct ait_table *ait)
+{
+	if (ait->dentry && ait->dentry->name)
+		fsutils_dispose_tree(ait->dentry);
+	else if (ait->dentry)
+		/* Dentry has simply been calloc'ed */
+		free(ait->dentry);
+
+	/* Free the ait table structure */
+	if (ait->ait_data)
+		free(ait->ait_data);
+	free(ait);
+}
+
 static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 		struct dentry *parent)
 {
@@ -191,6 +205,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 					for (i=0; i<len-3; ++i)
 						desc.selector_byte[i] = payload[5+i];
 					CREATE_FILE_BIN(dentry, &desc, selector_byte, (len-3));
+					free(desc.selector_byte);
 				}
 			}
 			break;
@@ -313,8 +328,7 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) ait, payload, payload_len);
 	if (ret < 0) {
-		free(ait->dentry);
-		free(ait);
+		ait_free(ait);
 		return ret;
 	}
 
@@ -324,8 +338,7 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	
 	/* Check whether we should keep processing this packet or not */
 	if (! ait->current_next_indicator || (current_ait && current_ait->version_number == ait->version_number)) {
-		free(ait->dentry);
-		free(ait);
+		ait_free(ait);
 		return 0;
 	}
 
@@ -398,10 +411,9 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	if (current_ait) {
 		hashtable_del(priv->psi_tables, current_ait->dentry->inode);
 		fsutils_migrate_children(current_ait->dentry, ait->dentry);
-		fsutils_dispose_tree(current_ait->dentry);
-		free(current_ait);
+		ait_free(current_ait);
 	}
-	hashtable_add(priv->psi_tables, ait->dentry->inode, ait);
+	hashtable_add(priv->psi_tables, ait->dentry->inode, ait, (hashtable_free_function_t) ait_free);
 
 	return 0;
 }

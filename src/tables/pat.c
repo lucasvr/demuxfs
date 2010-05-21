@@ -36,6 +36,20 @@
 #include "tables/pmt.h"
 #include "tables/nit.h"
 
+void pat_free(struct pat_table *pat)
+{
+	if (pat->dentry && pat->dentry->name)
+		fsutils_dispose_tree(pat->dentry);
+	else if (pat->dentry)
+		/* Dentry has simply been calloc'ed */
+		free(pat->dentry);
+
+	/* Free the pat table structure */
+	if (pat->programs)
+		free(pat->programs);
+	free(pat);
+}
+
 bool pat_announces_service(uint16_t service_id, struct demuxfs_data *priv)
 {
 	struct dentry *pat_programs;
@@ -77,12 +91,12 @@ static void pat_populate(struct pat_table *pat, struct dentry *parent,
 			snprintf(target, sizeof(target), "../../../%s/%s",
 				FS_NIT_NAME, FS_CURRENT_NAME);
 			if (! existing_parser)
-				hashtable_add(priv->psi_parsers, pid, nit_parse);
+				hashtable_add(priv->psi_parsers, pid, nit_parse, NULL);
 		} else {
 			snprintf(target, sizeof(target), "../../../%s/%#04x/%s",
 				FS_PMT_NAME, pid, FS_CURRENT_NAME);
 			if (! existing_parser)
-				hashtable_add(priv->psi_parsers, pid, pmt_parse);
+				hashtable_add(priv->psi_parsers, pid, pmt_parse, NULL);
 		}
 		CREATE_SYMLINK(dentry, name, target);
 	}
@@ -161,7 +175,7 @@ int pat_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		fsutils_dispose_tree(current_pat->dentry);
 		free(current_pat);
 	}
-	hashtable_add(priv->psi_tables, pat->dentry->inode, pat);
+	hashtable_add(priv->psi_tables, pat->dentry->inode, pat, (hashtable_free_function_t) pat_free);
 
 	return 0;
 }

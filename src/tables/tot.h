@@ -19,5 +19,6 @@ struct tot_table {
 
 int tot_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
+void tot_free(struct tot_table *tot);
 
 #endif /* __tot_h */

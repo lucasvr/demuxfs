@@ -35,5 +35,6 @@ struct ait_table {
 
 int ait_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
+void ait_free(struct ait_table *ait);
 
 #endif /* __ait_h */

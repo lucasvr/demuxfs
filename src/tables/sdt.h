@@ -30,5 +30,6 @@ struct sdt_table {
 
 int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv);
+void sdt_free(struct sdt_table *sdt);
 
 #endif /* __sdt_h */

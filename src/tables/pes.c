@@ -96,7 +96,7 @@ static struct dentry *pes_get_dentry(const struct ts_header *header,
 			dprintf("couldn't get a dentry for '%s'", pathname);
 			return NULL;
 		}
-		hashtable_add(priv->pes_tables, key, dentry);
+		hashtable_add(priv->pes_tables, key, dentry, NULL);
 	}
 	return dentry;
 }

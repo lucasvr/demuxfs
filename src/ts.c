@@ -236,7 +236,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				if (! buffer)
 					return 0;
 				buffer->continuity_counter = header->continuity_counter;
-				hashtable_add(priv->packet_buffer, header->pid, buffer);
+				hashtable_add(priv->packet_buffer, header->pid, buffer, NULL);
 			} else if (buffer && ! continuity_counter_is_ok(header, buffer, true)) {
 				return 0;
 			} else if (buffer && buffer->current_size == 0 && ! is_new_packet) {
@@ -307,7 +307,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			if (! buffer)
 				return 0;
 			buffer->continuity_counter = header->continuity_counter;
-			hashtable_add(priv->packet_buffer, header->pid, buffer);
+			hashtable_add(priv->packet_buffer, header->pid, buffer, NULL);
 		} else if (!continuity_counter_is_ok(header, buffer, false) ||
 			(buffer_get_current_size(buffer) == 0 && !buffer_is_unbounded(buffer) && 
 			 (!pusi || (payload_end - payload_start <= 6)))) {

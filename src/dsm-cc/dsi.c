@@ -41,10 +41,11 @@
 #include "dsm-cc/dsi.h"
 #include "dsm-cc/descriptors/descriptors.h"
 
-static void dsi_free(struct dsi_table *dsi)
+void dsi_free(struct dsi_table *dsi)
 {
 	/* Free DSM-CC compatibility descriptors */
 	dsmcc_free_compatibility_descriptors(&dsi->compatibility_descriptor);
+
 	/* Free DSM-CC message header */
 	dsmcc_free_message_header(&dsi->dsmcc_message_header);
 	if (dsi->group_info_indication) {
@@ -56,12 +57,18 @@ static void dsi_free(struct dsi_table *dsi)
 		iop_free_ior(dsi->service_gateway_info->iop_ior);
 		free(dsi->service_gateway_info);
 	}
+
 	/* Free Private data */
 //	if (dsi->private_data_bytes)
 //		free(dsi->private_data_bytes);
+
 	/* Free the dentry and its subtree */
 	if (dsi->dentry && dsi->dentry->name)
 		fsutils_dispose_tree(dsi->dentry);
+	else if (dsi->dentry)
+		/* Dentry has simply been calloc'ed */
+		free(dsi->dentry);
+
 	/* Free the dsi table structure */
 	free(dsi);
 }
@@ -328,10 +335,9 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	if (current_dsi) {
 		hashtable_del(priv->psi_tables, current_dsi->dentry->inode);
 		fsutils_migrate_children(current_dsi->dentry, dsi->dentry);
-		fsutils_dispose_tree(current_dsi->dentry);
-		free(current_dsi);
+		dsi_free(current_dsi);
 	}
-	hashtable_add(priv->psi_tables, dsi->dentry->inode, dsi);
+	hashtable_add(priv->psi_tables, dsi->dentry->inode, dsi, (hashtable_free_function_t) dsi_free);
 
 	return 0;
 }

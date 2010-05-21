@@ -48,6 +48,8 @@ int descriptor_0x40_parser(const char *payload, int len, struct dentry *parent, 
 
 	dentry = CREATE_DIRECTORY(parent, "NETWORK_NAME");
 	CREATE_FILE_STRING(dentry, &fd, network_name, XATTR_FORMAT_STRING);
+	free(fd.network_name);
+
     return 0;
 }
 
