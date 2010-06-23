@@ -48,8 +48,8 @@ struct input_parser {
 void filesrc_usage(void)
 {
 	fprintf(stderr, "\nFILESRC options:\n"
-			"    -o filesrc=FILE        transport stream input file\n"
-			"    -o fileloop=<count>    how many times to loop on EOF, -1 means infinite (default: 0)\n");
+			"    -o filesrc=FILE          transport stream input file\n"
+			"    -o fileloop=<count>      how many times to loop on EOF, -1 means infinite (default: 0)\n");
 }
 
 #define FILESRC_OPT(templ,offset,value) { templ, offsetof(struct input_parser, offset), value }
@@ -148,6 +148,16 @@ int filesrc_destroy_parser(struct demuxfs_data *priv)
     free(priv->parser);
 	return 0;
 }
+	
+/**
+ * filesrc_set_frequency: no-op.
+ */
+int filesrc_set_frequency(uint32_t frequency, struct demuxfs_data *priv)
+{
+	(void) frequency;
+	(void) priv;
+	return -ENOSYS;
+}
 
 /**
  * filesrc_read_parser: backend's read() method.
@@ -210,6 +220,7 @@ bool filesrc_keep_alive(struct demuxfs_data *priv)
 struct backend_ops filesrc_backend_ops = {
     .create = filesrc_create_parser,
     .destroy = filesrc_destroy_parser,
+	.set_frequency = filesrc_set_frequency,
     .read = filesrc_read_packet,
     .process = filesrc_process_packet,
     .keep_alive = filesrc_keep_alive,
