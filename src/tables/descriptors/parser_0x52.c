@@ -56,7 +56,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 	if (! descriptor_is_parseable(parent, payload[0], 3, len))
 		return -ENODATA;
 
-	if (! priv->shared_data)
+	if (! DESCRIPTOR_COMES_FROM_PMT(priv))
 		TS_WARNING("STREAM_IDENTIFIER_DESCRIPTOR found outside the PMT");
 	else {
 		stream = (struct pmt_stream *) priv->shared_data;

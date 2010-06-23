@@ -1,6 +1,8 @@
 #ifndef __descriptors_h
 #define __descriptors_h
 
+#define DESCRIPTOR_COMES_FROM_PMT(p) (p->shared_data ? true : false)
+
 struct descriptor {
 	uint8_t tag;
 	char *name;
