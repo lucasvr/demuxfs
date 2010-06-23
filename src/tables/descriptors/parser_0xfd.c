@@ -47,24 +47,26 @@ int descriptor_0xfd_parser(const char *payload, int len, struct dentry *parent, 
 	struct formatted_descriptor f;
 	bool is_caption = false;
 
-	if (! descriptor_is_parseable(parent, payload[0], 5, len))
+	if (! descriptor_is_parseable(parent, payload[0], 4, len))
 		return -ENODATA;
 
 	dentry = CREATE_DIRECTORY(parent, "DATA_COMPONENT");
 	f.data_component_id = CONVERT_TO_16(payload[2], payload[3]);
-	f.dmf = (payload[4] >> 4) & 0x0f;
-	f.reserved = (payload[4] >> 2) & 0x03;
-	f.timing = payload[4] & 0x03;
-	CREATE_FILE_NUMBER(dentry, &f, data_component_id);
-	CREATE_FILE_NUMBER(dentry, &f, dmf);
-	CREATE_FILE_NUMBER(dentry, &f, timing);
-
 	if (f.data_component_id == 0x08 || f.data_component_id == 0x12)
 		is_caption = true;
-	if (is_caption && f.dmf != 0x03)
-		TS_WARNING("DMF == %#x, expected 0x03", f.dmf);
-	if (is_caption && f.timing != 0x01)
-		TS_WARNING("timing == %#x, expected 0x01", f.timing);
+	CREATE_FILE_NUMBER(dentry, &f, data_component_id);
+
+	if (len > 4) {
+		f.dmf = (payload[4] >> 4) & 0x0f;
+		f.reserved = (payload[4] >> 2) & 0x03;
+		f.timing = payload[4] & 0x03;
+		CREATE_FILE_NUMBER(dentry, &f, dmf);
+		CREATE_FILE_NUMBER(dentry, &f, timing);
+		if (is_caption && f.dmf != 0x03)
+			TS_WARNING("DMF == %#x, expected 0x03", f.dmf);
+		if (is_caption && f.timing != 0x01)
+			TS_WARNING("timing == %#x, expected 0x01", f.timing);
+	}
 
     return 0;
 }
