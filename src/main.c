@@ -70,7 +70,6 @@ void * ts_parser_thread(void *userdata)
 			break;
 		}
 	}
-	priv->backend->destroy(priv);
 	pthread_exit(NULL);
 }
 
@@ -227,10 +226,22 @@ int main(int argc, char **argv)
 	if (ret < 0)
 		goto out_unload;
 
+	if (priv->options.frequency) {
+		ret = priv->backend->set_frequency(priv->options.frequency, priv);
+		if (ret < 0) {
+			fprintf(stderr, "Failed to set frequency: %s\n", strerror(-ret));
+			goto out_destroy;
+		}
+	}
+
 	/* Start the FUSE services */
 	priv->mount_point = strdup(argv[argc-1]);
 	fuse_opt_add_arg(&args, "-ointr");
 	ret = fuse_main(args.argc, args.argv, &demuxfs_ops, priv);
+
+out_destroy:
+	/* Destroy the backend private data */
+	priv->backend->destroy(priv);
 
 out_unload:
 	/* Unload the backend */

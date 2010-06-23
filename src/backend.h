@@ -10,6 +10,7 @@
 struct backend_ops {
     int (*create)(struct fuse_args *, struct demuxfs_data *);
     int (*destroy)(struct demuxfs_data *);
+	int (*set_frequency)(uint32_t, struct demuxfs_data *);
     int (*read)(struct demuxfs_data *);
 	int (*process)(struct ts_header *, void **, struct demuxfs_data *);
     bool (*keep_alive)(struct demuxfs_data *);

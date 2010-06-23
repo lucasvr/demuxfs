@@ -9,8 +9,10 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <getopt.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+#include <linux/dvb/frontend.h>
 #include <linux/dvb/dmx.h>
 
 #endif /* USE_LINUXDVB */
