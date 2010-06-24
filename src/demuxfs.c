@@ -201,9 +201,6 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 		read_size = ((dentry->size - offset) > size) ? size : dentry->size - offset;
 		memcpy(buf, &dentry->contents[offset], read_size);
 		pthread_mutex_unlock(&dentry->mutex);
-	} else {
-		dprintf("Error: dentry for '%s' doesn't have any contents set", path);
-		return -ENOTSUP;
 	}
 	return read_size;
 }
