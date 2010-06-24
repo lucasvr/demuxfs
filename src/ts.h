@@ -60,10 +60,6 @@
 #define TS_PACKET_HASH_KEY(ts_header,packet_header) \
 	((((ts_header)->pid & 0xffff) << 8) | ((struct psi_common_header*)(packet_header))->table_id)
 
-struct ts_status {
-    uint32_t packet_error_count;
-};
-
 /**
  * Transport stream header
  */
