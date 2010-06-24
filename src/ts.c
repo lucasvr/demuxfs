@@ -136,7 +136,8 @@ static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_
     return NULL;
 }
 
-static bool continuity_counter_is_ok(const struct ts_header *header, struct buffer *buffer, bool psi)
+static bool continuity_counter_is_ok(const struct ts_header *header, struct buffer *buffer, bool psi,
+	struct demuxfs_data *priv)
 {
 	uint8_t last_cc = buffer->continuity_counter;
 	uint8_t this_cc = header->continuity_counter;
@@ -150,7 +151,8 @@ static bool continuity_counter_is_ok(const struct ts_header *header, struct buff
 		return false;
 	} else if (! buf_empty) {
 		if ((last_cc == 15 && this_cc != 0) || (this_cc && (this_cc - last_cc) != 1)) {
-			TS_WARNING("%s continuity error on pid=%d: last counter=%d, current counter=%d",
+			if (priv->options.verbose_mask & CONTINUITY_ERROR)
+				TS_WARNING("%s continuity error on pid=%d: last counter=%d, current counter=%d",
 					psi ? "PSI" : "PES", header->pid, last_cc, this_cc);
 			buffer_reset_size(buffer);
 			return false;
@@ -237,7 +239,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 					return 0;
 				buffer->continuity_counter = header->continuity_counter;
 				hashtable_add(priv->packet_buffer, header->pid, buffer, NULL);
-			} else if (buffer && ! continuity_counter_is_ok(header, buffer, true)) {
+			} else if (buffer && ! continuity_counter_is_ok(header, buffer, true, priv)) {
 				return 0;
 			} else if (buffer && buffer->current_size == 0 && ! is_new_packet) {
 				/*
@@ -261,7 +263,8 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				int ret = buffer_append(buffer, start, end - start + 1);
 				if (buffer_contains_full_psi_section(buffer)) {
 					table_id = buffer->data[0];
-					if (! crc32_check(buffer->data, buffer->current_size))
+					if (! crc32_check(buffer->data, buffer->current_size) && 
+						priv->options.verbose_mask & CRC_ERROR)
 						TS_WARNING("CRC error on PID %d(%#x), table_id %d(%#x)", 
 							header->pid, header->pid, table_id, table_id);
 					else if ((parse_function = ts_get_psi_parser(header, table_id, priv)))
@@ -308,7 +311,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				return 0;
 			buffer->continuity_counter = header->continuity_counter;
 			hashtable_add(priv->packet_buffer, header->pid, buffer, NULL);
-		} else if (!continuity_counter_is_ok(header, buffer, false) ||
+		} else if (!continuity_counter_is_ok(header, buffer, false, priv) ||
 			(buffer_get_current_size(buffer) == 0 && !buffer_is_unbounded(buffer) && 
 			 (!pusi || (payload_end - payload_start <= 6)))) {
 			return 0;

@@ -143,6 +143,7 @@ static struct fuse_opt demuxfs_options[] = {
 	DEMUXFS_OPT("parse_pes=%d", opt_parse_pes, 0),
 	DEMUXFS_OPT("standard=%s",  opt_standard, 0),
 	DEMUXFS_OPT("tmpdir=%s",    opt_tmpdir, 0),
+	DEMUXFS_OPT("report=%s",    opt_report, 0),
 	FUSE_OPT_KEY("-h",          KEY_HELP),
 	FUSE_OPT_KEY("--help",      KEY_HELP),
 	FUSE_OPT_END
@@ -151,10 +152,11 @@ static struct fuse_opt demuxfs_options[] = {
 static void demuxfs_usage(struct demuxfs_data *priv)
 {
 	fprintf(stderr, "\nDEMUXFS options:\n"
-			"    -o backend=FILE        path to backend shared library\n"
+			"    -o backend=MODULE      full path to the backend or the backend's basename (eg: linuxdvb, filesrc)\n"
 			"    -o parse_pes=1|0       parse PES packets (default: 0)\n"
 			"    -o standard=TYPE       transmission type: SBTVD, ISDB, DVB or ATSC (default: SBTVD)\n"
-			"    -o tmpdir=DIR          temporary directory in which to store DSM-CC files (default: %s)\n",
+			"    -o tmpdir=DIR          temporary directory in which to store DSM-CC files (default: %s)\n"
+			"    -o report=MASK         colon-separated list of errors to report: NONE,CRC,CONTINUITY or ALL (default: NONE)\n",
 			FS_DEFAULT_TMPDIR);
 	backend_print_usage();
 }
@@ -207,6 +209,38 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Error: no backend was supplied\n");
 		ret = 1;
 		goto out_free;
+	}
+
+	if (priv->opt_report) {
+		char *opt_copy = strdup(priv->opt_report);
+		char *opt = opt_copy;
+		while (opt) {
+			char *colon = strstr(opt, ":");
+			if (colon)
+				*colon = '\0';
+			if (! strcasecmp(opt, "NONE"))
+				priv->options.verbose_mask = 0;
+			else if (! strcasecmp(opt, "ALL"))
+				priv->options.verbose_mask = ALL_ERRORS;
+			else {
+				bool valid_opt = false;
+				if (! strcasecmp(opt, "CRC")) {
+					priv->options.verbose_mask |= CRC_ERROR;
+					valid_opt = true;
+				}
+				if (! strcasecmp(opt, "CONTINUITY")) {
+					priv->options.verbose_mask |= CONTINUITY_ERROR;
+					valid_opt = true;
+				}
+				if (! valid_opt) {
+					fprintf(stderr, "Invalid value '%s' for '-o report'\n", opt);
+					free(opt_copy);
+					goto out_free;
+				}
+			}
+			opt = colon ? ++colon : NULL;
+		}
+		free(opt_copy);
 	}
 
 	priv->options.tmpdir = strdup(priv->opt_tmpdir ? priv->opt_tmpdir : FS_DEFAULT_TMPDIR);

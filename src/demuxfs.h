@@ -130,6 +130,13 @@ enum transmission_type {
 	DVB_STANDARD,
 };
 
+/* Error types the user wants to see reported to stderr */
+enum error_type {
+	CRC_ERROR        = 1,
+	CONTINUITY_ERROR = 2,
+	ALL_ERRORS       = 0xff,
+};
+
 struct descriptor;
 struct dsmcc_descriptor;
 struct backend_ops;
@@ -141,6 +148,7 @@ struct user_options {
 	enum transmission_type standard;
 	uint32_t frequency;
 	char *tmpdir;
+	enum error_type verbose_mask;
 };
 
 struct demuxfs_data {
@@ -149,6 +157,7 @@ struct demuxfs_data {
 	char *opt_standard;
 	char *opt_tmpdir;
 	char *opt_backend;
+	char *opt_report;
 	/* "psi_tables" holds PSI structures (ie: PAT, PMT, NIT..) */
 	struct hash_table *psi_tables;
 	/* "pes_tables" holds structures from PES packets that we're parsing */
