@@ -56,10 +56,6 @@
 
 #define IS_STUFFING_PACKET(payload) ((payload[0] & 0xff) == 0xff)
 
-/* The hash key generator to the private hash table */
-#define TS_PACKET_HASH_KEY(ts_header,packet_header) \
-	((((ts_header)->pid & 0xffff) << 8) | ((struct psi_common_header*)(packet_header))->table_id)
-
 /**
  * Transport stream header
  */
@@ -79,22 +75,21 @@ struct adaptation_field {
     uint8_t discontinuity_indicator:1;
 } __attribute__((__packed__));
 
-#define TS_SECTION_LENGTH(header) (((((char*)header)[1] << 8) | (((char*)header)[2])) & 0x0fff)
-#define TS_PAYLOAD_LENGTH(header) (TS_SECTION_LENGTH(header)+sizeof(uint8_t)+sizeof(uint16_t))
-
 /* Forward declaration */
 struct psi_common_header;
 
-typedef int (*parse_function_t)(const struct ts_header *header, const char *payload, uint32_t payload_len, 
-		struct demuxfs_data *priv);
+/* The hash key generator of the private hash table */
+#define TS_PACKET_HASH_KEY(ts_header,packet_header) \
+	((((ts_header)->pid & 0xffff) << 8) | ((struct psi_common_header*)(packet_header))->table_id)
 
 /**
  * Function prototypes
  */
 int ts_parse_packet(const struct ts_header *header, const char *payload, struct demuxfs_data *priv);
-
-/* Debug only */
 void ts_dump_header(const struct ts_header *header);
 void ts_dump_psi_header(struct psi_common_header *header);
+
+typedef int (*parse_function_t)(const struct ts_header *header, const char *payload, uint32_t payload_len, 
+		struct demuxfs_data *priv);
 
 #endif /* __ts_h */
