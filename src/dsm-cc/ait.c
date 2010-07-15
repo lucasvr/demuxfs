@@ -37,6 +37,11 @@
 #include "dsm-cc/ait.h"
 #include "dsm-cc/descriptors/descriptors.h"
 
+struct application_identifier {
+	uint32_t organization_id;
+	uint16_t application_id;
+};
+
 /* AIT descriptor 0x00 */
 struct application_descriptor {
 	uint8_t application_profiles_length;
@@ -67,6 +72,11 @@ struct transport_protocol_descriptor {
 	char protocol_id[128];
 	uint8_t transport_protocol_label;
 	char *selector_byte;
+
+	struct area_selector_transport_protocol {
+		uint8_t remote_connection:1;
+		uint8_t reserved:7;
+	};
 };
 
 /* AIT descriptor 0x03 */
@@ -82,6 +92,21 @@ struct ginga_j_application_location_descriptor {
 	uint8_t classpath_extension_length;
 	char *classpath_extension;
 	char *initial_class;
+};
+
+/* AIT descriptor 0x05 */
+struct external_application_authorization_descriptor {
+	struct application_identifier id;
+	uint8_t application_priority;
+};
+
+/* AIT descriptor 0x0b */
+struct application_icons_descriptor {
+	uint8_t icon_locator_length;
+	char *icon_locator;
+	uint16_t _icon_flags;
+	char icon_flags[64];
+	char *reserved_future_use;
 };
 
 void ait_free(struct ait_table *ait)
@@ -218,15 +243,18 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 					struct dentry *param_dentry;
 					struct ginga_j_application_descriptor desc;
 
-					desc.parameter_length = payload[i];
-					desc.parameter = strndup(&payload[i+1], desc.parameter_length+1);
-					desc.parameter[desc.parameter_length] = '\0';
-
 					param_dentry = CREATE_DIRECTORY(dentry, "PARAMETER_%02d", param++);
+					desc.parameter_length = payload[i];
 					CREATE_FILE_NUMBER(param_dentry, &desc, parameter_length);
-					CREATE_FILE_STRING(param_dentry, &desc, parameter, XATTR_FORMAT_STRING);
 
-					free(desc.parameter);
+					if (desc.parameter_length) {
+						desc.parameter = strndup(&payload[i+1], desc.parameter_length+1);
+						desc.parameter[desc.parameter_length] = '\0';
+
+						CREATE_FILE_STRING(param_dentry, &desc, parameter, XATTR_FORMAT_STRING);
+						free(desc.parameter);
+					}
+					i += 2 + desc.parameter_length;
 				}
 			}
 			break;
@@ -261,10 +289,25 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				free(desc.initial_class);
 			}
 			break;
-		case 0x05: /* Application authorization descriptor */
+		case 0x05: /* External application authorization descriptor */
 			{
-				dentry = CREATE_DIRECTORY(parent, "APPLICATION_AUTHORIZATION");
-				dprintf("Parser for AIT descriptor %#x not implemented", tag);
+				uint8_t i = 2;
+				uint8_t app = 1;
+				dentry = CREATE_DIRECTORY(parent, "EXTERNAL_APPLICATION_AUTHORIZATION");
+				while (i < len) {
+					struct dentry *app_dentry;
+					struct external_application_authorization_descriptor desc;
+
+					desc.id.organization_id = CONVERT_TO_32(payload[i], payload[i+1], payload[i+2], payload[i+3]);
+					desc.id.application_id = CONVERT_TO_16(payload[i+4], payload[i+5]);
+					desc.application_priority = payload[i+6];
+					i += 7;
+
+					app_dentry = CREATE_DIRECTORY(dentry, "APPLICATION_%02d", app++);
+					CREATE_FILE_NUMBER(app_dentry, &desc.id, organization_id);
+					CREATE_FILE_NUMBER(app_dentry, &desc.id, application_id);
+					CREATE_FILE_NUMBER(app_dentry, &desc, application_priority);
+				}
 			}
 			break;
 		case 0x06: /* Ginga-NCL application descriptor */
@@ -273,16 +316,66 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
-		case 0x0b: /* Application icons descriptor */
+		case 0x07: /* Ginga-NCL application location descriptor */
 			{
-				dentry = CREATE_DIRECTORY(parent, "APPLICATION_ICONS");
+				dentry = CREATE_DIRECTORY(parent, "GINGA-NCL_APPLICATION_LOCATION");
 				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
-		case 0x11: /* IP signalling descriptor */
+		case 0x08 ... 0x0a: /* NCL-HTML (reserved by MHP) */
 			{
-				dentry = CREATE_DIRECTORY(parent, "IP_SIGNALLING");
+				dentry = CREATE_DIRECTORY(parent, "NCL-HTML");
 				dprintf("Parser for AIT descriptor %#x not implemented", tag);
+			}
+			break;
+		case 0x0b: /* Application icons descriptor */
+			{
+				struct application_icons_descriptor desc;
+				uint8_t i;
+
+				dentry = CREATE_DIRECTORY(parent, "APPLICATION_ICONS");
+				desc.icon_locator_length = payload[2];
+				CREATE_FILE_NUMBER(dentry, &desc, icon_locator_length);
+
+				if (desc.icon_locator_length) {
+					desc.icon_locator = malloc(desc.icon_locator_length);
+					memcpy(desc.icon_locator, &payload[3], desc.icon_locator_length);
+					CREATE_FILE_BIN(dentry, &desc, icon_locator, desc.icon_locator_length);
+				}
+				i = 3 + desc.icon_locator_length;
+				desc._icon_flags = CONVERT_TO_16(payload[i], payload[i+1]);
+				switch (desc._icon_flags) {
+					case 0x01: sprintf(desc.icon_flags, 
+							  "32x32 for presentation on squared pixel screens [%#x]", desc._icon_flags);
+							   break;
+					case 0x02: sprintf(desc.icon_flags, 
+							   "32x32 for presentation on 4:3 screens [%#x]", desc._icon_flags);
+							   break;
+					case 0x04: sprintf(desc.icon_flags, 
+							   "24x32 for presentation on 16:9 screens [%#x]", desc._icon_flags);
+							   break;
+					case 0x08: sprintf(desc.icon_flags, 
+							   "64x64 for presentation on squared pixel screens [%#x]", desc._icon_flags);
+							   break;
+					case 0x10: sprintf(desc.icon_flags, 
+							   "64x64 for presentation on 4:3 screens [%#x]", desc._icon_flags);
+							   break;
+					case 0x20: sprintf(desc.icon_flags, 
+							   "48x64 for presentation on 16:9 screens [%#x]", desc._icon_flags);
+							   break;
+					case 0x40: sprintf(desc.icon_flags, 
+							   "128x128 for presentation on squared pixel screens [%#x]", desc._icon_flags);
+							   break;
+					case 0x80: sprintf(desc.icon_flags, 
+							   "128x128 for presentation on 4:3 screens [%#x]", desc._icon_flags);
+							   break;
+					case 0x100: sprintf(desc.icon_flags,
+							  "96x128 for presentation on 16:9 screens [%#x]", desc._icon_flags);
+							   break;
+					default:   sprintf(desc.icon_flags, 
+							   "reserved for future use [%#x]", desc._icon_flags);
+				}
+				CREATE_FILE_STRING(dentry, &desc, icon_flags, XATTR_FORMAT_STRING_AND_NUMBER);
 			}
 			break;
 		case 0x0c: /* Prefetch descriptor */
@@ -294,6 +387,38 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 		case 0x0d: /* DII location descriptor */
 			{
 				dentry = CREATE_DIRECTORY(parent, "DII_LOCATION");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
+			}
+			break;
+		case 0x0e ... 0x10: /* Reserved for future use by MHP */
+			{
+				dprintf("Parser for AIT descriptor %#x not implemented for it's reserved for future use by MHP", tag);
+			}
+			break;
+		case 0x11: /* IP signalling descriptor */
+			{
+				dentry = CREATE_DIRECTORY(parent, "IP_SIGNALLING");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
+			}
+			break;
+		case 0x12 ... 0x5e: /* Reserved for future use by MHP */
+			{
+				dprintf("Parser for AIT descriptor %#x not implemented for it's reserved for future use by MHP", tag);
+			}
+			break;
+		case 0x5f: /* Private data specifier descriptor */
+			{
+				dentry = CREATE_DIRECTORY(parent, "PRIVATE_DATA_SPECIFIER");
+				dprintf("Parser for AIT descriptor %#x not implemented for it's reserved for future use by MHP", tag);
+			}
+			break;
+		case 0x60 ... 0x7f: /* Reserved for future use by MHP */
+			{
+				dprintf("Parser for AIT descriptor %#x not implemented for it's reserved for future use by MHP", tag);
+			}
+			break;
+		case 0x80 ... 0xfe: /* User defined */
+			{
 				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
