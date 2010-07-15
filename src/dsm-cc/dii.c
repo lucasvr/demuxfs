@@ -132,7 +132,8 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 		CREATE_FILE_NUMBER(subdir, mod, module_size);
 		CREATE_FILE_NUMBER(subdir, mod, module_version);
 		CREATE_FILE_NUMBER(subdir, mod, module_info_length);
-		biop_create_module_info_dentries(subdir, mod->module_info);
+		if (mod->module_info)
+			biop_create_module_info_dentries(subdir, mod->module_info);
 	}
 
 	CREATE_FILE_NUMBER(parent, dii, private_data_length);
