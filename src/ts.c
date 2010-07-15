@@ -166,13 +166,13 @@ static bool continuity_counter_is_ok(const struct ts_header *header, struct buff
  */
 int ts_parse_packet(const struct ts_header *header, const char *payload, struct demuxfs_data *priv)
 {
-	int ret = 0;
+	int i, ret = 0;
 	uint8_t pointer_field = 0;
 	uint16_t section_length = 0;
 	const char *payload_end;
 	const char *payload_start = payload;
 	parse_function_t parse_function;
-
+		
 	if (header->sync_byte != TS_SYNC_BYTE) {
 		TS_WARNING("sync_byte != %#x (%#x)", TS_SYNC_BYTE, header->sync_byte);
 		return -EBADMSG;
@@ -202,6 +202,17 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 	
 	//ts_dump_header(header);
 	//ts_dump_payload(payload, payload_end-payload_start);
+	
+	
+	static int unknown_idx = 0; 
+	static int unknown_pids[100];
+	bool found_in_unknown_list = false;
+	for (i=0; i<unknown_idx; ++i) {
+		if (unknown_pids[i] == header->pid) {
+			found_in_unknown_list = true;
+			break;
+		}
+	}
 
 	struct buffer *buffer = NULL;
 
@@ -211,6 +222,11 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 		bool is_new_packet = false;
 		bool pusi = header->payload_unit_start_indicator;
 		uint8_t table_id;
+
+		if (found_in_unknown_list) {
+			TS_INFO("Found a PSI parser for the previouly unknown PID %#x", header->pid);
+			unknown_pids[i] = -1;
+		}
 
 		if (pusi) {
 			/* The first byte of the payload carries the pointer_field */
@@ -300,6 +316,11 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 	} else if (ts_is_pes_packet(header->pid, priv)) {
 		uint16_t size;
 		bool pusi = header->payload_unit_start_indicator;
+		
+		if (found_in_unknown_list) {
+			TS_INFO("Found a PES parser for the previouly unknown PID %#x", header->pid);
+			unknown_pids[i] = -1;
+		}
 
 		buffer = hashtable_get(priv->packet_buffer, header->pid);
 		if (! buffer) {
@@ -325,19 +346,10 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			buffer_reset_size(buffer);
 		}
 	} else {
-		int i, found=0;
-		static int idx = 0; 
-		static int pids[100];
-		for (i=0; i<idx; ++i) {
-			if (pids[i] == header->pid) {
-				found=1;
-				break;
-			}
-		}
-		if (! found) {
+		if (! found_in_unknown_list) {
 			TS_WARNING("Unknown packet with PID %#x", header->pid);
-			if (idx < 100)
-				pids[idx++] = header->pid;
+			if (unknown_idx < 100)
+				unknown_pids[unknown_idx++] = header->pid;
 		}
 	}
 	if (buffer)
