@@ -428,16 +428,20 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 static void ait_create_directory(const struct ts_header *header, struct ait_table *ait,
 		struct dentry **version_dentry, struct demuxfs_data *priv)
 {
-	/* Create a directory named "AIT" at the root filesystem */
-	ait->dentry->name = strdup(FS_AIT_NAME);
-	ait->dentry->mode = S_IFDIR | 0555;
-	CREATE_COMMON(priv->root, ait->dentry);
+	struct dentry *dentry = fsutils_get_child(priv->root, "AIT");
+
+	if (! dentry) {
+		/* Create a new directory named "AIT" in the root filesystem */
+		ait->dentry->name = strdup(FS_AIT_NAME);
+		ait->dentry->mode = S_IFDIR | 0555;
+		CREATE_COMMON(priv->root, ait->dentry);
+		dentry = ait->dentry;
+	}
 
 	/* Create the versioned dir and update the Current symlink */
-	*version_dentry = fsutils_create_version_dir(ait->dentry, ait->version_number);
+	*version_dentry = fsutils_create_version_dir(dentry, ait->version_number);
 
 	psi_populate((void **) &ait, *version_dentry);
-	//ait_populate(ait, *version_dentry, priv);
 }
 
 int ait_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
