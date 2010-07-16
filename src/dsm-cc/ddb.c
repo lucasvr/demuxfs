@@ -147,13 +147,12 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	ddb->module_version = payload[j+2];
 	ddb->reserved = payload[j+3];
 	ddb->block_number = CONVERT_TO_16(payload[j+4], payload[j+5]);
-	if (ddb_block_number_already_parsed(current_ddb, ddb->module_id, ddb->block_number)) {
+	ddb->_block_data_size = data_header->message_length - data_header->adaptation_length - 6;
+	if (! ddb->_block_data_size) {
 		ddb_free(ddb);
 		return 0;
 	}
-
-	ddb->_block_data_size = data_header->message_length - data_header->adaptation_length - 6;
-	if (! ddb->_block_data_size) {
+	if (ddb_block_number_already_parsed(current_ddb, ddb->module_id, ddb->block_number)) {
 		ddb_free(ddb);
 		return 0;
 	}
@@ -170,6 +169,8 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	uint16_t this_block_size = payload_len - (j+6) - 4;
 	uint16_t this_block_start = j+6;
+	if (this_block_size != ddb->_block_data_size)
+		TS_WARNING("ddb->block_data_size=%d != this_block_size=%d", ddb->_block_data_size, this_block_size);
 
 	/* Create individual block file */
 	struct dentry *module_dir = CREATE_DIRECTORY(version_dentry, "module_%02d", ddb->module_id);
