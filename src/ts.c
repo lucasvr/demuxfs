@@ -33,6 +33,7 @@
 #include "hash.h"
 #include "ts.h"
 #include "crc32.h"
+#include "fsutils.h"
 
 /* PSI tables */
 #include "tables/psi.h"
@@ -166,7 +167,7 @@ static bool continuity_counter_is_ok(const struct ts_header *header, struct buff
  */
 int ts_parse_packet(const struct ts_header *header, const char *payload, struct demuxfs_data *priv)
 {
-	int i, ret = 0;
+	int i = -1, ret = 0;
 	uint8_t pointer_field = 0;
 	uint16_t section_length = 0;
 	const char *payload_end;
@@ -207,10 +208,12 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 	static int unknown_idx = 0; 
 	static int unknown_pids[100];
 	bool found_in_unknown_list = false;
-	for (i=0; i<unknown_idx; ++i) {
-		if (unknown_pids[i] == header->pid) {
-			found_in_unknown_list = true;
-			break;
+	if (fsutils_get_child(priv->root, "PMT")) {
+		for (i=0; i<unknown_idx; ++i) {
+			if (unknown_pids[i] == header->pid) {
+				found_in_unknown_list = true;
+				break;
+			}
 		}
 	}
 
@@ -346,7 +349,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			buffer_reset_size(buffer);
 		}
 	} else {
-		if (! found_in_unknown_list) {
+		if (! found_in_unknown_list && i >= 0) {
 			TS_WARNING("Unknown packet with PID %#x", header->pid);
 			if (unknown_idx < 100)
 				unknown_pids[unknown_idx++] = header->pid;
