@@ -151,10 +151,18 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 #endif
 }
 
+static uint32_t dii_expected_module_blocks(struct dii_table *dii, struct dii_module *mod)
+{
+	int remaining = (mod->module_size % dii->block_size) ? 1 : 0;
+	uint32_t block_count = mod->module_size / dii->block_size + remaining;
+	return block_count;
+}
+
 static bool dii_module_complete(struct dii_table *dii, int module, struct dentry *ddb_dentry)
 {
-	char mod_dir[64];
-	struct dentry *mod_dentry;
+	uint32_t i, num_blocks;
+	char mod_dir[64], block_dir[64];
+	struct dentry *mod_dentry, *block_dentry;
 	struct dii_module *mod = &dii->modules[module];
 
 	if (mod->module_size == 0)
@@ -162,8 +170,19 @@ static bool dii_module_complete(struct dii_table *dii, int module, struct dentry
 
 	sprintf(mod_dir, "/module_%02d", mod->module_id);
 	mod_dentry = fsutils_get_dentry(ddb_dentry, mod_dir);
-	if (! mod_dentry || mod_dentry->size != mod->module_size)
+	if (! mod_dentry)
 		return false;
+
+	num_blocks = dii_expected_module_blocks(dii, mod);
+	for (i=0; i<num_blocks; ++i) {
+		sprintf(block_dir, "/block_%02d.bin", i);
+		block_dentry = fsutils_get_dentry(mod_dentry, block_dir);
+		if (! block_dentry)
+			return false;
+	}
+
+	if (mod_dentry->size != mod->module_size)
+		TS_WARNING("%s has size %d but it was expected to have %d", mod_dir, mod_dentry->size, mod->module_size);
 
 	return true;
 }
@@ -176,10 +195,9 @@ static bool dii_download_complete(const struct ts_header *header, struct dii_tab
 	
 	snprintf(buf, sizeof(buf), "/%s/%#04x", FS_DDB_NAME, header->pid);
 	ddb_dentry = fsutils_get_dentry(priv->root, buf);
-	if (! ddb_dentry) {
-		/* XXX: maybe it's under another PID? */
+	if (! ddb_dentry)
 		return false;
-	}
+
 	ddb_dentry = fsutils_get_current(ddb_dentry);
 	assert(ddb_dentry);
 
@@ -196,7 +214,7 @@ int dii_create_filesystem(const struct ts_header *header, struct dii_table *dii,
 	char buf[PATH_MAX], mod_dir[64], block_dir[64];
 	struct dentry *ddb_dentry, *dsmcc_dentry, *ait_dentry, *app_dentry = NULL;
 
-	dprintf("*** Creating filesystem ***");
+	dprintf("*** Creating filesystem for PID %#x ***", header->pid);
 	dii->_filesystem_created = true;
 	
 	snprintf(buf, sizeof(buf), "/%s/%#04x", FS_DDB_NAME, header->pid);
@@ -248,11 +266,10 @@ int dii_create_filesystem(const struct ts_header *header, struct dii_table *dii,
 		mod_dentry = fsutils_get_dentry(ddb_dentry, mod_dir);
 		assert(mod_dentry);
 		
-		int remaining = (mod->module_size % dii->block_size) ? 1 : 0;
-		uint32_t block_count = mod->module_size / dii->block_size + remaining;
+		uint32_t block_count = dii_expected_module_blocks(dii, mod);
 		uint32_t blocks_parsed = 0;
 
-		char *download_data = malloc(block_count * dii->block_size);
+		char *download_data = malloc(mod->module_size);
 		char *download_ptr = download_data;
 		assert(download_data);
 
