@@ -44,11 +44,11 @@ then
 	dnl
 	FFMPEG_LIBS=`$PKG_CONFIG --libs libavcodec`
 	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavcodec`
-	CFLAGS="${CFLAGS} -DUSE_FFMPEG"
 
+	libswscale_found=no
 	AC_MSG_CHECKING([libswscale])
 	PKG_CHECK_MODULES([LIBSWSCALE_MODULE], [libswscale >= 0.7.1], libswscale_found="yes", 
-					  AC_MSG_ERROR([FFmpeg was compiled with no support for libswscale.]))
+					  AC_MSG_RESULT([FFmpeg was compiled with no support for libswscale.]))
 	SWSCALE_LIBS=`$PKG_CONFIG --libs libswscale`
 	
 	dnl
@@ -57,10 +57,16 @@ then
 	FFMPEG_LIBS=`$PKG_CONFIG --libs libavformat`
 	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavformat`
 
+	libavformat_found=no
 	AC_MSG_CHECKING([libavformat])
 	PKG_CHECK_MODULES([LIBAVFORMAT_MODULE], [libavformat >= 0.7.1], libavformat_found="yes", 
-					  AC_MSG_ERROR([FFmpeg libavformat was not found.]))
+					  AC_MSG_RESULT([FFmpeg libavformat was not found.]))
 	AVFORMAT_LIBS=`$PKG_CONFIG --libs libavformat`
+
+	if test "x$libswscale_found" != "xno" && test "x$libavformat_found" != "xno"
+	then
+		CFLAGS="${CFLAGS} -DUSE_FFMPEG"
+	fi
 fi
 AM_CONDITIONAL(USE_FFMPEG, test "${ffmpeg_found}" = "yes")
 
