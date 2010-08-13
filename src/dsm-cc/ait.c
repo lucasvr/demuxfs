@@ -225,7 +225,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				CREATE_FILE_NUMBER(dentry, &desc, transport_protocol_label);
 				if ((len - 3) > 0) {
 					uint8_t i;
-					/* TODO: ABNT NBR 15606-3 2007 vc2 2008 - pg 63 (pdf) */
+					/* TODO: ABNT NBR 15606-3 2007 vc2 2008 - table 59, pg 64 (pdf) */
 					desc.selector_byte = malloc((len-3) * sizeof(char));
 					for (i=0; i<len-3; ++i)
 						desc.selector_byte[i] = payload[5+i];
