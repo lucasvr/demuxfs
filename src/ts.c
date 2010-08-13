@@ -44,6 +44,13 @@
 #include "tables/sdt.h"
 #include "tables/sdtt.h"
 #include "tables/tot.h"
+#include "tables/eit.h"
+
+struct packet_parser {
+	uint8_t table_id;
+	int32_t pid;
+	parse_function_t parser;
+};
 
 void ts_dump_header(const struct ts_header *header)
 {
@@ -106,32 +113,35 @@ static bool ts_is_pes_packet(uint16_t pid, struct demuxfs_data *priv)
 static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_t table_id,
 		struct demuxfs_data *priv)
 {
-	uint16_t pid = header->pid;
+	uint16_t i, pid = header->pid;
 	parse_function_t parse_function;
-	parse_function = (parse_function_t) hashtable_get(priv->psi_parsers, pid);
+	struct packet_parser parser[] = {
+		{ TS_PAT_TABLE_ID,         TS_PAT_PID, pat_parse },
+		{ TS_PMT_TABLE_ID,                 -1, pmt_parse },
+		{ TS_NIT_TABLE_ID,         TS_NIT_PID, nit_parse },
+		{ TS_SDT_TABLE_ID,         TS_SDT_PID, sdt_parse },
+		{ TS_TOT_TABLE_ID,                 -1, tot_parse },
+		{ TS_SDTT_TABLE_ID,      TS_SDTT1_PID, sdtt_parse },
+		{ TS_SDTT_TABLE_ID,      TS_SDTT2_PID, sdtt_parse },
+//		{ TS_CDT_TABLE_ID,         TS_CDT_PID, cdt_parse },
+//		{ TS_TDT_TABLE_ID,                 -1, tdt_parse },
+		{ TS_EIT_P_F_TABLE_ID,             -1, eit_parse },
+		{ TS_EIT_SCHEDULE_FIRST_TABLE_ID,  -1, eit_parse },
+		{ TS_EIT_SCHEDULE_LAST_TABLE_ID,   -1, eit_parse },
+		{ TS_EIT_XSCHEDULE_FIRST_TABLE_ID, -1, eit_parse },
+		{ TS_EIT_XSCHEDULE_LAST_TABLE_ID,  -1, eit_parse },
+		{ 0, 0, NULL }
+	};
 
+	parse_function = (parse_function_t) hashtable_get(priv->psi_parsers, pid);
 	if (parse_function)
 		return parse_function;
-	else if (table_id == TS_PAT_TABLE_ID && header->pid == TS_PAT_PID)
-		return pat_parse;
-	else if (table_id == TS_PMT_TABLE_ID)
-		return pmt_parse;
-	else if (table_id == TS_NIT_TABLE_ID && header->pid == TS_NIT_PID)
-		return nit_parse;
-	else if (table_id == TS_SDT_TABLE_ID && header->pid == TS_SDT_PID)
-		return sdt_parse;
-	else if (table_id == TS_TOT_TABLE_ID)
-		return tot_parse;
-	else if (table_id == TS_SDTT_TABLE_ID && 
-		(header->pid == TS_SDTT1_PID || header->pid == TS_SDTT2_PID))
-		return sdtt_parse;
-	else if (table_id == TS_CDT_TABLE_ID && header->pid == TS_CDT_PID)
-		dprintf("TS carries a CDT table");
-	//else if (table_id == TS_TDT_TABLE_ID)
-	//	dprintf("TS carries a TDT table");
-	//else if ((table_id >= TS_EIT_FIRST_TABLE_ID && table_id <= TS_EIT_LAST_TABLE_ID) || pid == TS_EIT1_PID)
-	//	return eit_parse;
-	else if ((pid == TS_NULL_PID) && (header->payload_unit_start_indicator != 0))
+
+	for (i=0; parser[i].parser != NULL; ++i)
+		if (table_id == parser[i].table_id && (parser[i].pid == -1 || parser[i].pid == pid))
+			return parser[i].parser;
+
+	if ((pid == TS_NULL_PID) && (header->payload_unit_start_indicator != 0))
 		TS_WARNING("NULL packet has payload_unit_start_indicator != 0");
 
     return NULL;

@@ -73,8 +73,6 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	eit->dentry = (struct dentry *) calloc(1, sizeof(struct dentry));
 	assert(eit->dentry);
 
-	dprintf("*** PARSING EIT ***");
-
 	/* Copy data up to the first loop entry */
 	int ret = psi_parse((struct psi_common_header *) eit, payload, payload_len);
 	if (ret < 0) {
@@ -91,6 +89,9 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		eit_free(eit);
 		return 0;
 	}
+
+	dprintf("*** EIT parser: pid=%#x, table_id=%#x, current_eit=%p, eit->version_number=%#x, len=%d ***", 
+			header->pid, eit->table_id, current_eit, eit->version_number, payload_len);
 
 	/* Parse EIT specific bits */
 	struct dentry *version_dentry;
