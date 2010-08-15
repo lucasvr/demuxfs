@@ -15,9 +15,9 @@
 #define TS_NIT_PID    0x10
 #define TS_SDT_PID    0x11
 #define TS_BAT_PID    0x11
-#define TS_EIT1_PID   0x12
-#define TS_EIT2_PID   0x26
-#define TS_EIT3_PID   0x27
+#define TS_H_EIT_PID  0x12
+#define TS_M_EIT_PID  0x26
+#define TS_L_EIT_PID  0x27
 #define TS_RST_PID    0x13
 #define TS_TDT_PID    0x14
 #define TS_DCT_PID    0x17
@@ -37,23 +37,37 @@
  * The transmission of tables CAT, TDT, RST, NBIT, LDT, BAT, LIT, ERT, 
  * ITT and PCAT is reserved for future implementations of the SBTVD.
  */
-#define TS_PAT_TABLE_ID                 0x00
-#define TS_PMT_TABLE_ID                 0x02
-#define TS_DII_TABLE_ID                 0x3b
-#define TS_DDB_TABLE_ID                 0x3c
-#define TS_NIT_TABLE_ID                 0x40
-#define TS_SDT_TABLE_ID                 0x42
-#define TS_EIT_P_F_TABLE_ID             0x4e
-#define TS_EIT_SCHEDULE_FIRST_TABLE_ID  0x50
-#define TS_EIT_SCHEDULE_LAST_TABLE_ID   0x57
-#define TS_EIT_XSCHEDULE_FIRST_TABLE_ID 0x58
-#define TS_EIT_XSCHEDULE_LAST_TABLE_ID  0x5f
-#define TS_ST_TABLE_ID                  0x72
-#define TS_TOT_TABLE_ID                 0x73
-#define TS_AIT_TABLE_ID                 0x74
-#define TS_SDTT_TABLE_ID                0xc3
-#define TS_BIT_TABLE_ID                 0xc4
-#define TS_CDT_TABLE_ID                 0xc8
+#define TS_PAT_TABLE_ID                        0x00
+#define TS_PMT_TABLE_ID                        0x02
+#define TS_DII_TABLE_ID                        0x3b
+#define TS_DDB_TABLE_ID                        0x3c
+#define TS_NIT_TABLE_ID                        0x40
+#define TS_SDT_TABLE_ID                        0x42
+#define TS_H_EIT_P_F_TABLE_ID                  0x4e /* Shared */
+#define TS_M_EIT_TABLE_ID                      0x4e /* Shared */
+#define TS_L_EIT_TABLE_ID                      0x4e /* Shared */
+#define TS_H_EIT_SCHEDULE_1_BASIC_TABLE_ID     0x50
+#define TS_H_EIT_SCHEDULE_2_BASIC_TABLE_ID     0x51
+#define TS_H_EIT_SCHEDULE_3_BASIC_TABLE_ID     0x52
+#define TS_H_EIT_SCHEDULE_4_BASIC_TABLE_ID     0x53
+#define TS_H_EIT_SCHEDULE_5_BASIC_TABLE_ID     0x54
+#define TS_H_EIT_SCHEDULE_6_BASIC_TABLE_ID     0x55
+#define TS_H_EIT_SCHEDULE_7_BASIC_TABLE_ID     0x56
+#define TS_H_EIT_SCHEDULE_8_BASIC_TABLE_ID     0x57
+#define TS_H_EIT_SCHEDULE_EXTENDED_1_TABLE_ID  0x58
+#define TS_H_EIT_SCHEDULE_EXTENDED_2_TABLE_ID  0x59
+#define TS_H_EIT_SCHEDULE_EXTENDED_3_TABLE_ID  0x5a
+#define TS_H_EIT_SCHEDULE_EXTENDED_4_TABLE_ID  0x5b
+#define TS_H_EIT_SCHEDULE_EXTENDED_5_TABLE_ID  0x5c
+#define TS_H_EIT_SCHEDULE_EXTENDED_6_TABLE_ID  0x5d
+#define TS_H_EIT_SCHEDULE_EXTENDED_7_TABLE_ID  0x5e
+#define TS_H_EIT_SCHEDULE_EXTENDED_8_TABLE_ID  0x5f
+#define TS_ST_TABLE_ID                         0x72
+#define TS_TOT_TABLE_ID                        0x73
+#define TS_AIT_TABLE_ID                        0x74
+#define TS_SDTT_TABLE_ID                       0xc3
+#define TS_BIT_TABLE_ID                        0xc4
+#define TS_CDT_TABLE_ID                        0xc8
 
 #define IS_STUFFING_PACKET(payload) ((payload[0] & 0xff) == 0xff)
 
