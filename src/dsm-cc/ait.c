@@ -131,6 +131,12 @@ struct application_icons_descriptor {
 	char *reserved_future_use;
 };
 
+/* AIT descriptor 0x11 */
+struct ip_signalling_descriptor {
+	uint32_t platform_id:24;
+	uint32_t _padding:8;
+};
+
 void ait_free(struct ait_table *ait)
 {
 	if (ait->dentry && ait->dentry->name)
@@ -483,8 +489,10 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 			break;
 		case 0x11: /* IP signalling descriptor */
 			{
+				struct ip_signalling_descriptor desc;
+				desc.platform_id = CONVERT_TO_24(payload[2], payload[3], payload[4]);
 				dentry = CREATE_DIRECTORY(parent, "IP_SIGNALLING");
-				dprintf("Parser for AIT descriptor %#x not implemented", tag);
+				CREATE_FILE_NUMBER(dentry, &desc, platform_id);
 			}
 			break;
 		case 0x12 ... 0x5e: /* Reserved for future use by MHP */
