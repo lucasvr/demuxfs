@@ -131,6 +131,16 @@ struct application_icons_descriptor {
 	char *reserved_future_use;
 };
 
+/* AIT descriptor 0x0c */
+struct prefetch_descriptor {
+	uint8_t transport_protocol_label;
+	/* loop: */
+	uint8_t label_length;
+	char *label;
+	uint8_t prefetch_priority;
+	/* loop end */
+};
+
 /* AIT descriptor 0x11 */
 struct ip_signalling_descriptor {
 	uint32_t platform_id:24;
@@ -255,7 +265,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				CREATE_FILE_NUMBER(dentry, &desc, transport_protocol_label);
 				if ((len - 3) > 0) {
 					uint8_t i = 0;
-					uint8_t url_number = 0;
+					uint8_t url_number = 1;
 					struct dentry *subdir;
 
 					switch (desc._protocol_id) {
@@ -301,7 +311,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 								char url_dirname[64];
 								struct dentry *url_dentry;
 
-								sprintf(url_dirname, "URL_%d", url_number++);
+								sprintf(url_dirname, "URL_%02d", url_number++);
 								url_dentry = CREATE_DIRECTORY(subdir, url_dirname);
 
 								desc.ip.URL_length = payload[i++];
@@ -478,8 +488,35 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 			break;
 		case 0x0d: /* DII location descriptor */
 			{
+				uint8_t i = 3;
+				uint8_t label_number = 1;
+				struct prefetch_descriptor desc;
+
 				dentry = CREATE_DIRECTORY(parent, "DII_LOCATION");
-				dprintf("Parser for AIT descriptor %#x not implemented", tag);
+				desc.transport_protocol_label = payload[2];
+				CREATE_FILE_NUMBER(dentry, &desc, transport_protocol_label);
+
+				while (i < len) {
+					char label_name[32];
+					struct dentry *label_dentry;
+
+					sprintf(label_name, "LABEL_%02d", label_number++);
+					label_dentry = CREATE_DIRECTORY(dentry, label_name);
+
+					desc.label_length = payload[i++];
+					CREATE_FILE_NUMBER(label_dentry, &desc, label_length);
+					if (desc.label_length) {
+						desc.label = calloc(desc.label_length + 1, sizeof(char));
+						memcpy(desc.label, &payload[i], desc.label_length);
+						CREATE_FILE_STRING(label_dentry, &desc, label, XATTR_FORMAT_STRING);
+					}
+					i += desc.label_length;
+
+					desc.prefetch_priority = payload[i++];
+					if (desc.prefetch_priority <= 0 || desc.prefetch_priority > 100)
+						TS_WARNING("prefetch_priority not in range 1..100 (%d)", desc.prefetch_priority);
+					CREATE_FILE_NUMBER(label_dentry, &desc, prefetch_priority);
+				}
 			}
 			break;
 		case 0x0e ... 0x10: /* Reserved for future use by MHP */
