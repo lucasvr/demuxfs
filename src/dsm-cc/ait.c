@@ -37,11 +37,6 @@
 #include "dsm-cc/ait.h"
 #include "dsm-cc/descriptors/descriptors.h"
 
-struct application_identifier {
-	uint32_t organization_id;
-	uint16_t application_id;
-};
-
 /* AIT descriptor 0x00 */
 struct application_descriptor {
 	uint8_t application_profiles_length;
@@ -118,7 +113,10 @@ struct ginga_j_application_location_descriptor {
 
 /* AIT descriptor 0x05 */
 struct external_application_authorization_descriptor {
-	struct application_identifier id;
+	struct application_identifier {
+		uint32_t organization_id;
+		uint16_t application_id;
+	} id;
 	uint8_t application_priority;
 };
 
