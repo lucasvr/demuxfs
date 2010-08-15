@@ -73,10 +73,32 @@ struct transport_protocol_descriptor {
 	uint8_t transport_protocol_label;
 	char *selector_byte;
 
-	struct area_selector_transport_protocol {
+	struct carousel_transport_info {
 		uint8_t remote_connection:1;
+		uint8_t reserved_future_use:7;
+		/* if remote_connection == 1 */
+		uint16_t original_network_id;
+		uint16_t transport_stream_id;
+		uint16_t service_id;
+		/* endif */
+		uint8_t component_tag;
+	} carousel;
+
+	struct ip_transport_info {
+		uint8_t remote_connection:1;
+		uint8_t reserved_future_use:7;
+		/* if remote_connection == 1 */
+		uint16_t original_network_id;
+		uint16_t transport_stream_id;
+		uint16_t service_id;
+		/* endif */
+		uint8_t alignment_indicator:1;
 		uint8_t reserved:7;
-	};
+		/* loop: */
+		uint8_t URL_length;
+		char *URL_byte; // [URL_length];
+		/* end loop */
+	} ip;
 };
 
 /* AIT descriptor 0x03 */
@@ -201,6 +223,8 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 		case 0x02: /* Transport protocol descriptor */
 			{
 				struct transport_protocol_descriptor desc;
+				memset(&desc, 0, sizeof(desc));
+
 				dentry = CREATE_DIRECTORY(parent, "TRANSPORT_PROTOCOL");
 				desc._protocol_id = CONVERT_TO_16(payload[2], payload[3]);
 				desc.transport_protocol_label = payload[4];
@@ -224,13 +248,75 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				CREATE_FILE_STRING(dentry, &desc, protocol_id, XATTR_FORMAT_STRING_AND_NUMBER);
 				CREATE_FILE_NUMBER(dentry, &desc, transport_protocol_label);
 				if ((len - 3) > 0) {
-					uint8_t i;
-					/* TODO: ABNT NBR 15606-3 2007 vc2 2008 - table 59, pg 64 (pdf) */
-					desc.selector_byte = malloc((len-3) * sizeof(char));
-					for (i=0; i<len-3; ++i)
-						desc.selector_byte[i] = payload[5+i];
-					CREATE_FILE_BIN(dentry, &desc, selector_byte, (len-3));
-					free(desc.selector_byte);
+					uint8_t i = 0;
+					uint8_t url_number = 0;
+					struct dentry *subdir;
+
+					switch (desc._protocol_id) {
+						case 0x0001:
+						case 0x0004:
+							subdir = CREATE_DIRECTORY(dentry, "REMOTE_CONNECTION");
+							desc.carousel.remote_connection = payload[5] & 0x01;
+							desc.carousel.reserved_future_use = (payload[5] >> 1) & 0x7f;
+							CREATE_FILE_NUMBER(subdir, &desc.carousel, remote_connection);
+
+							if (desc.carousel.remote_connection) {
+								desc.carousel.original_network_id = CONVERT_TO_16(payload[6], payload[7]);
+								desc.carousel.transport_stream_id = CONVERT_TO_16(payload[8], payload[9]);
+								desc.carousel.service_id = CONVERT_TO_16(payload[10], payload[11]);
+								CREATE_FILE_NUMBER(subdir, &desc.carousel, original_network_id);
+								CREATE_FILE_NUMBER(subdir, &desc.carousel, transport_stream_id);
+								CREATE_FILE_NUMBER(subdir, &desc.carousel, service_id);
+								i = 6;
+							}
+							desc.carousel.component_tag = payload[6+i];
+							CREATE_FILE_NUMBER(subdir, &desc.carousel, component_tag);
+							break;
+						case 0x0002:
+							subdir = CREATE_DIRECTORY(dentry, "IP_TRANSPORT");
+							desc.ip.remote_connection = payload[5] & 0x01;
+							desc.ip.reserved_future_use = (payload[5] >> 1) & 0x7f;
+							CREATE_FILE_NUMBER(subdir, &desc.ip, remote_connection);
+
+							if (desc.ip.remote_connection) {
+								desc.ip.original_network_id = CONVERT_TO_16(payload[6], payload[7]);
+								desc.ip.transport_stream_id = CONVERT_TO_16(payload[8], payload[9]);
+								desc.ip.service_id = CONVERT_TO_16(payload[10], payload[11]);
+								CREATE_FILE_NUMBER(subdir, &desc.ip, original_network_id);
+								CREATE_FILE_NUMBER(subdir, &desc.ip, transport_stream_id);
+								CREATE_FILE_NUMBER(subdir, &desc.ip, service_id);
+								i = 6;
+							}
+							desc.ip.alignment_indicator = payload[6+i] & 0x01;
+							desc.ip.reserved = (payload[6+i] >> 1) & 0x7f;
+							CREATE_FILE_NUMBER(subdir, &desc.ip, alignment_indicator);
+							i += 7;
+							while (i < len) {
+								char url_dirname[64];
+								struct dentry *url_dentry;
+
+								sprintf(url_dirname, "URL_%d", url_number++);
+								url_dentry = CREATE_DIRECTORY(subdir, url_dirname);
+
+								desc.ip.URL_length = payload[i++];
+								CREATE_FILE_NUMBER(url_dentry, &desc.ip, URL_length);
+
+								if (desc.ip.URL_length) {
+									desc.ip.URL_byte = calloc(desc.ip.URL_length + 1, sizeof(char));
+									memcpy(desc.ip.URL_byte, &payload[i], desc.ip.URL_length);
+									CREATE_FILE_STRING(url_dentry, &desc.ip, URL_byte, XATTR_FORMAT_STRING);
+									free(desc.ip.URL_byte);
+								}
+								i += desc.ip.URL_length;
+							}
+							break;
+						default:
+							desc.selector_byte = malloc((len-3) * sizeof(char));
+							for (i=0; i<len-3; ++i)
+								desc.selector_byte[i] = payload[5+i];
+							CREATE_FILE_BIN(dentry, &desc, selector_byte, (len-3));
+							free(desc.selector_byte);
+					}
 				}
 			}
 			break;
