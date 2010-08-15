@@ -81,9 +81,9 @@ static bool ts_is_psi_packet(uint16_t pid, struct demuxfs_data *priv)
 		case TS_CAT_PID:
 		case TS_NIT_PID:
 		case TS_SDT_PID: /* or TS_BAT_PID */
-		case TS_EIT1_PID:
-		case TS_EIT2_PID:
-		case TS_EIT3_PID:
+		case TS_H_EIT_PID:
+		case TS_M_EIT_PID:
+		case TS_L_EIT_PID:
 		case TS_RST_PID:
 		case TS_TDT_PID:
 		case TS_DCT_PID:
@@ -116,20 +116,34 @@ static parse_function_t ts_get_psi_parser(const struct ts_header *header, uint8_
 	uint16_t i, pid = header->pid;
 	parse_function_t parse_function;
 	struct packet_parser parser[] = {
-		{ TS_PAT_TABLE_ID,         TS_PAT_PID, pat_parse },
-		{ TS_PMT_TABLE_ID,                 -1, pmt_parse },
-		{ TS_NIT_TABLE_ID,         TS_NIT_PID, nit_parse },
-		{ TS_SDT_TABLE_ID,         TS_SDT_PID, sdt_parse },
-		{ TS_TOT_TABLE_ID,                 -1, tot_parse },
-		{ TS_SDTT_TABLE_ID,      TS_SDTT1_PID, sdtt_parse },
-		{ TS_SDTT_TABLE_ID,      TS_SDTT2_PID, sdtt_parse },
-//		{ TS_CDT_TABLE_ID,         TS_CDT_PID, cdt_parse },
-//		{ TS_TDT_TABLE_ID,                 -1, tdt_parse },
-		{ TS_EIT_P_F_TABLE_ID,             -1, eit_parse },
-		{ TS_EIT_SCHEDULE_FIRST_TABLE_ID,  -1, eit_parse },
-		{ TS_EIT_SCHEDULE_LAST_TABLE_ID,   -1, eit_parse },
-		{ TS_EIT_XSCHEDULE_FIRST_TABLE_ID, -1, eit_parse },
-		{ TS_EIT_XSCHEDULE_LAST_TABLE_ID,  -1, eit_parse },
+		{ TS_PAT_TABLE_ID,               TS_PAT_PID, pat_parse },
+		{ TS_PMT_TABLE_ID,                       -1, pmt_parse },
+		{ TS_NIT_TABLE_ID,               TS_NIT_PID, nit_parse },
+		{ TS_SDT_TABLE_ID,               TS_SDT_PID, sdt_parse },
+		{ TS_TOT_TABLE_ID,                       -1, tot_parse },
+		{ TS_SDTT_TABLE_ID,            TS_SDTT1_PID, sdtt_parse },
+		{ TS_SDTT_TABLE_ID,            TS_SDTT2_PID, sdtt_parse },
+//		{ TS_CDT_TABLE_ID,               TS_CDT_PID, cdt_parse },
+//		{ TS_TDT_TABLE_ID,                       -1, tdt_parse },
+		{ TS_L_EIT_TABLE_ID,                     -1, eit_parse },
+		{ TS_M_EIT_TABLE_ID,                     -1, eit_parse },
+		{ TS_H_EIT_P_F_TABLE_ID,                 -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_1_BASIC_TABLE_ID,    -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_2_BASIC_TABLE_ID,    -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_3_BASIC_TABLE_ID,    -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_4_BASIC_TABLE_ID,    -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_5_BASIC_TABLE_ID,    -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_6_BASIC_TABLE_ID,    -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_7_BASIC_TABLE_ID,    -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_8_BASIC_TABLE_ID,    -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_EXTENDED_1_TABLE_ID, -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_EXTENDED_2_TABLE_ID, -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_EXTENDED_3_TABLE_ID, -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_EXTENDED_4_TABLE_ID, -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_EXTENDED_5_TABLE_ID, -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_EXTENDED_6_TABLE_ID, -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_EXTENDED_7_TABLE_ID, -1, eit_parse },
+		{ TS_H_EIT_SCHEDULE_EXTENDED_8_TABLE_ID, -1, eit_parse },
 		{ 0, 0, NULL }
 	};
 
