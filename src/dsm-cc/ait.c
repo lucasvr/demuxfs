@@ -160,7 +160,7 @@ void ait_free(struct ait_table *ait)
 }
 
 static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
-		struct dentry *parent)
+		struct dentry *parent, struct demuxfs_data *priv)
 {
 	struct dentry *dentry;
 
@@ -334,8 +334,9 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				}
 			}
 			break;
-		case 0x03: /* Ginga-J application descriptor */
-			{
+		case 0x03:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* Ginga-J application descriptor */
 				uint8_t param = 1;
 				uint8_t i = 2;
 				dentry = CREATE_DIRECTORY(parent, "GINGA-J_APPLICATION");
@@ -356,10 +357,15 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 					}
 					i += 2 + desc.parameter_length;
 				}
+			} else {
+				/* DVB-J application descriptor */
+				dentry = CREATE_DIRECTORY(parent, "DVB-J_APPLICATION");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
-		case 0x04: /* Ginga-J application location descriptor */
-			{
+		case 0x04:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* Ginga-J application location descriptor */
 				struct ginga_j_application_location_descriptor desc;
 				uint8_t i;
 
@@ -387,6 +393,10 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				free(desc.base_directory);
 				free(desc.classpath_extension);
 				free(desc.initial_class);
+			} else {
+				/* DVB-J application location descriptor */
+				dentry = CREATE_DIRECTORY(parent, "DVB-J_APPLICATION_LOCATION");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 		case 0x05: /* External application authorization descriptor */
@@ -410,23 +420,55 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				}
 			}
 			break;
-		case 0x06: /* Ginga-NCL application descriptor */
-			{
+		case 0x06:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* Ginga-NCL application descriptor */
 				dentry = CREATE_DIRECTORY(parent, "GINGA-NCL_APPLICATION");
+			} else {
+				/* Routing Descriptor IPv4 */
+				dentry = CREATE_DIRECTORY(parent, "IPv4_ROUTING");
 				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
-		case 0x07: /* Ginga-NCL application location descriptor */
-			{
+		case 0x07:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* Ginga-NCL application location descriptor */
 				dentry = CREATE_DIRECTORY(parent, "GINGA-NCL_APPLICATION_LOCATION");
+			} else {
+				/* Routing Descriptor IPv6 */
+				dentry = CREATE_DIRECTORY(parent, "IPv6_ROUTING");
 				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
-		case 0x08 ... 0x0a: /* NCL-HTML (reserved by MHP) */
-			{
-				dentry = CREATE_DIRECTORY(parent, "NCL-HTML");
-				dprintf("Parser for AIT descriptor %#x not implemented", tag);
+		case 0x08:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* NCL-HTML (reserved by MHP) */
+				dentry = CREATE_DIRECTORY(parent, "NCL-HTML_APPLICATION");
+			} else if (priv->options.standard == DVB_STANDARD) {
+				/* DVB-HTML application descriptor */
+				dentry = CREATE_DIRECTORY(parent, "DVB-HTML_APPLICATION");
 			}
+			dprintf("Parser for AIT descriptor %#x not implemented", tag);
+			break;
+		case 0x09:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* NCL-HTML (reserved by MHP) */
+				dentry = CREATE_DIRECTORY(parent, "NCL-HTML_APPLICATION_LOCATION");
+			} else if (priv->options.standard == DVB_STANDARD) {
+				/* DVB-HTML application location descriptor */
+				dentry = CREATE_DIRECTORY(parent, "DVB-HTML_APPLICATION_LOCATION");
+			}
+			dprintf("Parser for AIT descriptor %#x not implemented", tag);
+			break;
+		case 0x0a:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* NCL-HTML (reserved by MHP) */
+				dentry = CREATE_DIRECTORY(parent, "NCL-HTML_APPLICATION_BOUNDARY");
+			} else if (priv->options.standard == DVB_STANDARD) {
+				/* DVB-HTML application boundary descriptor */
+				dentry = CREATE_DIRECTORY(parent, "DVB-HTML_APPLICATION_BOUNDARY");
+			}
+			dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			break;
 		case 0x0b: /* Application icons descriptor */
 			{
@@ -517,17 +559,45 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				}
 			}
 			break;
-		case 0x0e ... 0x10: /* Reserved for future use by MHP */
-			{
+		case 0x0e:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* Reserved by MHP */
 				dprintf("Parser for AIT descriptor %#x not implemented for it's reserved for future use by MHP", tag);
+			} else if (priv->options.standard == DVB_STANDARD) {
+				/* Delegated application descriptor */
+				dentry = CREATE_DIRECTORY(parent, "DELEGATED_APPLICATION");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
+			}
+			break;
+		case 0x0f:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* Reserved by MHP */
+				dprintf("Parser for AIT descriptor %#x not implemented for it's reserved for future use by MHP", tag);
+			} else if (priv->options.standard == DVB_STANDARD) {
+				/* Plugin descriptor */
+				dentry = CREATE_DIRECTORY(parent, "PLUGIN");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
+			}
+			break;
+		case 0x10:
+			if (priv->options.standard == SBTVD_STANDARD) {
+				/* Reserved by MHP */
+				dprintf("Parser for AIT descriptor %#x not implemented for it's reserved for future use by MHP", tag);
+			} else if (priv->options.standard == DVB_STANDARD) {
+				/* APplication storage descriptor */
+				dentry = CREATE_DIRECTORY(parent, "APPLICATION_STORAGE");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 		case 0x11: /* IP signalling descriptor */
-			{
+			if (priv->options.standard == SBTVD_STANDARD) {
 				struct ip_signalling_descriptor desc;
 				desc.platform_id = CONVERT_TO_24(payload[2], payload[3], payload[4]);
 				dentry = CREATE_DIRECTORY(parent, "IP_SIGNALLING");
 				CREATE_FILE_NUMBER(dentry, &desc, platform_id);
+			} else {
+				/* Reserved by MHP */
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 		case 0x12 ... 0x5e: /* Reserved for future use by MHP */
@@ -538,7 +608,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 		case 0x5f: /* Private data specifier descriptor */
 			{
 				dentry = CREATE_DIRECTORY(parent, "PRIVATE_DATA_SPECIFIER");
-				dprintf("Parser for AIT descriptor %#x not implemented for it's reserved for future use by MHP", tag);
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
 			break;
 		case 0x60 ... 0x7f: /* Reserved for future use by MHP */
@@ -546,7 +616,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				dprintf("Parser for AIT descriptor %#x not implemented for it's reserved for future use by MHP", tag);
 			}
 			break;
-		case 0x80 ... 0xfe: /* User defined */
+		case 0x80 ... 0xff: /* User defined */
 			{
 				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			}
@@ -659,7 +729,7 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 			while (n < data->application_descriptors_loop_length) {
 				uint8_t descriptor_tag = payload[i+n];
 				uint8_t descriptor_len = payload[i+n+1];
-				ait_parse_descriptor(descriptor_tag, descriptor_len, &payload[i+n], app_dentry);
+				ait_parse_descriptor(descriptor_tag, descriptor_len, &payload[i+n], app_dentry, priv);
 				n += 2 + descriptor_len;
 			}
 			i += n;
