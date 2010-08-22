@@ -31,6 +31,7 @@
 #include "xattr.h"
 #include "hash.h"
 #include "ts.h"
+#include "byteops.h"
 #include "tables/psi.h"
 #include "tables/eit.h"
 
@@ -44,6 +45,30 @@ void eit_free(struct eit_table *eit)
 
 	/* Free the eit table structure */
 	free(eit);
+}
+
+/* Convert from Modified Julian Date format to UTC */
+static time_t eit_convert_from_mjd_time(uint64_t mjd_time)
+{
+	/* MJD epoch is set to Jan 01, 1970 */
+	const int mjd_epoch = 40587;
+	uint16_t  mjd       = (mjd_time >> 24) & 0xffff;
+	time_t    utc_ymd   = (mjd - mjd_epoch) * 86400.0;
+
+	/* Decode the BCD part of the time */
+	uint32_t  bcd       = mjd_time & 0xffffff;
+	uint8_t   hours     = (((bcd >> 20) & 0x0f) * 10) +
+						   ((bcd >> 16) & 0x0f);
+	uint8_t   minutes   = (((bcd >> 12) & 0xff) * 10) +
+						   ((bcd >>  8) & 0x0f);
+	uint8_t   seconds   = (((bcd >>  4) & 0x0f) * 10) +
+						   ((bcd) & 0x0f);
+	time_t    utc_hms   = (hours * 360) + (minutes * 60) + seconds;
+
+	/* Set final UTC time */
+	time_t    utc_time  = utc_ymd + utc_hms;
+
+	return utc_time;
 }
 
 static void eit_create_directory(const struct ts_header *header, struct eit_table *eit, 
@@ -96,6 +121,55 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/* Parse EIT specific bits */
 	struct dentry *version_dentry;
 	eit_create_directory(header, eit, &version_dentry, priv);
+
+	eit->transport_stream_id = CONVERT_TO_16(payload[8], payload[9]);
+	eit->original_network_id = CONVERT_TO_16(payload[10], payload[11]);
+	eit->segment_last_section_number = payload[12];
+	eit->last_table_id = payload[13];
+	CREATE_FILE_NUMBER(version_dentry, eit, transport_stream_id);
+	CREATE_FILE_NUMBER(version_dentry, eit, original_network_id);
+	CREATE_FILE_NUMBER(version_dentry, eit, segment_last_section_number);
+	CREATE_FILE_NUMBER(version_dentry, eit, last_table_id);
+
+	struct eit_event *this_event;
+	eit->eit_event = calloc(1, sizeof(struct eit_event));
+	this_event = eit->eit_event;
+
+	int event_nr = 1, i = 14;
+	/* Include extra 4 bytes needed by the CRC32 */
+	while ((i + 4) < payload_len) {
+		char event_dirname[32];
+		struct dentry *event_dentry;
+		struct eit_event *next_event = NULL;
+		
+		this_event->event_id = CONVERT_TO_16(payload[i], payload[i+1]);
+		this_event->start_time = CONVERT_TO_40(payload[i+2], payload[i+3], payload[i+4], payload[i+5], payload[i+6]);
+		this_event->duration = CONVERT_TO_24(payload[i+7], payload[i+8], payload[i+9]);
+		this_event->running_status = (payload[i+10] >> 5) & 0x03;
+		this_event->free_ca_mode = (payload[i+10] >> 4) & 0x01;
+		this_event->descriptors_loop_length = CONVERT_TO_16(payload[i+10], payload[i+11]) & 0x0fff;
+		i += 12;
+
+		eit_convert_from_mjd_time(this_event->start_time);
+		sprintf(event_dirname, "EVENT_%02d", event_nr++);
+		event_dentry = CREATE_DIRECTORY(version_dentry, event_dirname);
+		CREATE_FILE_NUMBER(event_dentry, this_event, event_id);
+		CREATE_FILE_NUMBER(event_dentry, this_event, start_time);
+		CREATE_FILE_NUMBER(event_dentry, this_event, duration);
+		CREATE_FILE_NUMBER(event_dentry, this_event, running_status);
+		CREATE_FILE_NUMBER(event_dentry, this_event, free_ca_mode);
+		CREATE_FILE_NUMBER(event_dentry, this_event, descriptors_loop_length);
+		if (this_event->descriptors_loop_length) {
+		}
+		i += this_event->descriptors_loop_length;
+
+		if (i < payload_len) {
+			next_event = calloc(1, sizeof(struct eit_event));
+			this_event->next = next_event;
+			this_event = next_event;
+		} else
+			this_event->next = NULL;
+	}
 
 	if (current_eit) {
 		hashtable_del(priv->psi_tables, current_eit->dentry->inode);
