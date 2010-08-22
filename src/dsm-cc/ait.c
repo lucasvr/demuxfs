@@ -424,6 +424,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 			if (priv->options.standard == SBTVD_STANDARD) {
 				/* Ginga-NCL application descriptor */
 				dentry = CREATE_DIRECTORY(parent, "GINGA-NCL_APPLICATION");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			} else {
 				/* Routing Descriptor IPv4 */
 				dentry = CREATE_DIRECTORY(parent, "IPv4_ROUTING");
@@ -434,6 +435,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 			if (priv->options.standard == SBTVD_STANDARD) {
 				/* Ginga-NCL application location descriptor */
 				dentry = CREATE_DIRECTORY(parent, "GINGA-NCL_APPLICATION_LOCATION");
+				dprintf("Parser for AIT descriptor %#x not implemented", tag);
 			} else {
 				/* Routing Descriptor IPv6 */
 				dentry = CREATE_DIRECTORY(parent, "IPv6_ROUTING");
