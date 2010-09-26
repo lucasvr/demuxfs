@@ -1,5 +1,5 @@
 /* 
- * Copyright (c) 2008, Lucas C. Villa Real <lucasvr@gobolinux.org>
+ * Copyright (c) 2008-2010, Lucas C. Villa Real <lucasvr@gobolinux.org>
  * All rights reserved.
  *
  * Contain stream types identified by Iuri Gomes Diniz.
