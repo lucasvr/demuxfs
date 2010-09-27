@@ -34,6 +34,7 @@
 #include "byteops.h"
 #include "tables/psi.h"
 #include "tables/eit.h"
+#include "descriptors.h"
 
 void eit_free(struct eit_table *eit)
 {
@@ -75,17 +76,36 @@ static void eit_create_directory(const struct ts_header *header, struct eit_tabl
 	struct dentry **version_dentry, struct demuxfs_data *priv)
 {
 	/* Create a directory named "EIT" at the root filesystem if it doesn't exist yet */
-	struct dentry *eit_dir = CREATE_DIRECTORY(priv->root, FS_EIT_NAME);
+	struct dentry *eit_dir, *eit_pid_dir;
+	char *pid_name;
+
+	if (header->pid == 0x12)
+		eit_dir = CREATE_DIRECTORY(priv->root, FS_H_EIT_NAME);
+	else if (header->pid == 0x26)
+		eit_dir = CREATE_DIRECTORY(priv->root, FS_M_EIT_NAME);
+	else if (header->pid == 0x27)
+		eit_dir = CREATE_DIRECTORY(priv->root, FS_L_EIT_NAME);
+	else {
+		dprintf("Unexpected EIT PID %#x!", header->pid);
+		eit_dir = CREATE_DIRECTORY(priv->root, "EIT");
+	}
 
 	/* Create a directory named "<eit_pid>" and populate it with files */
-	asprintf(&eit->dentry->name, "%#04x", header->pid);
-	eit->dentry->mode = S_IFDIR | 0555;
-	CREATE_COMMON(eit_dir, eit->dentry);
+	asprintf(&pid_name, "%#04x", header->pid);
+	eit_pid_dir = fsutils_get_child(eit_dir, pid_name);
+	if (eit_pid_dir) {
+		free(pid_name);
+	} else {
+		eit->dentry->name = pid_name;
+		eit->dentry->mode = S_IFDIR | 0555;
+		CREATE_COMMON(eit_dir, eit->dentry);
+		eit_pid_dir = eit->dentry;
+	}
 	
 	/* Create the versioned dir and update the Current symlink */
-	*version_dentry = fsutils_create_version_dir(eit->dentry, eit->version_number);
+	*version_dentry = fsutils_create_version_dir(eit_pid_dir, eit->version_number);
 
-	psi_populate((void **) &eit, eit->dentry);
+	psi_populate((void **) &eit, eit_pid_dir);
 }
 
 int eit_parse(const struct ts_header *header, const char *payload, uint32_t payload_len,
@@ -105,7 +125,7 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return ret;
 	}
 
-	/* Set hash key and check if there's already one version of this table in the hash */
+	/* Set hash key and check if there's already one version of this table in the hash. */
 	eit->dentry->inode = TS_PACKET_HASH_KEY(header, eit);
 	current_eit = hashtable_get(priv->psi_tables, eit->dentry->inode);
 
@@ -159,9 +179,13 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		CREATE_FILE_NUMBER(event_dentry, this_event, running_status);
 		CREATE_FILE_NUMBER(event_dentry, this_event, free_ca_mode);
 		CREATE_FILE_NUMBER(event_dentry, this_event, descriptors_loop_length);
-		if (this_event->descriptors_loop_length) {
+
+		uint16_t loop_length = this_event->descriptors_loop_length;
+		while (loop_length > 0) {
+			uint16_t desc_length = descriptors_parse(&payload[i], 1, event_dentry, priv);
+			loop_length -= desc_length;
+			i += desc_length;
 		}
-		i += this_event->descriptors_loop_length;
 
 		if (i < payload_len) {
 			next_event = calloc(1, sizeof(struct eit_event));
