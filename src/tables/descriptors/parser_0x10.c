@@ -43,7 +43,7 @@ struct smoothing_buffer_descriptor {
 /* SMOOTHING_BUFFER_DESCRIPTOR parser */
 int descriptor_0x10_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *subdir = CREATE_DIRECTORY(parent, "SMOOTHING_BUFFER");
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "Smoothing_Buffer_Descriptor");
 
 	if (! descriptor_is_parseable(parent, payload[0], 9, len))
 		return -ENODATA;

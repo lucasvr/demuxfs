@@ -51,7 +51,7 @@ int descriptor_0x4d_parser(const char *payload, int len, struct dentry *parent, 
 		return -ENODATA;
 
 	memset(&f, 0, sizeof(f));
-	dentry = CREATE_DIRECTORY(parent, "SHORT_EVENT");
+	dentry = CREATE_DIRECTORY(parent, "Short_Event_Descriptor");
 
 	memcpy(f.language_code, &payload[2], 3);
 	CREATE_FILE_STRING(dentry, &f, language_code, XATTR_FORMAT_STRING);

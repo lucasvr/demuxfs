@@ -232,18 +232,19 @@ int dii_create_filesystem(const struct ts_header *header, struct dii_table *dii,
 	ait_dentry = fsutils_get_dentry(priv->root, buf);
 	if (ait_dentry) {
 		ait_dentry = fsutils_get_current(ait_dentry);
-		assert(ait_dentry);
-		for (uint16_t i=1; i < UINT16_MAX; ++i) {
-			sprintf(buf, "/Application_%02d", i);
-			ait_dentry = fsutils_get_dentry(ait_dentry, buf);
-			if (! ait_dentry)
-				break;
+		if (ait_dentry) {
+			for (uint16_t i=1; i < UINT16_MAX; ++i) {
+				sprintf(buf, "/Application_%02d", i);
+				ait_dentry = fsutils_get_dentry(ait_dentry, buf);
+				if (! ait_dentry)
+					break;
 
-			sprintf(buf, "/APPLICATION_NAME/APPLICATION_NAME_01/application_name");
-			ait_dentry = fsutils_get_dentry(ait_dentry, buf);
-			if (ait_dentry) {
-				app_dentry = CREATE_DIRECTORY(dsmcc_dentry, ait_dentry->contents);
-				break;
+				sprintf(buf, "/Application_Name_Descriptor/Application_Name_01/application_name");
+				ait_dentry = fsutils_get_dentry(ait_dentry, buf);
+				if (ait_dentry) {
+					app_dentry = CREATE_DIRECTORY(dsmcc_dentry, ait_dentry->contents);
+					break;
+				}
 			}
 		}
 	}

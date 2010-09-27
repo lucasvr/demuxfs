@@ -39,7 +39,7 @@ struct formatted_descriptor {
 int dsmcc_descriptor_0x03_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
 	struct formatted_descriptor f;
-	struct dentry *subdir = CREATE_DIRECTORY(parent, "INFO");
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "Info_Descriptor");
 
 	f.text_char = malloc(len+1);
 	memcpy(f.text_char, payload, len);

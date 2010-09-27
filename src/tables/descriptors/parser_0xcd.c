@@ -65,7 +65,7 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 		f.ts_name[i] = payload[4+i];
 	f.ts_name[i] = '\0';
 	
-	struct dentry *dentry = CREATE_DIRECTORY(parent, "TRANSMISSION_INFORMATION");
+	struct dentry *dentry = CREATE_DIRECTORY(parent, "Transmission_Information_Descriptor");
 	CREATE_FILE_NUMBER(dentry, &f, remote_control_key_id);
 	CREATE_FILE_NUMBER(dentry, &f, length_of_ts_name);
 	CREATE_FILE_NUMBER(dentry, &f, transmission_type_count);
@@ -76,7 +76,7 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 		struct transmission_type_data t;
 		struct dentry *subdir, *service;
 		
-		subdir = CREATE_DIRECTORY(dentry, "TRANSMISSION_%02d", i+1);
+		subdir = CREATE_DIRECTORY(dentry, "Transmission_%02d", i+1);
 
 		t.transmission_type_info = payload[offset];
 		t.num_of_service = payload[offset+1];
@@ -88,7 +88,7 @@ int descriptor_0xcd_parser(const char *payload, int len, struct dentry *parent, 
 			t.service_id = CONVERT_TO_16(payload[offset], payload[offset+1]);
 			offset += 2;
 
-			service = CREATE_DIRECTORY(subdir, "SERVICE_%02d", (j/2)+1);
+			service = CREATE_DIRECTORY(subdir, "Service_%02d", (j/2)+1);
 			CREATE_FILE_NUMBER(service, &t, service_id);
 
 			if (! pat_announces_service(t.service_id, priv))

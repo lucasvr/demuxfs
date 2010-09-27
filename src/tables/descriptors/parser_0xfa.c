@@ -65,7 +65,7 @@ int descriptor_0xfa_parser(const char *payload, int len, struct dentry *parent, 
 	else
 		sprintf(f.transmission_mode, "Undefined [%#x]", f._transmission_mode);
 	
-	dentry = CREATE_DIRECTORY(parent, "TERRESTRIAL_DELIVERY_SYSTEM");
+	dentry = CREATE_DIRECTORY(parent, "Terrestrial_Delivery_System_Descriptor");
 	CREATE_FILE_NUMBER(dentry, &f, area_code);
 	CREATE_FILE_STRING(dentry, &f, guard_interval, XATTR_FORMAT_STRING_AND_NUMBER);
 	CREATE_FILE_STRING(dentry, &f, transmission_mode, XATTR_FORMAT_STRING_AND_NUMBER);

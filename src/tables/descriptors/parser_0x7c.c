@@ -46,7 +46,7 @@ struct aac_descriptor {
 /* AAC_AUDIO_DESCRIPTOR parser */
 int descriptor_0x7c_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *dentry = CREATE_DIRECTORY(parent, "AAC_AUDIO");
+	struct dentry *dentry = CREATE_DIRECTORY(parent, "AAC_Audio_Descriptor");
 	struct aac_descriptor d;
 	int offset;
 
@@ -54,7 +54,7 @@ int descriptor_0x7c_parser(const char *payload, int len, struct dentry *parent, 
 		return -ENODATA;
 
 	if (! DESCRIPTOR_COMES_FROM_PMT(priv))
-		TS_WARNING("AAC_AUDIO_DESCRIPTOR found outside the PMT");
+		TS_WARNING("AAC_Audio_Descriptor found outside the PMT");
 
 	d._profile_and_level = payload[2];
 	d.aac_type_flag = (payload[3] >> 7) & 0x01;

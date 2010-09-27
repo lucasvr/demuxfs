@@ -40,7 +40,7 @@ struct formatted_descriptor {
 /* COMPRESSION_TYPE_DESCRIPTOR parser */
 int dsmcc_descriptor_0xc2_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *subdir = CREATE_DIRECTORY(parent, "COMPRESSION_TYPE");
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "Compression_Type_Descriptor");
 	struct formatted_descriptor f;
 	f.compression_type = payload[0];
 	f.original_size = CONVERT_TO_16(payload[1], payload[2]);

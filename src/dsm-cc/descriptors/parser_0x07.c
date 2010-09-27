@@ -39,7 +39,7 @@ struct formatted_descriptor {
 /* EST_DOWNLOAD_TIME_DESCRIPTOR parser */
 int dsmcc_descriptor_0x07_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *subdir = CREATE_DIRECTORY(parent, "EST_DOWNLOAD_TIME");
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "Estimated_Download_Time_Descriptor");
 	struct formatted_descriptor f;
 	f.est_download_time = CONVERT_TO_32(payload[0], payload[1], payload[2], payload[3]);
 	CREATE_FILE_NUMBER(subdir, &f, est_download_time);

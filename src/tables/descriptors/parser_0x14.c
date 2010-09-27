@@ -53,7 +53,7 @@ int descriptor_0x14_parser(const char *payload, int len, struct dentry *parent, 
 	if (! descriptor_is_parseable(parent, payload[0], 5, len))
 		return -ENODATA;
 
-	dentry = CREATE_DIRECTORY(parent, "ASSOCIATION_TAG");
+	dentry = CREATE_DIRECTORY(parent, "Association_Tag_Descriptor");
 
 	f.association_tag = CONVERT_TO_16(payload[2], payload[3]);
 	f.use = CONVERT_TO_16(payload[4], payload[5]);

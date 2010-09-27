@@ -91,19 +91,19 @@ struct dsmcc_descriptor *dsmcc_descriptors_init(struct demuxfs_data *priv)
 	priv->dsmcc_descriptors = (struct dsmcc_descriptor *) calloc(0xff+1, sizeof(struct dsmcc_descriptor));
 
 	/* DSM-CC descriptors and their tag values, defined by ABNT 15606-3 */
-	ADD_DESCRIPTOR("APPLICATION_DESCRIPTOR",           0x00, priv);
-	ADD_DESCRIPTOR("TYPE_DESCRIPTOR",                  0x01, priv);
-	ADD_DESCRIPTOR("NAME_DESCRIPTOR",                  0x02, priv);
-	ADD_DESCRIPTOR("INFO_DESCRIPTOR",                  0x03, priv);
-	ADD_DESCRIPTOR("MODULE_LINK_DESCRIPTOR",           0x04, priv);
-	ADD_DESCRIPTOR("CRC32_DESCRIPTOR",                 0x05, priv);
-	ADD_DESCRIPTOR("LOCATION_DESCRIPTOR",              0x06, priv);
-	ADD_DESCRIPTOR("EST_DOWNLOAD_TIME_DESCRIPTOR",     0x07, priv);
-	ADD_DESCRIPTOR("COMPRESSION_TYPE_DESCRIPTOR",      0xc2, priv);
+	ADD_DESCRIPTOR("Application_Descriptor",             0x00, priv);
+	ADD_DESCRIPTOR("Type_Descriptor",                    0x01, priv);
+	ADD_DESCRIPTOR("Name_Descriptor",                    0x02, priv);
+	ADD_DESCRIPTOR("Info_Descriptor",                    0x03, priv);
+	ADD_DESCRIPTOR("Module_Link_Descriptor",             0x04, priv);
+	ADD_DESCRIPTOR("CRC-32_Descriptor",                  0x05, priv);
+	ADD_DESCRIPTOR("Location_Descriptor",                0x06, priv);
+	ADD_DESCRIPTOR("Estimated_Download_Time_Descriptor", 0x07, priv);
+	ADD_DESCRIPTOR("Compression_Type_Descriptor",        0xc2, priv);
 	for (tag=0x80; tag<=0xbf; ++tag) {
 		struct dsmcc_descriptor *d = &priv->dsmcc_descriptors[tag];
 		d->tag = tag;
-		d->name = strdup("RESERVED_FOR_BROADCASTERS");
+		d->name = strdup("Reserved_For_Broadcasters");
 		d->parser = dsmcc_descriptor_broadcaster_parser;
 	}
 	return priv->dsmcc_descriptors;

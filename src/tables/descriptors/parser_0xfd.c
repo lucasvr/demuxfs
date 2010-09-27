@@ -50,7 +50,7 @@ int descriptor_0xfd_parser(const char *payload, int len, struct dentry *parent, 
 	if (! descriptor_is_parseable(parent, payload[0], 4, len))
 		return -ENODATA;
 
-	dentry = CREATE_DIRECTORY(parent, "DATA_COMPONENT");
+	dentry = CREATE_DIRECTORY(parent, "Data_Component_Descriptor");
 	f.data_component_id = CONVERT_TO_16(payload[2], payload[3]);
 	if (f.data_component_id == 0x08 || f.data_component_id == 0x12)
 		is_caption = true;

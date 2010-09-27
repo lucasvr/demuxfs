@@ -47,7 +47,7 @@ int descriptor_0x13_parser(const char *payload, int len, struct dentry *parent, 
 	if (! descriptor_is_parseable(parent, payload[0], 6, len))
 		return -ENODATA;
 
-	dentry = CREATE_DIRECTORY(parent, "CAROUSEL_IDENTIFIER");
+	dentry = CREATE_DIRECTORY(parent, "Carousel_Identifier");
 	f.carousel_id = CONVERT_TO_32(payload[2], payload[3], payload[4], payload[5]);
 	CREATE_FILE_NUMBER(dentry, &f, carousel_id);
 

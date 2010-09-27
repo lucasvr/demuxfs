@@ -53,7 +53,7 @@ int descriptor_0x48_parser(const char *payload, int len, struct dentry *parent, 
 		return -ENODATA;
 
 	memset(&f, 0, sizeof(f));
-	dentry = CREATE_DIRECTORY(parent, "SERVICE");
+	dentry = CREATE_DIRECTORY(parent, "Service_Descriptor");
 
 	f._service_type = payload[2];
 	sprintf(f.service_type, "%s [%#x]", service_type_to_string(f._service_type), f._service_type);

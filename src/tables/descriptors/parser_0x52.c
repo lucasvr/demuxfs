@@ -57,7 +57,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 		return -ENODATA;
 
 	if (! DESCRIPTOR_COMES_FROM_PMT(priv))
-		TS_WARNING("STREAM_IDENTIFIER_DESCRIPTOR found outside the PMT");
+		TS_WARNING("Stream_Identifier_Descriptor found outside the PMT");
 	else {
 		stream = (struct pmt_stream *) priv->shared_data;
 		stream_type = stream->stream_type_identifier;
@@ -127,7 +127,7 @@ int descriptor_0x52_parser(const char *payload, int len, struct dentry *parent, 
 	sprintf(contents, "%s [%#x]", s.component_name, s.component_tag);
 	f.component_tag = contents;
 	
-	dentry = CREATE_DIRECTORY(parent, "STREAM_IDENTIFIER");
+	dentry = CREATE_DIRECTORY(parent, "Stream_Identifier_Descriptor");
 	CREATE_FILE_STRING(dentry, &f, component_tag, XATTR_FORMAT_STRING_AND_NUMBER);
 
 	if (wrong_tag)
