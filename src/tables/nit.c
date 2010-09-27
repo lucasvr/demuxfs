@@ -107,7 +107,7 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	nit->transport_stream_loop_length = CONVERT_TO_16(payload[offset], payload[offset+1]) & 0x0fff;
 	offset += 2;
 
-	struct dentry *ts_dentry = CREATE_DIRECTORY(version_dentry, "TS_INFORMATION");
+	struct dentry *ts_dentry = CREATE_DIRECTORY(version_dentry, "Transport_Stream_Information");
 	uint16_t i = 0, info_index = 0;
 	while (i < nit->transport_stream_loop_length) {
 		struct dentry *info_dentry = CREATE_DIRECTORY(ts_dentry, "%02d", ++info_index);

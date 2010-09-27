@@ -51,7 +51,7 @@ int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, 
 	if (! descriptor_is_parseable(parent, payload[0], 3, len))
 		return -ENODATA;
 	
-	dentry = CREATE_DIRECTORY(parent, "SERVICE_LIST");
+	dentry = CREATE_DIRECTORY(parent, "Service_List_Descriptor");
 
 	for (i=2; i<len; i+=3) {
 		uint8_t service_type;
@@ -59,7 +59,7 @@ int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, 
 		service_type = payload[i+2];
 		sprintf(f.service_type, "%s [%#x]", service_type_to_string(service_type), service_type);
 		
-		subdir = CREATE_DIRECTORY(dentry, "SERVICE_%02d", ((i-2)/3)+1);
+		subdir = CREATE_DIRECTORY(dentry, "Service_%02d", ((i-2)/3)+1);
 		CREATE_FILE_NUMBER(subdir, &f, service_id);
 		CREATE_FILE_STRING(subdir, &f, service_type, XATTR_FORMAT_STRING_AND_NUMBER);
 		

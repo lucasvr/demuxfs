@@ -53,7 +53,7 @@ int descriptor_0x0b_parser(const char *payload, int len, struct dentry *parent, 
 	s.clock_accuracy_exponent = (payload[3] >> 5) & 0x07;
 	s.reserved_2 = payload[3] & 0x1f;
 
-	struct dentry *subdir = CREATE_DIRECTORY(parent, "SYSTEM_CLOCK");
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "System_Clock_Descriptor");
 	CREATE_FILE_NUMBER(subdir, &s, external_clock_reference_indicator);
 	//CREATE_FILE_NUMBER(subdir, &s, reserved_1);
 	CREATE_FILE_NUMBER(subdir, &s, clock_accuracy_integer);

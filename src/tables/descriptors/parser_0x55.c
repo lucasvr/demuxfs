@@ -42,7 +42,7 @@ int descriptor_0x55_parser(const char *payload, int len, struct dentry *parent, 
 	int i, n, num_entries = (len-2) / 4;
 
 	for (i=2, n=0; n<num_entries; ++n) {
-		struct dentry *subdir = CREATE_DIRECTORY(parent, "PARENTAL_RATING_%d", n+1);
+		struct dentry *subdir = CREATE_DIRECTORY(parent, "Parental_Rating_Descriptor_%d", n+1);
 		struct parental_rating_descriptor p;
 		memset(&p, 0, sizeof(p));
 		sprintf(p.country_code, "%c%c%c [0x%x%x%x]", 

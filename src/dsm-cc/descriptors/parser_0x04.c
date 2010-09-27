@@ -40,7 +40,7 @@ struct formatted_descriptor {
 /* MODULE_LINK_DESCRIPTOR parser */
 int dsmcc_descriptor_0x04_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *subdir = CREATE_DIRECTORY(parent, "MODULE_LINK");
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "Module_Link_Descriptor");
 	struct formatted_descriptor f;
 	f.position = payload[0];
 	f.module_id = CONVERT_TO_16(payload[1], payload[2]);

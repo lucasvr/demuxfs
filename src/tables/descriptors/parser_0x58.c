@@ -63,7 +63,7 @@ int descriptor_0x58_parser(const char *payload, int len, struct dentry *parent, 
 	f.time_of_change = CONVERT_TO_40(payload[8], payload[9], payload[10], payload[11], payload[12]) & 0xffffffffff;
 	f.next_time_offset = CONVERT_TO_16(payload[13], payload[14]);
 	
-	struct dentry *dentry = CREATE_DIRECTORY(parent, "LOCAL_TIME_OFFSET");
+	struct dentry *dentry = CREATE_DIRECTORY(parent, "Local_Time_Offset_Descriptor");
 	CREATE_FILE_STRING(dentry, &f, country_code, XATTR_FORMAT_STRING_AND_NUMBER);
 	CREATE_FILE_NUMBER(dentry, &f, country_region_id);
 	CREATE_FILE_NUMBER(dentry, &f, local_time_offset_polarity);

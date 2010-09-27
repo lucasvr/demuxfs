@@ -50,7 +50,7 @@ int descriptor_0xc8_parser(const char *payload, int len, struct dentry *parent, 
 	if (! descriptor_is_parseable(parent, payload[0], 3, len))
 		return -ENODATA;
 
-	dentry = CREATE_DIRECTORY(parent, "VIDEO_DECODE_CONTROL");
+	dentry = CREATE_DIRECTORY(parent, "Video_Decode_Control_Descriptor");
 	f.still_picture_flag = (payload[2] & 0x80) ? 1 : 0;
 	f.sequence_end_code_flag = (payload[2] & 0x40) ? 1 : 0;
 	f._video_encode_format = (payload[2] >> 2) & 0x0f;

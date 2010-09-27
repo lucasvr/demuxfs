@@ -66,7 +66,7 @@ int descriptor_0xd0_parser(const char *payload, int len, struct dentry *parent, 
 	if (! descriptor_is_parseable(parent, payload[0], 4, len))
 		return -ENODATA;
 
-	dentry = CREATE_DIRECTORY(parent, "BASIC_LOCAL_EVENT");
+	dentry = CREATE_DIRECTORY(parent, "Basic_Local_Event_Descriptor");
 	f.segmentation_mode = payload[2] & 0x0f;
 	f.segmentation_info_length = payload[3];
 	CREATE_FILE_NUMBER(dentry, &f, segmentation_mode);

@@ -51,7 +51,7 @@ int descriptor_0xfe_parser(const char *payload, int len, struct dentry *parent,
 	if (! descriptor_is_parseable(parent, payload[0], 2, len))
 		return -ENODATA;
 
-	dentry = CREATE_DIRECTORY(parent, "SYSTEM_MANAGEMENT");
+	dentry = CREATE_DIRECTORY(parent, "System_Management_Descriptor");
 
 	bflag = (payload[2] >> 6);
 	if (bflag == 0)

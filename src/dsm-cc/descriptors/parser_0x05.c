@@ -39,7 +39,7 @@ struct formatted_descriptor {
 /* CRC32_DESCRIPTOR parser */
 int dsmcc_descriptor_0x05_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *subdir = CREATE_DIRECTORY(parent, "CRC32");
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "CRC-32_Descriptor");
 	struct formatted_descriptor f;
 	f.crc_32 = CONVERT_TO_32(payload[0], payload[1], payload[2], payload[3]);
 	CREATE_FILE_NUMBER(subdir, &f, crc_32);

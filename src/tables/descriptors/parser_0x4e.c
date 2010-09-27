@@ -57,7 +57,7 @@ int descriptor_0x4e_parser(const char *payload, int len, struct dentry *parent, 
 		return -ENODATA;
 
 	memset(&f, 0, sizeof(f));
-	dentry = CREATE_DIRECTORY(parent, "EXTENDED_EVENT");
+	dentry = CREATE_DIRECTORY(parent, "Extended_Event_Descriptor");
 
 	/* Descriptor and Last Descriptor numbers */
 	f.descriptor_number = (payload[2] >> 4) & 0x0f;

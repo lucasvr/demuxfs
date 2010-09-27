@@ -38,7 +38,7 @@ struct formatted_descriptor {
 /* LOCATION_DESCRIPTOR parser */
 int dsmcc_descriptor_0x06_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	struct dentry *subdir = CREATE_DIRECTORY(parent, "LOCATION");
+	struct dentry *subdir = CREATE_DIRECTORY(parent, "Location_Descriptor");
 	struct formatted_descriptor f;
 	f.location_tag = payload[0];
 	CREATE_FILE_NUMBER(subdir, &f, location_tag);

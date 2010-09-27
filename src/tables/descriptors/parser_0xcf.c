@@ -83,7 +83,7 @@ static const char * transmission_type_meaning(uint8_t transmission_type)
 int descriptor_0xcf_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
 	struct formatted_descriptor f;
-	struct dentry *dentry = CREATE_DIRECTORY(parent, "LOGO_TRANSMISSION");
+	struct dentry *dentry = CREATE_DIRECTORY(parent, "Logo_Transmission_Descriptor");
 	
 	if (! descriptor_is_parseable(parent, payload[0], 4, len))
 		return -ENODATA;

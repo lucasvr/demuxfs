@@ -46,7 +46,7 @@ int descriptor_0x40_parser(const char *payload, int len, struct dentry *parent, 
 	for (i=2; i<len; ++i)
 		fd.network_name[i-2] = payload[i];
 
-	dentry = CREATE_DIRECTORY(parent, "NETWORK_NAME");
+	dentry = CREATE_DIRECTORY(parent, "Network_Name_Descriptor");
 	CREATE_FILE_STRING(dentry, &fd, network_name, XATTR_FORMAT_STRING);
 	free(fd.network_name);
 
