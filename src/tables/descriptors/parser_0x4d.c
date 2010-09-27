@@ -30,10 +30,57 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
+
+struct formatted_descriptor {
+	char language_code[4];
+	uint8_t event_name_length;
+	char *event_name;
+	uint8_t text_length;
+	char *text;
+};
 
 /* SHORT_EVENT_DESCRIPTOR parser */
 int descriptor_0x4d_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct formatted_descriptor f;
+	struct dentry *dentry;
+	int i;
+	
+	if (! descriptor_is_parseable(parent, payload[0], 4, len))
+		return -ENODATA;
+
+	memset(&f, 0, sizeof(f));
+	dentry = CREATE_DIRECTORY(parent, "SHORT_EVENT");
+
+	memcpy(f.language_code, &payload[2], 3);
+	CREATE_FILE_STRING(dentry, &f, language_code, XATTR_FORMAT_STRING);
+	len -= 3;
+
+	f.event_name_length = payload[5];
+	CREATE_FILE_NUMBER(dentry, &f, event_name_length);
+	len--;
+	i = 6;
+
+	if (len > 0 && f.event_name_length) {
+		f.event_name = strndup(&payload[6], f.event_name_length);
+		CREATE_FILE_STRING(dentry, &f, event_name, XATTR_FORMAT_STRING);
+		len -= f.event_name_length;
+		i += f.event_name_length;
+	}
+
+	f.text_length = payload[i];
+	CREATE_FILE_NUMBER(dentry, &f, text_length);
+	len--;
+	i++;
+
+	if (len > 0 && f.text_length) {
+		f.text = strndup(&payload[i], f.text_length);
+		CREATE_FILE_STRING(dentry, &f, text, XATTR_FORMAT_STRING);
+		len -= f.text_length;
+		i += f.text_length;
+	}
+
+    return 0;
 }
 

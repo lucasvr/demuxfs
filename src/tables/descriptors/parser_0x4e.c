@@ -30,10 +30,87 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
+#include "debug.h"
+
+struct formatted_descriptor {
+	uint8_t descriptor_number:4;
+	uint8_t last_descriptor_number:4;
+	char language_code[4];
+	uint8_t length_items;
+	uint8_t item_description_length;
+	char *item_description;
+	uint8_t item_length;
+	char *item;
+	uint8_t text_length;
+	char *text;
+};
 
 /* EXTENDED_EVENT_DESCRIPTOR parser */
 int descriptor_0x4e_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	struct formatted_descriptor f;
+	struct dentry *dentry, *subdir;
+	int i;
+	
+	if (! descriptor_is_parseable(parent, payload[0], 4, len))
+		return -ENODATA;
+
+	memset(&f, 0, sizeof(f));
+	dentry = CREATE_DIRECTORY(parent, "EXTENDED_EVENT");
+
+	/* Descriptor and Last Descriptor numbers */
+	f.descriptor_number = (payload[2] >> 4) & 0x0f;
+	f.last_descriptor_number = payload[2] & 0x0f;
+
+	subdir = CREATE_DIRECTORY(dentry, "Descriptor_%02d", f.descriptor_number);
+	CREATE_FILE_NUMBER(subdir, &f, descriptor_number);
+	CREATE_FILE_NUMBER(subdir, &f, last_descriptor_number);
+	i = 3;
+
+	/* Language code */
+	memcpy(f.language_code, &payload[i], 3);
+	CREATE_FILE_STRING(subdir, &f, language_code, XATTR_FORMAT_STRING);
+	len -= 3, i += 3;
+
+	/* Length items */
+	f.length_items = payload[i];
+	CREATE_FILE_NUMBER(subdir, &f, length_items);
+	len--, i++;
+
+	/* Item description */
+	f.item_description_length = payload[i];
+	CREATE_FILE_NUMBER(subdir, &f, item_description_length);
+	len--, i++;
+
+	if (f.item_description_length) {
+		f.item_description = strndup(&payload[i], f.item_description_length);
+		CREATE_FILE_STRING(subdir, &f, item_description, XATTR_FORMAT_STRING);
+		len -= f.item_description_length, i += f.item_description_length;
+	}
+	
+	/* Item */
+	f.item_length = payload[i];
+	CREATE_FILE_NUMBER(subdir, &f, item_length);
+	len--, i++;
+
+	if (len > 0 && f.item_length) {
+		f.item = strndup(&payload[i], f.item_length);
+		CREATE_FILE_STRING(subdir, &f, item, XATTR_FORMAT_STRING);
+		len -= f.item_length, i += f.item_length;
+	}
+
+	/* Text */
+	f.text_length = payload[i];
+	CREATE_FILE_NUMBER(subdir, &f, text_length);
+	len--, i++;
+
+	if (len > 0 && f.text_length) {
+		f.text = strndup(&payload[i], f.text_length);
+		CREATE_FILE_STRING(subdir, &f, text, XATTR_FORMAT_STRING);
+		len -= f.text_length, i += f.text_length;
+	}
+
+    return 0;
 }
 
