@@ -326,7 +326,7 @@ static int format_subgenre_other(uint8_t genre_id, uint8_t subgenre_id, char **s
 /* CONTENT_DESCRIPTOR parser */
 int descriptor_0x54_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	int i = 2, index = 1;
+	int i = 2, index = 0;
 
 	if (! descriptor_is_parseable(parent, payload[0], 4, len))
 		return -ENODATA;
