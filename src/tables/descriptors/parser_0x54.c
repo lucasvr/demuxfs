@@ -33,283 +33,283 @@
 #include "descriptors.h"
 
 struct formatted_descriptor {
-	uint8_t content_nibble_level_1:4;
-	uint8_t content_nibble_level_2:4;
+	uint8_t _content_nibble_level_1:4;
+	uint8_t _content_nibble_level_2:4;
 	uint8_t user_nibble:4;
 	uint8_t user_nibble_unused:4;
-	char *genre;
-	char *subgenre;
+	char content_nibble_level_1[64];
+	char content_nibble_level_2[64];
 };
 
-static int format_genre_isdb(uint8_t genre_id, struct formatted_descriptor *f)
+static int format_genre_isdb(uint8_t genre_id, char **genre)
 {
 	switch (genre_id) {
 		case 0x00:
-			return asprintf(&f->genre, "News/Report");
+			return asprintf(genre, "News/Report");
 		case 0x01:
-			return asprintf(&f->genre, "Sports");
+			return asprintf(genre, "Sports");
 		case 0x02:
-			return asprintf(&f->genre, "Information/Tabloid show");
+			return asprintf(genre, "Information/Tabloid show");
 		case 0x03:
-			return asprintf(&f->genre, "Drama");
+			return asprintf(genre, "Drama");
 		case 0x04:
-			return asprintf(&f->genre, "Music");
+			return asprintf(genre, "Music");
 		case 0x05:
-			return asprintf(&f->genre, "Variety show");
+			return asprintf(genre, "Variety show");
 		case 0x06:
-			return asprintf(&f->genre, "Movies");
+			return asprintf(genre, "Movies");
 		case 0x07:
-			return asprintf(&f->genre, "Animation/Special effect movies");
+			return asprintf(genre, "Animation/Special effect movies");
 		case 0x08:
-			return asprintf(&f->genre, "Documentary/Culture");
+			return asprintf(genre, "Documentary/Culture");
 		case 0x09:
-			return asprintf(&f->genre, "Theatre/Public performance");
+			return asprintf(genre, "Theatre/Public performance");
 		case 0x0a:
-			return asprintf(&f->genre, "Hobby/Education");
+			return asprintf(genre, "Hobby/Education");
 		case 0x0b:
-			return asprintf(&f->genre, "Welfare");
+			return asprintf(genre, "Welfare");
 		case 0x0c:
-			return asprintf(&f->genre, "Reserved");
+			return asprintf(genre, "Reserved");
 		case 0x0d:
-			return asprintf(&f->genre, "Reserved");
+			return asprintf(genre, "Reserved");
 		case 0x0e:
-			return asprintf(&f->genre, "For extension");
+			return asprintf(genre, "For extension");
 		case 0x0f:
-			return asprintf(&f->genre, "Others");
+			return asprintf(genre, "Others");
 		default:
 			return 0;
 	}
 }
 
-static int format_genre_sbtvd(uint8_t genre_id, struct formatted_descriptor *f)
+static int format_genre_sbtvd(uint8_t genre_id, char **genre)
 {
 	switch (genre_id) {
 		case 0x00:
-			return asprintf(&f->genre, "Jornalismo");
+			return asprintf(genre, "Jornalismo");
 		case 0x01:
-			return asprintf(&f->genre, "Esporte");
+			return asprintf(genre, "Esporte");
 		case 0x02:
-			return asprintf(&f->genre, "Educativo");
+			return asprintf(genre, "Educativo");
 		case 0x03:
-			return asprintf(&f->genre, "Novela");
+			return asprintf(genre, "Novela");
 		case 0x04:
-			return asprintf(&f->genre, "Minissérie");
+			return asprintf(genre, "Minissérie");
 		case 0x05:
-			return asprintf(&f->genre, "Série/Seriado");
+			return asprintf(genre, "Série/Seriado");
 		case 0x06:
-			return asprintf(&f->genre, "Variedade");
+			return asprintf(genre, "Variedade");
 		case 0x07:
-			return asprintf(&f->genre, "Reality show");
+			return asprintf(genre, "Reality show");
 		case 0x08:
-			return asprintf(&f->genre, "Informação");
+			return asprintf(genre, "Informação");
 		case 0x09:
-			return asprintf(&f->genre, "Humorístico");
+			return asprintf(genre, "Humorístico");
 		case 0x0a:
-			return asprintf(&f->genre, "Infantil");
+			return asprintf(genre, "Infantil");
 		case 0x0b:
-			return asprintf(&f->genre, "Erótico");
+			return asprintf(genre, "Erótico");
 		case 0x0c:
-			return asprintf(&f->genre, "Filme");
+			return asprintf(genre, "Filme");
 		case 0x0d:
-			return asprintf(&f->genre, "Sorteio,Televendas,Premiação");
+			return asprintf(genre, "Sorteio,Televendas,Premiação");
 		case 0x0e:
-			return asprintf(&f->genre, "Debate/Entrevista");
+			return asprintf(genre, "Debate/Entrevista");
 		case 0x0f:
-			return asprintf(&f->genre, "Outros");
+			return asprintf(genre, "Outros");
 		default:
 			return 0;
 	}
 }
 
-static int format_genre_other(uint8_t genre_id, struct formatted_descriptor *f)
+static int format_genre_other(uint8_t genre_id, char **genre)
 {
 	/* TODO */
 	return 0;
 }
 
-static int format_subgenre_isdb(uint8_t genre_id, uint8_t subgenre_id, struct formatted_descriptor *f)
+static int format_subgenre_isdb(uint8_t genre_id, uint8_t subgenre_id, char **subgenre)
 {
 	/* TODO */
 	return 0;
 }
 
-static int format_subgenre_sbtvd(uint8_t genre_id, uint8_t subgenre_id, struct formatted_descriptor *f)
+static int format_subgenre_sbtvd(uint8_t genre_id, uint8_t subgenre_id, char **subgenre)
 {
 	if (genre_id == 0) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Telejornais");
+				return asprintf(subgenre, "Telejornais");
 			case 0x01:
-				return asprintf(&f->subgenre, "Reportagem");
+				return asprintf(subgenre, "Reportagem");
 			case 0x02:
-				return asprintf(&f->subgenre, "Documentário");
+				return asprintf(subgenre, "Documentário");
 			case 0x03:
-				return asprintf(&f->subgenre, "Biografia");
+				return asprintf(subgenre, "Biografia");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x01) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Esporte");
+				return asprintf(subgenre, "Esporte");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x02) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Educativo");
+				return asprintf(subgenre, "Educativo");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x03) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Novela");
+				return asprintf(subgenre, "Novela");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x04) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Minissérie");
+				return asprintf(subgenre, "Minissérie");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x05) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Série");
+				return asprintf(subgenre, "Série");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x06) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Auditório");
+				return asprintf(subgenre, "Auditório");
 			case 0x01:
-				return asprintf(&f->subgenre, "Show");
+				return asprintf(subgenre, "Show");
 			case 0x02:
-				return asprintf(&f->subgenre, "Musical");
+				return asprintf(subgenre, "Musical");
 			case 0x03:
-				return asprintf(&f->subgenre, "Making of");
+				return asprintf(subgenre, "Making of");
 			case 0x04:
-				return asprintf(&f->subgenre, "Feminino");
+				return asprintf(subgenre, "Feminino");
 			case 0x05:
-				return asprintf(&f->subgenre, "Game show");
+				return asprintf(subgenre, "Game show");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x07) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Reality show");
+				return asprintf(subgenre, "Reality show");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x08) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Culinária");
+				return asprintf(subgenre, "Culinária");
 			case 0x01:
-				return asprintf(&f->subgenre, "Moda");
+				return asprintf(subgenre, "Moda");
 			case 0x02:
-				return asprintf(&f->subgenre, "Rural");
+				return asprintf(subgenre, "Rural");
 			case 0x03:
-				return asprintf(&f->subgenre, "Saúde");
+				return asprintf(subgenre, "Saúde");
 			case 0x04:
-				return asprintf(&f->subgenre, "Turismo");
+				return asprintf(subgenre, "Turismo");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x09) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Humorístico");
+				return asprintf(subgenre, "Humorístico");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x0a) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Infantil");
+				return asprintf(subgenre, "Infantil");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x0b) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Erótico");
+				return asprintf(subgenre, "Erótico");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x0c) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Filme");
+				return asprintf(subgenre, "Filme");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x0d) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Sorteio");
+				return asprintf(subgenre, "Sorteio");
 			case 0x01:
-				return asprintf(&f->subgenre, "Televendas");
+				return asprintf(subgenre, "Televendas");
 			case 0x02:
-				return asprintf(&f->subgenre, "Premiação");
+				return asprintf(subgenre, "Premiação");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x0e) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Debate");
+				return asprintf(subgenre, "Debate");
 			case 0x01:
-				return asprintf(&f->subgenre, "Entrevista");
+				return asprintf(subgenre, "Entrevista");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
 	} else if (genre_id == 0x0f) {
 		switch (subgenre_id) {
 			case 0x00:
-				return asprintf(&f->subgenre, "Desenho adulto");
+				return asprintf(subgenre, "Desenho adulto");
 			case 0x01:
-				return asprintf(&f->subgenre, "Interativo");
+				return asprintf(subgenre, "Interativo");
 			case 0x02:
-				return asprintf(&f->subgenre, "Político");
+				return asprintf(subgenre, "Político");
 			case 0x03:
-				return asprintf(&f->subgenre, "Religioso");
+				return asprintf(subgenre, "Religioso");
 			case 0x0f:
-				return asprintf(&f->subgenre, "Outros");
+				return asprintf(subgenre, "Outros");
 			default:
 				return 0;
 		}
@@ -317,7 +317,7 @@ static int format_subgenre_sbtvd(uint8_t genre_id, uint8_t subgenre_id, struct f
 	return 0;
 }
 
-static int format_subgenre_other(uint8_t genre_id, uint8_t subgenre_id, struct formatted_descriptor *f)
+static int format_subgenre_other(uint8_t genre_id, uint8_t subgenre_id, char **subgenre)
 {
 	/* TODO */
 	return 0;
@@ -326,7 +326,7 @@ static int format_subgenre_other(uint8_t genre_id, uint8_t subgenre_id, struct f
 /* CONTENT_DESCRIPTOR parser */
 int descriptor_0x54_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-	int i = 2, index = 0;
+	int i = 2, index = 1;
 
 	if (! descriptor_is_parseable(parent, payload[0], 4, len))
 		return -ENODATA;
@@ -334,37 +334,42 @@ int descriptor_0x54_parser(const char *payload, int len, struct dentry *parent, 
 	while (len) {
 		struct dentry *dentry = CREATE_DIRECTORY(parent, "Content_Descriptor_%02d", index++);
 		struct formatted_descriptor f;
+		char *genre = NULL, *subgenre = NULL;
 
-		f.content_nibble_level_1 = (payload[i] >> 4) & 0x0f;
-		f.content_nibble_level_2 = payload[i] & 0x0f;
+		memset(&f, sizeof(f), 0);
+
+		f._content_nibble_level_1 = (payload[i] >> 4) & 0x0f;
+		f._content_nibble_level_2 = payload[i] & 0x0f;
 		f.user_nibble = (payload[i+1] >> 4) & 0x0f;
 		f.user_nibble_unused = payload[i+1] & 0x0f;
 		i += 2;
 		len -= 2;
 		
 		if (priv->options.standard == ISDB_STANDARD) {
-			format_genre_isdb(f.content_nibble_level_1, &f);
-			format_subgenre_isdb(f.content_nibble_level_1, f.content_nibble_level_2, &f);
+			format_genre_isdb(f._content_nibble_level_1, &genre);
+			format_subgenre_isdb(f._content_nibble_level_1, f._content_nibble_level_2, &subgenre);
 		} else if (priv->options.standard == SBTVD_STANDARD) {
-			format_genre_sbtvd(f.content_nibble_level_1, &f);
-			format_subgenre_sbtvd(f.content_nibble_level_1, f.content_nibble_level_2, &f);
+			format_genre_sbtvd(f._content_nibble_level_1, &genre);
+			format_subgenre_sbtvd(f._content_nibble_level_1, f._content_nibble_level_2, &subgenre);
 		} else {
-			format_genre_other(f.content_nibble_level_1, &f);
-			format_subgenre_other(f.content_nibble_level_1, f.content_nibble_level_2, &f);
+			format_genre_other(f._content_nibble_level_1, &genre);
+			format_subgenre_other(f._content_nibble_level_1, f._content_nibble_level_2, &subgenre);
 		}
 
-		/* XXX well.. we're not merging the number with the genre string as we usually do */
-		CREATE_FILE_NUMBER(dentry, &f, content_nibble_level_1);
-		CREATE_FILE_NUMBER(dentry, &f, content_nibble_level_2);
+		snprintf(f.content_nibble_level_1, sizeof(f.content_nibble_level_1), 
+			"%s [%#x]", genre ? genre : "", f._content_nibble_level_1);
+		snprintf(f.content_nibble_level_2, sizeof(f.content_nibble_level_2), 
+			"%s [%#x]", subgenre ? subgenre : "", f._content_nibble_level_2);
+		CREATE_FILE_STRING(dentry, &f, content_nibble_level_1, XATTR_FORMAT_STRING_AND_NUMBER);
+		CREATE_FILE_STRING(dentry, &f, content_nibble_level_2, XATTR_FORMAT_STRING_AND_NUMBER);
 		CREATE_FILE_NUMBER(dentry, &f, user_nibble);
-		if (f.genre) {
-			CREATE_FILE_STRING(dentry, &f, genre, XATTR_FORMAT_STRING);
-			free(f.genre);
-		}
-		if (f.subgenre) {
-			CREATE_FILE_STRING(dentry, &f, subgenre, XATTR_FORMAT_STRING);
-			free(f.subgenre);
-		}
+		CREATE_SYMLINK(dentry, "genre", "content_nibble_level_1");
+		CREATE_SYMLINK(dentry, "subgenre", "content_nibble_level_2");
+
+		if (genre)
+			free(genre);
+		if (subgenre)
+			free(subgenre);
 	}
     return 0;
 }
