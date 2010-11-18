@@ -387,8 +387,12 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 			mod->module_info_length = payload[j+7];
 			j += 8;
 			if (mod->module_info_length) {
+				int parsed;
 				mod->module_info = calloc(1, sizeof(struct biop_module_info));
-				j += biop_parse_module_info(mod->module_info, &payload[j], payload_len-j);
+				parsed = biop_parse_module_info(mod->module_info, &payload[j], mod->module_info_length);
+				if (parsed !=  mod->module_info_length)
+					TS_WARNING("parsed %d bytes, but mod_info_len=%d", parsed, mod->module_info_length);
+				j += mod->module_info_length;
 			}
 		}
 	}
