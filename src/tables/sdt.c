@@ -162,9 +162,8 @@ int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	}
 
 	if (current_sdt) {
-		hashtable_del(priv->psi_tables, current_sdt->dentry->inode);
 		fsutils_migrate_children(current_sdt->dentry, sdt->dentry);
-		sdt_free(current_sdt);
+		hashtable_del(priv->psi_tables, current_sdt->dentry->inode);
 	}
 	hashtable_add(priv->psi_tables, sdt->dentry->inode, sdt, (hashtable_free_function_t) sdt_free);
 

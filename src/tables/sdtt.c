@@ -213,9 +213,8 @@ int sdtt_parse(const struct ts_header *header, const char *payload, uint32_t pay
 	}
 
 	if (current_sdtt) {
-		hashtable_del(priv->psi_tables, current_sdtt->dentry->inode);
 		fsutils_migrate_children(current_sdtt->dentry, sdtt->dentry);
-		sdtt_free(current_sdtt);
+		hashtable_del(priv->psi_tables, current_sdtt->dentry->inode);
 	}
 	hashtable_add(priv->psi_tables, sdtt->dentry->inode, sdtt, (hashtable_free_function_t) sdtt_free);
 

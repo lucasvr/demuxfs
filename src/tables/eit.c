@@ -38,11 +38,18 @@
 
 void eit_free(struct eit_table *eit)
 {
+	struct eit_event *event, *next_event;
+
 	if (eit->dentry && eit->dentry->name)
 		fsutils_dispose_tree(eit->dentry);
 	else if (eit->dentry)
 		/* Dentry has simply been calloc'ed */
 		free(eit->dentry);
+
+	for (event=eit->eit_event; event != NULL; event=next_event) {
+		next_event = event->next;
+		free(event);
+	}
 
 	/* Free the eit table structure */
 	free(eit);
@@ -95,6 +102,7 @@ static void eit_create_directory(const struct ts_header *header, struct eit_tabl
 	eit_pid_dir = fsutils_get_child(eit_dir, pid_name);
 	if (eit_pid_dir) {
 		free(pid_name);
+		INITIALIZE_DENTRY_UNLINKED(eit->dentry);
 	} else {
 		eit->dentry->name = pid_name;
 		eit->dentry->mode = S_IFDIR | 0555;
@@ -170,7 +178,9 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		this_event->descriptors_loop_length = CONVERT_TO_16(payload[i+10], payload[i+11]) & 0x0fff;
 		i += 12;
 
+		/* TODO: unused */
 		eit_convert_from_mjd_time(this_event->start_time);
+
 		sprintf(event_dirname, "Event_%02d", event_nr++);
 		event_dentry = CREATE_DIRECTORY(version_dentry, event_dirname);
 		CREATE_FILE_NUMBER(event_dentry, this_event, event_id);
@@ -196,9 +206,8 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	}
 
 	if (current_eit) {
-		hashtable_del(priv->psi_tables, current_eit->dentry->inode);
 		fsutils_migrate_children(current_eit->dentry, eit->dentry);
-		eit_free(current_eit);
+		hashtable_del(priv->psi_tables, current_eit->dentry->inode);
 	}
 
 	hashtable_add(priv->psi_tables, eit->dentry->inode, eit, (hashtable_free_function_t) eit_free);

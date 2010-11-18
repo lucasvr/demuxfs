@@ -300,9 +300,8 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	offset = 12 + pmt->program_information_length;
 
 	if (current_pmt) {
-		hashtable_del(priv->psi_tables, current_pmt->dentry->inode);
 		fsutils_migrate_children(current_pmt->dentry, pmt->dentry);
-		pmt_free(current_pmt);
+		hashtable_del(priv->psi_tables, current_pmt->dentry->inode);
 		/* Invalidate all items from the PES hash table */
 		hashtable_invalidate_contents(priv->pes_tables);
 	}

@@ -333,9 +333,8 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	}
 
 	if (current_dsi) {
-		hashtable_del(priv->psi_tables, current_dsi->dentry->inode);
 		fsutils_migrate_children(current_dsi->dentry, dsi->dentry);
-		dsi_free(current_dsi);
+		hashtable_del(priv->psi_tables, current_dsi->dentry->inode);
 	}
 	hashtable_add(priv->psi_tables, dsi->dentry->inode, dsi, (hashtable_free_function_t) dsi_free);
 

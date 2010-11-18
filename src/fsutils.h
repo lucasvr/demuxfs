@@ -68,11 +68,14 @@ void fsutils_dispose_node(struct dentry *dentry);
 void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 
 /* Macros to ease the creation of files and directories */
-#define CREATE_COMMON(_parent,_dentry) \
+#define INITIALIZE_DENTRY_UNLINKED(_dentry) \
 	INIT_LIST_HEAD(&(_dentry)->children); \
 	INIT_LIST_HEAD(&(_dentry)->xattrs); \
 	pthread_mutex_init(&(_dentry)->mutex, NULL); \
 	sem_init(&(_dentry)->semaphore, 0, 0); \
+
+#define CREATE_COMMON(_parent,_dentry) \
+	INITIALIZE_DENTRY_UNLINKED(_dentry); \
 	if ((_dentry)->obj_type != OBJ_TYPE_FIFO) \
 		_parent->size += (_dentry)->size; \
 	(_dentry)->parent = _parent; \
