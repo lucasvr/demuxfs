@@ -131,9 +131,8 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	}
 
 	if (current_nit) {
-		hashtable_del(priv->psi_tables, current_nit->dentry->inode);
 		fsutils_migrate_children(current_nit->dentry, nit->dentry);
-		nit_free(current_nit);
+		hashtable_del(priv->psi_tables, current_nit->dentry->inode);
 	}
 	hashtable_add(priv->psi_tables, nit->dentry->inode, nit, (hashtable_free_function_t) nit_free);
 

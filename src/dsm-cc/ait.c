@@ -631,7 +631,9 @@ static void ait_create_directory(const struct ts_header *header, struct ait_tabl
 {
 	struct dentry *dentry = fsutils_get_child(priv->root, "AIT");
 
-	if (! dentry) {
+	if (dentry) {
+		INITIALIZE_DENTRY_UNLINKED(ait->dentry);
+	} else {
 		/* Create a new directory named "AIT" in the root filesystem */
 		ait->dentry->name = strdup(FS_AIT_NAME);
 		ait->dentry->mode = S_IFDIR | 0555;
@@ -739,9 +741,8 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	}
 
 	if (current_ait) {
-		hashtable_del(priv->psi_tables, current_ait->dentry->inode);
 		fsutils_migrate_children(current_ait->dentry, ait->dentry);
-		ait_free(current_ait);
+		hashtable_del(priv->psi_tables, current_ait->dentry->inode);
 	}
 	hashtable_add(priv->psi_tables, ait->dentry->inode, ait, (hashtable_free_function_t) ait_free);
 

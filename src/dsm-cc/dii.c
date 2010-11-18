@@ -239,6 +239,7 @@ int dii_create_filesystem(const struct ts_header *header, struct dii_table *dii,
 				if (! ait_dentry)
 					break;
 
+				/* TODO: what if there's more than one application name? */
 				sprintf(buf, "/Application_Name_Descriptor/Application_Name_01/application_name");
 				ait_dentry = fsutils_get_dentry(ait_dentry, buf);
 				if (ait_dentry) {
@@ -326,7 +327,7 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	
 	/* Check whether we should keep processing this packet or not */
 	if (msg_header->protocol_discriminator != 0x11 || msg_header->_dsmcc_type != 0x03) {
-		dprintf("protocol_discriminator=%#x, dsmcc_type=%#x: not a U-N message, bailing out", 
+		TS_WARNING("protocol_discriminator=%#x, dsmcc_type=%#x: not a U-N message, bailing out", 
 				msg_header->protocol_discriminator,
 				msg_header->_dsmcc_type);
 		dii_free(dii);
@@ -406,9 +407,8 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	dii_create_dentries(version_dentry, dii, priv);
 
 	if (current_dii) {
-		hashtable_del(priv->psi_tables, current_dii->dentry->inode);
 		fsutils_migrate_children(current_dii->dentry, dii->dentry);
-		dii_free(current_dii);
+		hashtable_del(priv->psi_tables, current_dii->dentry->inode);
 	}
 	hashtable_add(priv->psi_tables, dii->dentry->inode, dii, (hashtable_free_function_t) dii_free);
 

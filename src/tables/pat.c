@@ -170,10 +170,9 @@ int pat_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	pat_create_directory(pat, priv);
 
 	if (current_pat) {
-		hashtable_del(priv->psi_tables, current_pat->dentry->inode);
 		fsutils_migrate_children(current_pat->dentry, pat->dentry);
 		fsutils_dispose_tree(current_pat->dentry);
-		free(current_pat);
+		hashtable_del(priv->psi_tables, current_pat->dentry->inode);
 	}
 	hashtable_add(priv->psi_tables, pat->dentry->inode, pat, (hashtable_free_function_t) pat_free);
 

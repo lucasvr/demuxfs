@@ -127,6 +127,15 @@ bool hashtable_add(struct hash_table *table, ino_t key, void *data, hashtable_fr
 	return false;
 }
 
+void _hashtable_del_item(struct hash_item *item)
+{
+	if (item) {
+		if (item->free_function && item->data)
+			item->free_function(item->data);
+		free(item);
+	}
+}
+
 bool hashtable_del(struct hash_table *table, ino_t key)
 {
 	int index = key % table->size;
@@ -136,6 +145,7 @@ bool hashtable_del(struct hash_table *table, ino_t key)
 		if (! item) 
 			return true;
 		else if (item->key == key) {
+			_hashtable_del_item(item);
 			table->items[index] = NULL;
 			return true;
 		} else {
