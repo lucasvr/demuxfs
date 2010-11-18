@@ -162,12 +162,15 @@ int descriptor_0x50_parser(const char *payload, int len, struct dentry *parent, 
 		asprintf(&f.component_description, "Reserved for future use");
 	}
 
-	if (f.component_description)
+	if (f.component_description) {
 		CREATE_FILE_STRING(dentry, &f, component_description, XATTR_FORMAT_STRING);
+		free(f.component_description);
+	}
 
 	if (len > 8) {
 		f.text = strndup(&payload[7], len-8);
 		CREATE_FILE_STRING(dentry, &f, text, XATTR_FORMAT_STRING);
+		free(f.text);
 	}
 
     return 0;
