@@ -87,6 +87,7 @@ int descriptor_0x4e_parser(const char *payload, int len, struct dentry *parent, 
 		f.item_description = strndup(&payload[i], f.item_description_length);
 		CREATE_FILE_STRING(subdir, &f, item_description, XATTR_FORMAT_STRING);
 		len -= f.item_description_length, i += f.item_description_length;
+		free(f.item_description);
 	}
 	
 	/* Item */
@@ -98,6 +99,7 @@ int descriptor_0x4e_parser(const char *payload, int len, struct dentry *parent, 
 		f.item = strndup(&payload[i], f.item_length);
 		CREATE_FILE_STRING(subdir, &f, item, XATTR_FORMAT_STRING);
 		len -= f.item_length, i += f.item_length;
+		free(f.item);
 	}
 
 	/* Text */
@@ -109,6 +111,7 @@ int descriptor_0x4e_parser(const char *payload, int len, struct dentry *parent, 
 		f.text = strndup(&payload[i], f.text_length);
 		CREATE_FILE_STRING(subdir, &f, text, XATTR_FORMAT_STRING);
 		len -= f.text_length, i += f.text_length;
+		free(f.text);
 	}
 
     return 0;

@@ -67,6 +67,7 @@ int descriptor_0x4d_parser(const char *payload, int len, struct dentry *parent, 
 		CREATE_FILE_STRING(dentry, &f, event_name, XATTR_FORMAT_STRING);
 		len -= f.event_name_length;
 		i += f.event_name_length;
+		free(f.event_name);
 	}
 
 	f.text_length = payload[i];
@@ -79,6 +80,7 @@ int descriptor_0x4d_parser(const char *payload, int len, struct dentry *parent, 
 		CREATE_FILE_STRING(dentry, &f, text, XATTR_FORMAT_STRING);
 		len -= f.text_length;
 		i += f.text_length;
+		free(f.text);
 	}
 
     return 0;
