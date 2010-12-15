@@ -161,6 +161,8 @@ int filesrc_set_frequency(uint32_t frequency, struct demuxfs_data *priv)
 
 /**
  * filesrc_read_parser: backend's read() method.
+ * @return 0 on success, -1 on error and -ENODATA if there's no more
+ *  data to be read.
  */
 int filesrc_read_packet(struct demuxfs_data *priv)
 {
@@ -173,7 +175,7 @@ int filesrc_read_packet(struct demuxfs_data *priv)
 			rewind(p->fp);
 			return 0;
 		}
-		return -1;
+		return -ENODATA;
 	} else if (n < 1) {
 		p->packet_valid = false;
 		perror("fread");
