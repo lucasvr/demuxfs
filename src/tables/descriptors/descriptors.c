@@ -171,6 +171,7 @@ struct descriptor *descriptors_init(struct demuxfs_data *priv)
 	ADD_DESCRIPTOR("Partial_Transport_Stream_Descriptor",      0x63, priv);
 	ADD_DESCRIPTOR("AAC_Audio_Descriptor",                     0x7c, priv);
 	/* 0x80 - 0xBF - Reserved for identification of companies */
+	ADD_DESCRIPTOR("FS_Metadata_Descriptor",                   0xa0, priv);
 	ADD_DESCRIPTOR("Hierarchical_Transmission_Descriptor",     0xc0, priv);
 	ADD_DESCRIPTOR("Digital_Copy_Control_Descriptor",          0xc1, priv);
 	ADD_DESCRIPTOR("Network_Identifier_Descriptor",            0xc2, priv);

@@ -54,6 +54,7 @@ parsers = \
     parser_0x58.c \
     parser_0x63.c \
     parser_0x7c.c \
+    parser_0xa0.c \
     parser_0xc0.c \
     parser_0xc1.c \
     parser_0xc2.c \
@@ -98,4 +99,4 @@ parsers = \
 libdescriptors_la_SOURCES  = descriptors.c services.c component_tag.c stream_type.c $(parsers)
 libdescriptors_la_SOURCES += descriptors.h services.h component_tag.h stream_type.h
 
-AM_CPPFLAGS = -I. -I../.. -I../../backends
+AM_CPPFLAGS = -I${top_srcdir}/src/tables/descriptors -I${top_srcdir}/src -I${top_srcdir}/src/backends
