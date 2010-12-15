@@ -14,4 +14,4 @@ parsers = \
 libdsmcc_descriptors_la_SOURCES  = descriptors.c broadcaster.c $(parsers)
 libdsmcc_descriptors_la_SOURCES += descriptors.h
 
-AM_CPPFLAGS = -I. -I../.. -I../../backends
+AM_CPPFLAGS = -I${top_srcdir}/src/dsm-cc/descriptors -I${top_srcdir}/src -I${top_srcidr}/src/backends
