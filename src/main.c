@@ -58,7 +58,8 @@ void * ts_parser_thread(void *userdata)
 	while (priv->backend->keep_alive(priv) && !main_thread_stopped) {
 		ret = priv->backend->read(priv);
 		if (ret < 0) {
-			dprintf("read error");
+			if (ret != -ENODATA)
+				dprintf("read error");
 			break;
 		}
 		ret = priv->backend->process(&header, &payload, priv);
