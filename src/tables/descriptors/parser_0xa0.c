@@ -33,7 +33,7 @@
 #include "descriptors.h"
 
 struct formatted_descriptor {
-	//uint8_t reference_level;
+	uint8_t reference_level;
 	char free_text[256];
 };
 
@@ -48,13 +48,15 @@ int descriptor_0xa0_parser(const char *payload, int len, struct dentry *parent,
 	if (! descriptor_is_parseable(parent, payload[0], 2, len))
 		return -ENODATA;
 
-	dentry = CREATE_DIRECTORY(parent, "FreeSurround_Descriptor");
+	dentry = CREATE_DIRECTORY(parent, "FS_Descriptor");
 
-	for (i=0; i<len; i++)
-		f.free_text[i] = payload[i+2];
-	//f.free_text[i] = '\0';
+	f.reference_level = payload[2];
 
-	//CREATE_FILE_NUMBER(dentry, &f, reference_level);
+	for (i=0; i<len && i<255; i++)
+		f.free_text[i] = payload[i+3];
+	f.free_text[i] = '\0';
+
+	CREATE_FILE_NUMBER(dentry, &f, reference_level);
 	CREATE_FILE_STRING(dentry, &f, free_text, XATTR_FORMAT_STRING);
 
     return 0;
