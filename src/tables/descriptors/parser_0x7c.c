@@ -62,45 +62,196 @@ int descriptor_0x7c_parser(const char *payload, int len, struct dentry *parent, 
 	offset = 4;
 
 	switch (d._profile_and_level) {
-		case 0x00 ... 0x27: 
+		case 0x00 ... 0x0e: 
+			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
+			break;
+		case 0x0f:
+			asprintf(&d.profile_and_level, "No audio profile and level defined for the " \
+				"associated MPEG-4 audio stream [%#x]", d._profile_and_level);
+			break;
+		case 0x10:
+			asprintf(&d.profile_and_level, "Main profile, level 1 [%#x]", d._profile_and_level);
+			break;
+		case 0x11:
+			asprintf(&d.profile_and_level, "Main profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x12:
+			asprintf(&d.profile_and_level, "Main profile, level 3 [%#x]", d._profile_and_level);
+			break;
+		case 0x13:
+			asprintf(&d.profile_and_level, "Main profile, level 4 [%#x]", d._profile_and_level);
+			break;
+		case 0x14 ... 0x17:
+			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
+			break;
+		case 0x18:
+			asprintf(&d.profile_and_level, "Scalable profile, level 1 [%#x]", d._profile_and_level);
+			break;
+		case 0x19:
+			asprintf(&d.profile_and_level, "Scalable profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x1a:
+			asprintf(&d.profile_and_level, "Scalable profile, level 3 [%#x]", d._profile_and_level);
+			break;
+		case 0x1b:
+			asprintf(&d.profile_and_level, "Scalable profile, level 4 [%#x]", d._profile_and_level);
+			break;
+		case 0x1c ... 0x1f:
+			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
+			break;
+		case 0x20:
+			asprintf(&d.profile_and_level, "Speech profile, level 1 [%#x]", d._profile_and_level);
+			break;
+		case 0x21:
+			asprintf(&d.profile_and_level, "Speech profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x22 ... 0x27:
 			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
 			break;
 		case 0x28:
-			asprintf(&d.profile_and_level, "AAC Profile L1 [%#x]", d._profile_and_level);
+			asprintf(&d.profile_and_level, "Synthesis profile, level 1 [%#x]", d._profile_and_level);
 			break;
 		case 0x29:
-			asprintf(&d.profile_and_level, "AAC Profile L2 [%#x]", d._profile_and_level);
+			asprintf(&d.profile_and_level, "Synthesis profile, level 2 [%#x]", d._profile_and_level);
 			break;
 		case 0x2a:
-			asprintf(&d.profile_and_level, "AAC Profile L4 [%#x]", d._profile_and_level);
+			asprintf(&d.profile_and_level, "Synthesis profile, level 3 [%#x]", d._profile_and_level);
 			break;
-		case 0x2b:
-			asprintf(&d.profile_and_level, "AAC Profile L5 [%#x]", d._profile_and_level);
-			break;
-		case 0x2c:
-			asprintf(&d.profile_and_level, "High Efficiency AAC Profile L2 [%#x]", d._profile_and_level);
-			break;
-		case 0x2d:
-			asprintf(&d.profile_and_level, "High Efficiency AAC Profile L3 [%#x]", d._profile_and_level);
-			break;
-		case 0x2e:
-			asprintf(&d.profile_and_level, "High Efficiency AAC Profile L4 [%#x]", d._profile_and_level);
-			break;
-		case 0x2f:
-			asprintf(&d.profile_and_level, "High Efficiency AAC Profile L5 [%#x]", d._profile_and_level);
-			break;
-		case 0x30 ... 0x7f:
+		case 0x2b ... 0x2f:
 			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
 			break;
-		case 0x80 ... 0xfd:
-			asprintf(&d.profile_and_level, "Private use [%#x]", d._profile_and_level);
+		case 0x30:
+			asprintf(&d.profile_and_level, "High quality audio profile, level 1 [%#x]", d._profile_and_level);
 			break;
-		case 0xfe:
-			asprintf(&d.profile_and_level, "Audio profile not specified [%#x]", d._profile_and_level);
+		case 0x31:
+			asprintf(&d.profile_and_level, "High quality audio profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x32:
+			asprintf(&d.profile_and_level, "High quality audio profile, level 3 [%#x]", d._profile_and_level);
+			break;
+		case 0x33:
+			asprintf(&d.profile_and_level, "High quality audio profile, level 4 [%#x]", d._profile_and_level);
+			break;
+		case 0x34:
+			asprintf(&d.profile_and_level, "High quality audio profile, level 5 [%#x]", d._profile_and_level);
+			break;
+		case 0x35:
+			asprintf(&d.profile_and_level, "High quality audio profile, level 6 [%#x]", d._profile_and_level);
+			break;
+		case 0x36:
+			asprintf(&d.profile_and_level, "High quality audio profile, level 7 [%#x]", d._profile_and_level);
+			break;
+		case 0x37:
+			asprintf(&d.profile_and_level, "High quality audio profile, level 8 [%#x]", d._profile_and_level);
+			break;
+		case 0x38:
+			asprintf(&d.profile_and_level, "Low delay audio profile, level 1 [%#x]", d._profile_and_level);
+			break;
+		case 0x39:
+			asprintf(&d.profile_and_level, "Low delay audio profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x3a:
+			asprintf(&d.profile_and_level, "Low delay audio profile, level 3 [%#x]", d._profile_and_level);
+			break;
+		case 0x3b:
+			asprintf(&d.profile_and_level, "Low delay audio profile, level 4 [%#x]", d._profile_and_level);
+			break;
+		case 0x3c:
+			asprintf(&d.profile_and_level, "Low delay audio profile, level 5 [%#x]", d._profile_and_level);
+			break;
+		case 0x3d:
+			asprintf(&d.profile_and_level, "Low delay audio profile, level 6 [%#x]", d._profile_and_level);
+			break;
+		case 0x3e:
+			asprintf(&d.profile_and_level, "Low delay audio profile, level 7 [%#x]", d._profile_and_level);
+			break;
+		case 0x3f:
+			asprintf(&d.profile_and_level, "Low delay audio profile, level 8 [%#x]", d._profile_and_level);
+			break;
+		case 0x40:
+			asprintf(&d.profile_and_level, "Natural audio profile, level 1 [%#x]", d._profile_and_level);
+			break;
+		case 0x41:
+			asprintf(&d.profile_and_level, "Natural audio profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x42:
+			asprintf(&d.profile_and_level, "Natural audio profile, level 3 [%#x]", d._profile_and_level);
+			break;
+		case 0x43:
+			asprintf(&d.profile_and_level, "Natural audio profile, level 4 [%#x]", d._profile_and_level);
+			break;
+		case 0x44 ... 0x47:
+			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
+			break;
+		case 0x48:
+			asprintf(&d.profile_and_level, "Mobile audio internetworking profile, level 1 [%#x]", d._profile_and_level);
+			break;
+		case 0x49:
+			asprintf(&d.profile_and_level, "Mobile audio internetworking profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x4a:
+			asprintf(&d.profile_and_level, "Mobile audio internetworking profile, level 3 [%#x]", d._profile_and_level);
+			break;
+		case 0x4b:
+			asprintf(&d.profile_and_level, "Mobile audio internetworking profile, level 4 [%#x]", d._profile_and_level);
+			break;
+		case 0x4c:
+			asprintf(&d.profile_and_level, "Mobile audio internetworking profile, level 5 [%#x]", d._profile_and_level);
+			break;
+		case 0x4d:
+			asprintf(&d.profile_and_level, "Mobile audio internetworking profile, level 6 [%#x]", d._profile_and_level);
+			break;
+		case 0x4e ... 0x4f:
+			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
+			break;
+		case 0x50:
+			asprintf(&d.profile_and_level, "AAC profile, level 1 [%#x]", d._profile_and_level);
+			break;
+		case 0x51:
+			asprintf(&d.profile_and_level, "AAC profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x52:
+			asprintf(&d.profile_and_level, "AAC profile, level 3 [%#x]", d._profile_and_level);
+			break;
+		case 0x53:
+			asprintf(&d.profile_and_level, "AAC profile, level 4 [%#x]", d._profile_and_level);
+			break;
+		case 0x54 ... 0x57:
+			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
+			break;
+		case 0x58:
+			asprintf(&d.profile_and_level, "High efficiency AAC profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x59:
+			asprintf(&d.profile_and_level, "High efficiency AAC profile, level 3 [%#x]", d._profile_and_level);
+			break;
+		case 0x5a:
+			asprintf(&d.profile_and_level, "High efficiency AAC profile, level 4 [%#x]", d._profile_and_level);
+			break;
+		case 0x5b:
+			asprintf(&d.profile_and_level, "High efficiency AAC profile, level 5 [%#x]", d._profile_and_level);
+			break;
+		case 0x5c ... 0x5f:
+			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
+			break;
+		case 0x60:
+			asprintf(&d.profile_and_level, "High efficiency AAC v2 profile, level 2 [%#x]", d._profile_and_level);
+			break;
+		case 0x61:
+			asprintf(&d.profile_and_level, "High efficiency AAC v2 profile, level 3 [%#x]", d._profile_and_level);
+			break;
+		case 0x62:
+			asprintf(&d.profile_and_level, "High efficiency AAC v2 profile, level 4 [%#x]", d._profile_and_level);
+			break;
+		case 0x63:
+			asprintf(&d.profile_and_level, "High efficiency AAC v2 profile, level 5 [%#x]", d._profile_and_level);
+			break;
+		case 0x64 ... 0xfe:
+			asprintf(&d.profile_and_level, "Reserved [%#x]", d._profile_and_level);
 			break;
 		case 0xff:
 		default:
-			asprintf(&d.profile_and_level, "Audio description is not available [%#x]", d._profile_and_level);
+			asprintf(&d.profile_and_level, "Audio profile and level not specified [%#x]", d._profile_and_level);
 	}
 	if (d.profile_and_level) {
 		CREATE_FILE_STRING(dentry, &d, profile_and_level, XATTR_FORMAT_STRING_AND_NUMBER);
