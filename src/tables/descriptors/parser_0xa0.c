@@ -45,20 +45,23 @@ int descriptor_0xa0_parser(const char *payload, int len, struct dentry *parent,
 	struct formatted_descriptor f;
 	int i;
 	
-	if (! descriptor_is_parseable(parent, payload[0], 2, len))
+	if (! descriptor_is_parseable(parent, payload[0], 3, len))
 		return -ENODATA;
 
 	dentry = CREATE_DIRECTORY(parent, "FS_Descriptor");
 
 	f.reference_level = payload[2];
 
-	for (i=0; i<len && i<255; i++)
-		f.free_text[i] = payload[i+3];
-	f.free_text[i] = '\0';
-
 	CREATE_FILE_NUMBER(dentry, &f, reference_level);
-	CREATE_FILE_STRING(dentry, &f, free_text, XATTR_FORMAT_STRING);
 
-    return 0;
+	if (len > 1) {
+		for (i=0; i<len-1 && i<255; i++)
+			f.free_text[i] = payload[i+3];
+		f.free_text[i] = '\0';
+
+		CREATE_FILE_STRING(dentry, &f, free_text, XATTR_FORMAT_STRING);
+	}
+
+	return 0;
 }
 
