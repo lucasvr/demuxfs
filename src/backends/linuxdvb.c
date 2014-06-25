@@ -42,6 +42,11 @@
 #define LINUXDVB_DEFAULT_QPSK_VOLTAGE     13
 #define LINUXDVB_DEFAULT_QPSK_TONE        0
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,0,0)
+#undef  DVB_API_VERSION
+#define DVB_API_VERSION 5
+#endif
+
 struct input_parser {
 	char *frontend_device;
 	char *demux_device;
@@ -57,6 +62,9 @@ struct input_parser {
 	bool packet_valid;
 	uint8_t packet_size;
 };
+
+static int linuxdvb_set_frequency_v3(uint32_t frequency, struct demuxfs_data *priv);
+static int linuxdvb_set_frequency_v5(uint32_t frequency, struct demuxfs_data *priv);
 
 /**
  * Command line parsing routines.
@@ -97,6 +105,65 @@ static struct fuse_opt linuxdvb_opts[] = {
 static int linuxdvb_parse_opts(void *priv, const char *arg, int key, struct fuse_args *outargs)
 {
 	return 1;
+}
+
+#define TEST_AND_STRINGIFY(type) case type: return #type
+
+static const char *linuxdvb_delivery_type(int type) {
+	switch (type) {
+		TEST_AND_STRINGIFY(SYS_ATSC);
+		TEST_AND_STRINGIFY(SYS_DVBC_ANNEX_A);
+		TEST_AND_STRINGIFY(SYS_DVBC_ANNEX_B);
+		TEST_AND_STRINGIFY(SYS_DVBC_ANNEX_C);
+		TEST_AND_STRINGIFY(SYS_DVBH);
+		TEST_AND_STRINGIFY(SYS_DVBS);
+		TEST_AND_STRINGIFY(SYS_DVBS2);
+		TEST_AND_STRINGIFY(SYS_DVBT);
+		TEST_AND_STRINGIFY(SYS_DVBT2);
+		TEST_AND_STRINGIFY(SYS_DSS);
+		TEST_AND_STRINGIFY(SYS_ISDBT);
+		TEST_AND_STRINGIFY(SYS_TURBO);
+		default: return "UNKNOWN";
+	}
+}
+
+static void linuxdvb_get_frontend_status(int status, char *buf, size_t size)
+{
+	char *ptr = buf;
+	size_t count, n = size-1;
+
+	memset(buf, 0, size);
+	if (status & FE_HAS_SIGNAL) {
+		count = snprintf(ptr, n, "HAS_SIGNAL,");
+		ptr += count, n -= count;
+	}
+	if (status & FE_HAS_CARRIER) {
+		count = snprintf(ptr, n, "HAS_CARRIER,");
+		ptr += count, n -= count;
+	if (status & FE_HAS_VITERBI)
+		count = snprintf(ptr, n, "HAS_VITERBI,");
+		ptr += count, n -= count;
+	}
+	if (status & FE_HAS_SYNC) {
+		count = snprintf(ptr, n, "HAS_SYNC,");
+		ptr += count, n -= count;
+	}
+	if (status & FE_HAS_LOCK) {
+		count = snprintf(ptr, n, "HAS_LOCK,");
+		ptr += count, n -= count;
+	}
+	if (status & FE_TIMEDOUT) {
+		count = snprintf(ptr, n, "TIMEDOUT,");
+		ptr += count, n -= count;
+	}
+	if (status & FE_REINIT) {
+		count = snprintf(ptr, n, "REINIT,");
+		ptr += count, n -= count;
+	}
+	if (ptr == buf)
+		snprintf(ptr, n, "UNKNOWN");
+	else
+		ptr[strlen(ptr)-1] = '\0';
 }
 
 /**
@@ -231,10 +298,34 @@ int linuxdvb_destroy_parser(struct demuxfs_data *priv)
 	return 0;
 }
 
+#define DECLARE_PROPERTY(varname,command) \
+	struct dtv_properties varname; \
+	struct dtv_property command_property; \
+	memset(&properties, 0, sizeof(properties)); \
+	properties.num = 1; \
+	properties.props = &command_property; \
+	properties.props[0].cmd = command
+
 /**
  * linuxdvb_set_frequency: backend's set_frequency() method.
  */
 int linuxdvb_set_frequency(uint32_t frequency, struct demuxfs_data *priv)
+{
+	struct input_parser *p = priv->parser;
+	int ret;
+
+	DECLARE_PROPERTY(properties, DTV_API_VERSION);
+	ret = ioctl(p->frontend_fd, FE_GET_PROPERTY, &properties);
+	if (ret == 0 && (properties.props[0].u.data & 0x500) == 0x500) {
+		fprintf(stderr, "APIv5\n");
+		return linuxdvb_set_frequency_v5(frequency, priv);
+	} else {
+		fprintf(stderr, "APIv3\n");
+		return linuxdvb_set_frequency_v3(frequency, priv);
+	}
+}
+
+static int linuxdvb_set_frequency_v3(uint32_t frequency, struct demuxfs_data *priv)
 {
 	struct input_parser *p = priv->parser;
 	struct dvb_frontend_parameters params;
@@ -245,6 +336,7 @@ int linuxdvb_set_frequency(uint32_t frequency, struct demuxfs_data *priv)
 	struct pollfd pollfd;
 	int ret;
 
+	memset(&info, 0, sizeof(info));
 	ret = ioctl(p->frontend_fd, FE_GET_INFO, &info);
 	if (ret < 0) {
 		perror("FE_GET_INFO");
@@ -331,6 +423,113 @@ int linuxdvb_set_frequency(uint32_t frequency, struct demuxfs_data *priv)
 		fprintf(stderr, "Timed out tuning to frequency %d\n", p->frequency);
 		return -ETIMEDOUT;
 	}
+}
+
+static int linuxdvb_set_frequency_v5(uint32_t frequency, struct demuxfs_data *priv)
+{
+	struct input_parser *p = priv->parser;
+	struct dvb_frontend_parameters params;
+	fe_sec_voltage_t voltage;
+	fe_sec_tone_mode_t tone;
+	int ret;
+
+	DECLARE_PROPERTY(properties, DTV_DELIVERY_SYSTEM);
+	ret = ioctl(p->frontend_fd, FE_GET_PROPERTY, &properties);
+	if (ret < 0) {
+		perror("FE_GET_PROPERTY");
+		return -errno;
+	}
+
+	memset(&params, 0, sizeof(params));
+	params.frequency = p->frequency;
+	params.inversion = INVERSION_AUTO;
+
+	switch (properties.props[0].u.data) {
+		// OFDM delivery type
+		case SYS_DVBT:
+		case SYS_DVBT2:
+		case SYS_DVBH:
+		case SYS_ISDBT:
+			params.u.ofdm.bandwidth = BANDWIDTH_AUTO;
+			params.u.ofdm.code_rate_HP = FEC_AUTO;
+			params.u.ofdm.code_rate_LP = FEC_AUTO;
+			params.u.ofdm.constellation = QAM_AUTO;
+			params.u.ofdm.transmission_mode = TRANSMISSION_MODE_AUTO;
+			params.u.ofdm.guard_interval = GUARD_INTERVAL_AUTO;
+			params.u.ofdm.hierarchy_information = HIERARCHY_AUTO;
+			break;
+		// QPSK delivery type
+		case SYS_DSS:
+		case SYS_DVBS:
+		case SYS_DVBS2:
+		case SYS_TURBO:
+			params.u.qpsk.symbol_rate = p->symbol_rate;
+			params.u.qpsk.fec_inner = FEC_AUTO;
+			voltage = p->qpsk_voltage == 13 ? SEC_VOLTAGE_13 : SEC_VOLTAGE_18;
+			tone = p->qpsk_tone == 0 ? SEC_TONE_OFF : SEC_TONE_ON;
+
+			ret = ioctl(p->frontend_fd, FE_SET_VOLTAGE, voltage);
+			if (ret < 0) {
+				perror("FE_SET_VOLTAGE");
+				return -errno;
+			}
+			ret = ioctl(p->frontend_fd, FE_SET_TONE, tone);
+			if (ret < 0) {
+				perror("FE_SET_TONE");
+				return -errno;
+			}
+			break;
+		// QAM delivery type
+		case SYS_DVBC_ANNEX_A:
+		case SYS_DVBC_ANNEX_C:
+			params.inversion = INVERSION_OFF;
+			params.u.qam.symbol_rate = p->symbol_rate;
+			params.u.qam.fec_inner = FEC_AUTO;
+			params.u.qam.modulation = QAM_AUTO;
+			break;
+		// ATSC delivery type
+		case SYS_ATSC:
+		case SYS_DVBC_ANNEX_B:
+			/* Not tested */
+			break;
+		default:
+			fprintf(stderr, "Unknown frontend type '%#x'\n", properties.props[0].u.data);
+			return -ECANCELED;
+	}
+
+	fprintf(stderr, "Setting delivery type to %s\n", linuxdvb_delivery_type(properties.props[0].u.data));
+	ret = ioctl(p->frontend_fd, FE_SET_PROPERTY, &properties);
+	if (ret < 0) {
+		perror("FE_SET_PROPERTY");
+		return -errno;
+	}
+
+	fprintf(stdout, "Setting frequency to %d...\n", p->frequency);
+	ret = ioctl(p->frontend_fd, FE_SET_FRONTEND, &params);
+	if (ret < 0) {
+		perror("FE_SET_FRONTEND");
+		return -errno;
+	}
+
+	fe_status_t status;
+	char fe_status[256]; 
+	while (true) {
+		ret = ioctl(p->frontend_fd, FE_READ_STATUS, &status);
+		if (ret < 0) {
+			perror("FE_READ_STATUS");
+			return -errno;
+		}
+		if (status & FE_HAS_LOCK) {
+			fprintf(stderr, "Tuner successfully set to frequency %d\n", p->frequency);
+			return 0;
+		}
+		linuxdvb_get_frontend_status(status, fe_status, sizeof(fe_status));
+		fprintf(stdout, "Waiting to get a lock on the frontend... (status=%s)\n", fe_status);
+		usleep(1000000);
+	}
+
+	fprintf(stderr, "Timed out tuning to frequency %d\n", p->frequency);
+	return -ETIMEDOUT;
 }
 
 /**

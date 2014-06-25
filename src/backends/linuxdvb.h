@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <linux/dvb/frontend.h>
 #include <linux/dvb/dmx.h>
+#include <linux/version.h>
 
 #endif /* USE_LINUXDVB */
 
