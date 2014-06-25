@@ -53,8 +53,13 @@ static int _snapshot_save_to_dentry(struct dentry *dentry)
 		xsize, ysize, PIX_FMT_RGB24,
 		SWS_FAST_BILINEAR, NULL, NULL, NULL);
 
-    sws_scale(img_convert_ctx, ctx->picture->data, ctx->picture->linesize, 0,
-        ysize, rgb_picture->data, rgb_picture->linesize);
+    sws_scale(
+		img_convert_ctx, 
+		(const uint8_t * const *) ctx->picture->data, 
+		ctx->picture->linesize, 
+		0, ysize, 
+		rgb_picture->data, 
+		rgb_picture->linesize);
 
 	/* Prepare the PPM header */
 	snprintf(header, sizeof(header), "P6\n%d %d\n%d\n", xsize, ysize, 255);
@@ -93,8 +98,7 @@ int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv)
 
 	if (ctx) {
 		while (av_read_frame(ctx->format_context, &ctx->packet) >= 0) {
-			avcodec_decode_video(ctx->c, ctx->picture, &got_picture, 
-					ctx->packet.data, ctx->packet.size);
+			avcodec_decode_video2(ctx->c, ctx->picture, &got_picture, &ctx->packet);
 			if (got_picture && ++i > 10) {
 				/* Store the decoded picture in the dentry memory */
 				ret = _snapshot_save_to_dentry(dentry);
@@ -113,7 +117,7 @@ void snapshot_destroy_video_context(struct dentry *dentry)
 	struct snapshot_context *ctx = priv_data->snapshot_ctx;
 	if (ctx) {
 		if (ctx->format_context)
-			av_close_input_file(ctx->format_context);
+			avformat_close_input(&ctx->format_context);
 		if (ctx->c) {
 			avcodec_close(ctx->c);
 			ctx->c = NULL;
@@ -163,20 +167,21 @@ int snapshot_init_video_context(struct dentry *dentry)
 	if (! path_to_fifo)
 		goto out_free;
 
-	ret = av_open_input_file(&ctx->format_context, path_to_fifo, ctx->input_format, 0, NULL);
+	ctx->format_context = NULL;
+	ret = avformat_open_input(&ctx->format_context, path_to_fifo, ctx->input_format, NULL);
 	if (ret != 0) {
         dprintf("H.264 input stream not found");
 		goto out_free;
 	}
 
-	ret = av_find_stream_info(ctx->format_context);
+	ret = avformat_find_stream_info(ctx->format_context, NULL);
 	if (ret < 0) {
 		dprintf("Could not find H.264 codec parameters");
 		goto out_free;
 	}
 
 	for (i=0; i < ctx->format_context->nb_streams; i++)
-		if (ctx->format_context->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO) {
+		if (ctx->format_context->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO) {
 			video_stream = i;
 			break;
 		}
@@ -192,7 +197,7 @@ int snapshot_init_video_context(struct dentry *dentry)
 		goto out_free;
     }
 
-	ret = avcodec_open(ctx->c, ctx->codec);
+	ret = avcodec_open2(ctx->c, ctx->codec, NULL);
 	if (ret < 0) {
 		dprintf("Could not open H.264 codec");
 		goto out_free;
