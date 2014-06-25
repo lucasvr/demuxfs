@@ -286,7 +286,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 
 			if (buffer) {
 				int ret = buffer_append(buffer, start, end - start + 1);
-				if (buffer_contains_full_psi_section(buffer)) {
+				if (ret >= 0 && buffer_contains_full_psi_section(buffer)) {
 					table_id = buffer->data[0];
 					if (! crc32_check(buffer->data, buffer->current_size) && 
 						priv->options.verbose_mask & CRC_ERROR)
