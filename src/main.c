@@ -116,7 +116,6 @@ void * demuxfs_init(struct fuse_conn_info *conn)
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
 
 #ifdef USE_FFMPEG
-	avcodec_init();
 	avcodec_register_all();
 #endif
 	priv->psi_tables = hashtable_new(DEMUXFS_MAX_PIDS);

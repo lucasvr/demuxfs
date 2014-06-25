@@ -4,10 +4,10 @@ dnl Based on the work done by Iuri Gomes Diniz.
 dnl
 AC_INIT([DEMUXFS], [0.1], [lucasvr@gobolinux.org])
 AC_CONFIG_AUX_DIR([build-aux])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_PROG_CC_C99
+AM_PROG_AR
+AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_PROG_LIBTOOL
-
 
 dnl
 dnl Check for LibFUSE (mandatory)
@@ -19,7 +19,7 @@ then
 fi
 if test "x${PKG_CONFIG}" = "xno"
 then
-	AC_MSG_ERROR([pkg-config wasn't found! Please install from your vendor, or see http://pkg-config.freedesktop.org/wiki/])
+	AC_MSG_ERROR([pkg-config was not found! Please install from your vendor, or see http://pkg-config.freedesktop.org/wiki/])
 fi
 PKG_CHECK_MODULES([FUSE_MODULE], 
 	[fuse >= 2.6.0], ,
@@ -40,13 +40,34 @@ PKG_CHECK_MODULES([LIBAVCODEC_MODULE], [libavcodec >= 52.7.0], ffmpeg_found="yes
 if test ! -z "${ffmpeg_found}"
 then
 	dnl
-	dnl Check for libswscale
+	dnl Check for libavcodec
 	dnl
+	libavcodec=no
+	AC_MSG_CHECKING([libavcodec])
 	FFMPEG_LIBS=`$PKG_CONFIG --libs libavcodec`
 	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavcodec`
+	PKG_CHECK_MODULES([LIBAVCODEC_MODULE], [libavcodec >= 0.7.1], libavcodec_found="yes", 
+					  AC_MSG_RESULT([FFmpeg was compiled with no support for libavcodec.]))
+	AVCODEC_LIBS=`$PKG_CONFIG --libs libavcodec`
 
+	dnl
+	dnl Check for libavutil
+	dnl
+	libavutil_found=no
+	AC_MSG_CHECKING([libavutil])
+	FFMPEG_LIBS=`$PKG_CONFIG --libs libavutil`
+	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavutil`
+	PKG_CHECK_MODULES([LIBAVUTIL_MODULE], [libavutil >= 0.7.1], libavutil_found="yes", 
+					  AC_MSG_RESULT([FFmpeg was compiled with no support for libavutil.]))
+	AVUTIL_LIBS=`$PKG_CONFIG --libs libavutil`
+
+	dnl
+	dnl Check for libswscale
+	dnl
 	libswscale_found=no
 	AC_MSG_CHECKING([libswscale])
+	FFMPEG_LIBS=`$PKG_CONFIG --libs libavcodec`
+	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavcodec`
 	PKG_CHECK_MODULES([LIBSWSCALE_MODULE], [libswscale >= 0.7.1], libswscale_found="yes", 
 					  AC_MSG_RESULT([FFmpeg was compiled with no support for libswscale.]))
 	SWSCALE_LIBS=`$PKG_CONFIG --libs libswscale`
@@ -54,16 +75,16 @@ then
 	dnl
 	dnl Check for libavformat
 	dnl
-	FFMPEG_LIBS=`$PKG_CONFIG --libs libavformat`
-	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavformat`
-
 	libavformat_found=no
 	AC_MSG_CHECKING([libavformat])
+	FFMPEG_LIBS=`$PKG_CONFIG --libs libavformat`
+	FFMPEG_CFLAGS=`$PKG_CONFIG --cflags libavformat`
 	PKG_CHECK_MODULES([LIBAVFORMAT_MODULE], [libavformat >= 0.7.1], libavformat_found="yes", 
 					  AC_MSG_RESULT([FFmpeg libavformat was not found.]))
 	AVFORMAT_LIBS=`$PKG_CONFIG --libs libavformat`
 
-	if test "x$libswscale_found" != "xno" && test "x$libavformat_found" != "xno"
+	if test "x$libswscale_found" != "xno" && test "x$libavformat_found" != "xno" &&
+       test "x$libavutil_found" != "xno" && test "x$libavcodec_found" != "xno"
 	then
 		CFLAGS="${CFLAGS} -DUSE_FFMPEG"
 	fi
@@ -121,7 +142,7 @@ dnl
 dnl Update flags
 dnl
 CFLAGS="${CFLAGS} ${FUSE_CFLAGS} ${FFMPEG_CFLAGS} -ggdb -O3 -Wall"
-LDFLAGS="${LDFLAGS} ${FUSE_LIBS} ${FFMPEG_LIBS} ${SWSCALE_LIBS} ${AVFORMAT_LIBS}"
+LDFLAGS="${LDFLAGS} ${FUSE_LIBS} ${FFMPEG_LIBS} ${AVCODEC_LIBS} ${AVUTIL_LIBS} ${SWSCALE_LIBS} ${AVFORMAT_LIBS}"
 
 dnl
 dnl Output files
