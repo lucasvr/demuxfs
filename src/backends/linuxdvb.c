@@ -338,6 +338,9 @@ int linuxdvb_set_frequency(uint32_t frequency, struct demuxfs_data *priv)
 	struct input_parser *p = priv->parser;
 	int ret;
 
+	if (p->frontend_fd < 0)
+		return 0;
+
 	DECLARE_PROPERTY(properties, DTV_API_VERSION);
 	ret = ioctl(p->frontend_fd, FE_GET_PROPERTY, &properties);
 	if (ret == 0 && (properties.props[0].u.data & 0x500) == 0x500) {
@@ -622,13 +625,13 @@ bool linuxdvb_keep_alive(struct demuxfs_data *priv)
 }
 
 struct backend_ops linuxdvb_backend_ops = {
-	.create = linuxdvb_create_parser,
-	.destroy = linuxdvb_destroy_parser,
+	.create        = linuxdvb_create_parser,
+	.destroy       = linuxdvb_destroy_parser,
 	.set_frequency = linuxdvb_set_frequency,
-	.read = linuxdvb_read_packet,
-	.process = linuxdvb_process_packet,
-	.keep_alive = linuxdvb_keep_alive,
-	.usage = linuxdvb_usage,
+	.read          = linuxdvb_read_packet,
+	.process       = linuxdvb_process_packet,
+	.keep_alive    = linuxdvb_keep_alive,
+	.usage         = linuxdvb_usage,
 };
 
 struct backend_ops *backend_get_ops(void)
