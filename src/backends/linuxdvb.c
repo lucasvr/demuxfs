@@ -300,11 +300,35 @@ int linuxdvb_destroy_parser(struct demuxfs_data *priv)
 
 #define DECLARE_PROPERTY(varname,command) \
 	struct dtv_properties varname; \
-	struct dtv_property command_property; \
-	memset(&properties, 0, sizeof(properties)); \
-	properties.num = 1; \
-	properties.props = &command_property; \
-	properties.props[0].cmd = command
+	struct dtv_property varname ## _ ## command; \
+	memset(&varname, 0, sizeof(varname)); \
+	varname.num = 1; \
+	varname.props = &varname ## _ ## command; \
+	varname.props[0].cmd = command
+
+#define DECLARE_PROPERTIES(varname,n) \
+	int varname ## _count = n; \
+	struct dtv_properties varname; \
+	struct dtv_property varname ## _props[varname ## _count]; \
+	memset(&varname, 0, sizeof(varname)); \
+	memset(varname ## _props, 0, sizeof(varname ## _props)); \
+	varname.num = varname ## _count; \
+	varname.props = varname ## _props
+
+#define PUSH_PROPERTY(varname,idx,command,value) do { \
+	int varname ## _count = idx; \
+	varname.props[varname ## _count].cmd = command; \
+	varname.props[varname ## _count].u.data = value; \
+} while(0)
+
+#define UPDATE_PROPERTY(varname,command,value) do { \
+	for (int p=0; p<varname.num; ++p) { \
+		if (varname.props[p].cmd == command) { \
+			varname.props[p].u.data = value; \
+			break; \
+		} \
+	} \
+} while(0)
 
 /**
  * linuxdvb_set_frequency: backend's set_frequency() method.
@@ -428,64 +452,85 @@ static int linuxdvb_set_frequency_v3(uint32_t frequency, struct demuxfs_data *pr
 static int linuxdvb_set_frequency_v5(uint32_t frequency, struct demuxfs_data *priv)
 {
 	struct input_parser *p = priv->parser;
-	struct dvb_frontend_parameters params;
 	fe_sec_voltage_t voltage;
 	fe_sec_tone_mode_t tone;
 	int ret;
-
-	DECLARE_PROPERTY(properties, DTV_DELIVERY_SYSTEM);
-	ret = ioctl(p->frontend_fd, FE_GET_PROPERTY, &properties);
+	
+	DECLARE_PROPERTY(curr_prop, DTV_DELIVERY_SYSTEM);
+	ret = ioctl(p->frontend_fd, FE_GET_PROPERTY, &curr_prop);
 	if (ret < 0) {
 		perror("FE_GET_PROPERTY");
 		return -errno;
 	}
+	int delivery = curr_prop.props[0].u.data;
 
-	memset(&params, 0, sizeof(params));
-	params.frequency = p->frequency;
-	params.inversion = INVERSION_AUTO;
+	int idx = 0;
+	DECLARE_PROPERTIES(new_prop, 64);
+	PUSH_PROPERTY(new_prop, idx++, DTV_CLEAR,             0);
+	PUSH_PROPERTY(new_prop, idx++, DTV_DELIVERY_SYSTEM,   delivery);
+	PUSH_PROPERTY(new_prop, idx++, DTV_FREQUENCY,         p->frequency);
+	PUSH_PROPERTY(new_prop, idx++, DTV_BANDWIDTH_HZ,      BANDWIDTH_AUTO);
+	PUSH_PROPERTY(new_prop, idx++, DTV_TRANSMISSION_MODE, TRANSMISSION_MODE_AUTO);
+	PUSH_PROPERTY(new_prop, idx++, DTV_GUARD_INTERVAL,    GUARD_INTERVAL_AUTO);
+	PUSH_PROPERTY(new_prop, idx++, DTV_INVERSION,         INVERSION_AUTO);
 
-	switch (properties.props[0].u.data) {
+	switch (delivery) {
 		// OFDM delivery type
+		case SYS_ISDBT:
+			// Supported transmission modes: 8k, 4k, 2k.
+			// Supported bandwidths: 6MHz
+			UPDATE_PROPERTY(new_prop,      DTV_BANDWIDTH_HZ,                   6000000);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_SOUND_BROADCASTING,       0);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_PARTIAL_RECEPTION,        0);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYER_ENABLED,            7); // 0x1:LayerA, 0x2:LayerB, 0x4:LayerC
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_SB_SUBCHANNEL_ID,         0); // applies if SOUND_BROADCASTING=1
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_SB_SEGMENT_IDX,           0); // applies if SOUND_BROADCASTING=1
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_SB_SEGMENT_COUNT,         0); // applies if SOUND_BROADCASTING=1
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERA_FEC,               FEC_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERA_MODULATION,        QAM_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERA_SEGMENT_COUNT,     0);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERA_TIME_INTERLEAVING, 0);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERB_FEC,               FEC_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERB_MODULATION,        QAM_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERB_SEGMENT_COUNT,     0);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERB_TIME_INTERLEAVING, 0);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERC_FEC,               FEC_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERC_MODULATION,        QAM_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERC_SEGMENT_COUNT,     0);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ISDBT_LAYERC_TIME_INTERLEAVING, 0);
+			break;
 		case SYS_DVBT:
 		case SYS_DVBT2:
 		case SYS_DVBH:
-		case SYS_ISDBT:
-			params.u.ofdm.bandwidth = BANDWIDTH_AUTO;
-			params.u.ofdm.code_rate_HP = FEC_AUTO;
-			params.u.ofdm.code_rate_LP = FEC_AUTO;
-			params.u.ofdm.constellation = QAM_AUTO;
-			params.u.ofdm.transmission_mode = TRANSMISSION_MODE_AUTO;
-			params.u.ofdm.guard_interval = GUARD_INTERVAL_AUTO;
-			params.u.ofdm.hierarchy_information = HIERARCHY_AUTO;
+			PUSH_PROPERTY(new_prop, idx++, DTV_MODULATION,   QAM_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_SYMBOL_RATE,  p->symbol_rate);
+			PUSH_PROPERTY(new_prop, idx++, DTV_HIERARCHY,    HIERARCHY_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ROLLOFF,      ROLLOFF_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_PILOT,        PILOT_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_INNER_FEC,    FEC_AUTO);
 			break;
+
 		// QPSK delivery type
 		case SYS_DSS:
 		case SYS_DVBS:
 		case SYS_DVBS2:
 		case SYS_TURBO:
-			params.u.qpsk.symbol_rate = p->symbol_rate;
-			params.u.qpsk.fec_inner = FEC_AUTO;
 			voltage = p->qpsk_voltage == 13 ? SEC_VOLTAGE_13 : SEC_VOLTAGE_18;
 			tone = p->qpsk_tone == 0 ? SEC_TONE_OFF : SEC_TONE_ON;
-
-			ret = ioctl(p->frontend_fd, FE_SET_VOLTAGE, voltage);
-			if (ret < 0) {
-				perror("FE_SET_VOLTAGE");
-				return -errno;
-			}
-			ret = ioctl(p->frontend_fd, FE_SET_TONE, tone);
-			if (ret < 0) {
-				perror("FE_SET_TONE");
-				return -errno;
-			}
+			PUSH_PROPERTY(new_prop, idx++, DTV_VOLTAGE,      voltage);
+			PUSH_PROPERTY(new_prop, idx++, DTV_TONE,         tone);
+			PUSH_PROPERTY(new_prop, idx++, DTV_MODULATION,   QAM_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_SYMBOL_RATE,  p->symbol_rate);
+			PUSH_PROPERTY(new_prop, idx++, DTV_HIERARCHY,    HIERARCHY_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_ROLLOFF,      ROLLOFF_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_PILOT,        PILOT_AUTO);
+			PUSH_PROPERTY(new_prop, idx++, DTV_INNER_FEC,    FEC_AUTO);
 			break;
+
 		// QAM delivery type
 		case SYS_DVBC_ANNEX_A:
 		case SYS_DVBC_ANNEX_C:
-			params.inversion = INVERSION_OFF;
-			params.u.qam.symbol_rate = p->symbol_rate;
-			params.u.qam.fec_inner = FEC_AUTO;
-			params.u.qam.modulation = QAM_AUTO;
+			UPDATE_PROPERTY(new_prop,      DTV_INVERSION,    INVERSION_OFF);
 			break;
 		// ATSC delivery type
 		case SYS_ATSC:
@@ -493,21 +538,17 @@ static int linuxdvb_set_frequency_v5(uint32_t frequency, struct demuxfs_data *pr
 			/* Not tested */
 			break;
 		default:
-			fprintf(stderr, "Unknown frontend type '%#x'\n", properties.props[0].u.data);
+			fprintf(stderr, "Unknown frontend type '%#x'\n", delivery);
 			return -ECANCELED;
 	}
 
-	fprintf(stderr, "Setting delivery type to %s\n", linuxdvb_delivery_type(properties.props[0].u.data));
-	ret = ioctl(p->frontend_fd, FE_SET_PROPERTY, &properties);
+	PUSH_PROPERTY(new_prop, idx++, DTV_TUNE, 0);
+
+	fprintf(stdout, "%s: setting frequency to %d...\n", linuxdvb_delivery_type(delivery), p->frequency);
+	new_prop.num = idx;
+	ret = ioctl(p->frontend_fd, FE_SET_PROPERTY, &new_prop);
 	if (ret < 0) {
 		perror("FE_SET_PROPERTY");
-		return -errno;
-	}
-
-	fprintf(stdout, "Setting frequency to %d...\n", p->frequency);
-	ret = ioctl(p->frontend_fd, FE_SET_FRONTEND, &params);
-	if (ret < 0) {
-		perror("FE_SET_FRONTEND");
 		return -errno;
 	}
 
