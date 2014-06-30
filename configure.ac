@@ -5,7 +5,7 @@ dnl
 AC_INIT([DEMUXFS], [0.1], [lucasvr@gobolinux.org])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_PROG_CC_C99
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_PROG_LIBTOOL
 
