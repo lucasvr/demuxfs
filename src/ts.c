@@ -246,7 +246,7 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 				return -ENOBUFS;
 			}
 			section_length = CONVERT_TO_16(start[1], start[2]) & 0x0fff;
-			if (pointer_field > 0) {
+			if ((int) pointer_field > 0) {
 				end = payload_start + pointer_field;
 			} else {
 				is_new_packet = true;

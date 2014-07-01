@@ -261,7 +261,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 				}
 				CREATE_FILE_STRING(dentry, &desc, protocol_id, XATTR_FORMAT_STRING_AND_NUMBER);
 				CREATE_FILE_NUMBER(dentry, &desc, transport_protocol_label);
-				if ((len - 3) > 0) {
+				if (((int) len - 3) > 0) {
 					uint8_t i = 0;
 					uint8_t url_number = 1;
 					struct dentry *subdir;

@@ -497,7 +497,7 @@ int biop_parse_profile_body(struct iop_tagged_profile *profile, const char *buf,
 	j += biop_parse_object_location(&pb->object_location, &buf[j], len-j);
 	j += biop_parse_connbinder(&pb->connbinder, &buf[j], len-j);
 	
-	if (pb->component_count-2 > 0) {
+	if ((int) pb->component_count-2 > 0) {
 		dprintf("component_count=%d, but LiteOptionsComponent() parser is not implemented.",
 			pb->component_count);
 	}

@@ -190,7 +190,7 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		CREATE_FILE_NUMBER(event_dentry, this_event, free_ca_mode);
 		CREATE_FILE_NUMBER(event_dentry, this_event, descriptors_loop_length);
 
-		uint16_t loop_length = this_event->descriptors_loop_length;
+		int loop_length = this_event->descriptors_loop_length;
 		while (loop_length > 0) {
 			uint16_t desc_length = descriptors_parse(&payload[i], 1, event_dentry, priv);
 			loop_length -= desc_length;

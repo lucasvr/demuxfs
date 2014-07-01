@@ -69,14 +69,14 @@ bool descriptor_is_parseable(struct dentry *dentry, uint8_t tag, int expected, i
 
 int descriptors_count(const char *payload, uint16_t info_length)
 {
-	int num = 0;
+	int num = 0, len = (int) info_length;
 	const char *p = payload;
-	while (info_length > 0) {
-		if (info_length < 2)
+	while (len > 0) {
+		if (len < 2)
 			return 0;
-		if (info_length < 2 + p[1])
+		if (len < 2 + p[1])
 			return 0;
-		info_length -= 2 + p[1];
+		len -= 2 + p[1];
 		p += 2 + p[1];
 		num++;
 	}
