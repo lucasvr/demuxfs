@@ -265,10 +265,10 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	pmt->num_descriptors = descriptors_count(&payload[12], pmt->program_information_length);
 	pmt_create_directory(header, pmt, &version_dentry, priv);
 
-	uint8_t descriptors_len = descriptors_parse(&payload[12], pmt->num_descriptors, 
+	uint32_t descriptors_len = descriptors_parse(&payload[12], pmt->num_descriptors, 
 			version_dentry, priv);
 
-	uint8_t offset = 12 + descriptors_len;
+	uint32_t offset = 12 + descriptors_len;
 	pmt->num_programs = 0;
 	while (offset < 3 + pmt->section_length - sizeof(pmt->crc)) {
 		struct pmt_stream stream;
@@ -278,7 +278,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		stream.reserved_2 = (payload[offset+3] >> 4) & 0x0f; 
 		stream.es_information_length = CONVERT_TO_16(payload[offset+3], payload[offset+4]) & 0x0fff;
 
-		uint16_t es_i = 0;
+		uint32_t es_i = 0;
 		if (! stream.es_information_length) {
 				struct dentry *subdir = NULL;
 				pmt_populate_stream_dir(&stream, NULL, version_dentry, &subdir, priv);
