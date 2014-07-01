@@ -113,7 +113,7 @@ int sdtt_parse(const struct ts_header *header, const char *payload, uint32_t pay
 		return 0;
 	}
 	
-	dprintf("*** SDTT parser: pid=%#x, table_id=%#x, current_sdtt=%p, sdtt->version_number=%#x, len=%d ***", 
+	TS_INFO("SDTT parser: pid=%#x, table_id=%#x, current_sdtt=%p, sdtt->version_number=%#x, len=%d", 
 			header->pid, sdtt->table_id, current_sdtt, sdtt->version_number, payload_len);
 
 	/* Parse SDTT specific bits */

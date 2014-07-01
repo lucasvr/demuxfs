@@ -146,7 +146,7 @@ int pat_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		free(pat);
 		return 0;
 	}
-	dprintf("*** PAT parser: pid=%#x, table_id=%#x, current_pat=%p, pat->version_number=%#x, len=%d ***", 
+	TS_INFO("PAT parser: pid=%#x, table_id=%#x, current_pat=%p, pat->version_number=%#x, len=%d", 
 			header->pid, pat->table_id, current_pat, pat->version_number, payload_len);
 
 	/* Parse PAT specific bits */

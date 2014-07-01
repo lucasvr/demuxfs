@@ -24,10 +24,11 @@
 
 #include "list.h"
 #include "priv.h"
+#include "colors.h"
 
 #define dprintf(x...) do { \
-        fprintf(stderr, "%s:%s:%d ", __FILE__, __FUNCTION__, __LINE__); \
         fprintf(stderr, x); \
+        fprintf(stderr, colorGray " (%s:%s:%d)" colorNormal, __FILE__, __FUNCTION__, __LINE__); \
         fprintf(stderr, "\n"); \
 	} while(0)
 

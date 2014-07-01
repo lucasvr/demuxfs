@@ -93,7 +93,7 @@ static void eit_create_directory(const struct ts_header *header, struct eit_tabl
 	else if (header->pid == 0x27)
 		eit_dir = CREATE_DIRECTORY(priv->root, FS_L_EIT_NAME);
 	else {
-		dprintf("Unexpected EIT PID %#x!", header->pid);
+		TS_WARNING("Unexpected EIT PID %#x!", header->pid);
 		eit_dir = CREATE_DIRECTORY(priv->root, "EIT");
 	}
 
@@ -143,7 +143,7 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return 0;
 	}
 
-	dprintf("*** EIT parser: pid=%#x, table_id=%#x, current_eit=%p, eit->version_number=%#x, len=%d ***", 
+	TS_INFO("EIT parser: pid=%#x, table_id=%#x, current_eit=%p, eit->version_number=%#x, len=%d", 
 			header->pid, eit->table_id, current_eit, eit->version_number, payload_len);
 
 	/* Parse EIT specific bits */
@@ -192,7 +192,7 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 		int loop_length = this_event->descriptors_loop_length;
 		while (loop_length > 0) {
-			uint16_t desc_length = descriptors_parse(&payload[i], 1, event_dentry, priv);
+			uint32_t desc_length = descriptors_parse(&payload[i], 1, event_dentry, priv);
 			loop_length -= desc_length;
 			i += desc_length;
 		}

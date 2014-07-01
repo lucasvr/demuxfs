@@ -353,7 +353,7 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return 0;
 	}
 
-	dprintf("*** DII parser: pid=%#x, table_id=%#x, dii->version_number=%#x, transaction_nr=%#x ***", 
+	TS_INFO("DII parser: pid=%#x, table_id=%#x, dii->version_number=%#x, transaction_nr=%#x", 
 			header->pid, dii->table_id, dii->version_number, msg_header->transaction_id & ~0x80000000);
 
 	/** Parse DII bits */

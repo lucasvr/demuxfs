@@ -157,7 +157,7 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return 0;
 	}
 
-//	dprintf("*** DDB parser: pid=%d, table_id=%#x, ddb->version_number=%#x, ddb->block_number=%d, module_id=%d, current=%p ***", 
+//	TS_INFO("DDB parser: pid=%d, table_id=%#x, ddb->version_number=%#x, ddb->block_number=%d, module_id=%d, current=%p", 
 //			header->pid, ddb->table_id, ddb->version_number, ddb->block_number, ddb->module_id, current_ddb);
 
 	/* Create filesystem entries for this table */

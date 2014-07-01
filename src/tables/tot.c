@@ -171,7 +171,7 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	tot->dentry->inode = TS_PACKET_HASH_KEY(header, tot);
 	current_tot = hashtable_get(priv->psi_tables, tot->dentry->inode);
 	
-//	dprintf("*** TOT parser: pid=%#x, table_id=%#x, current_tot=%p, len=%d ***", 
+//	TS_INFO("TOT parser: pid=%#x, table_id=%#x, current_tot=%p, len=%d", 
 //		header->pid, tot->table_id, current_tot, payload_len);
 	
 	if (current_tot) {
