@@ -242,6 +242,7 @@ int linuxdvb_create_parser(struct fuse_args *args, struct demuxfs_data *priv)
 	}
 
 	struct dmx_pes_filter_params pes_filter;
+	memset(&pes_filter, 0, sizeof(pes_filter));
 	pes_filter.pid      = 0x2000;
 	pes_filter.input    = DMX_IN_FRONTEND;
 	pes_filter.output   = DMX_OUT_TS_TAP;
@@ -302,6 +303,7 @@ int linuxdvb_destroy_parser(struct demuxfs_data *priv)
 	struct dtv_properties varname; \
 	struct dtv_property varname ## _ ## command; \
 	memset(&varname, 0, sizeof(varname)); \
+	memset(&varname ## _ ## command, 0, sizeof(varname ## _ ## command)); \
 	varname.num = 1; \
 	varname.props = &varname ## _ ## command; \
 	varname.props[0].cmd = command
@@ -473,9 +475,9 @@ static int linuxdvb_set_frequency_v5(uint32_t frequency, struct demuxfs_data *pr
 	PUSH_PROPERTY(new_prop, idx++, DTV_DELIVERY_SYSTEM,   delivery);
 	PUSH_PROPERTY(new_prop, idx++, DTV_FREQUENCY,         p->frequency);
 	PUSH_PROPERTY(new_prop, idx++, DTV_BANDWIDTH_HZ,      BANDWIDTH_AUTO);
-	PUSH_PROPERTY(new_prop, idx++, DTV_TRANSMISSION_MODE, TRANSMISSION_MODE_AUTO);
-	PUSH_PROPERTY(new_prop, idx++, DTV_GUARD_INTERVAL,    GUARD_INTERVAL_AUTO);
 	PUSH_PROPERTY(new_prop, idx++, DTV_INVERSION,         INVERSION_AUTO);
+	PUSH_PROPERTY(new_prop, idx++, DTV_GUARD_INTERVAL,    GUARD_INTERVAL_AUTO);
+	PUSH_PROPERTY(new_prop, idx++, DTV_TRANSMISSION_MODE, TRANSMISSION_MODE_AUTO);
 
 	switch (delivery) {
 		// OFDM delivery type
