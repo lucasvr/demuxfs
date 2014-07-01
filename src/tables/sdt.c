@@ -106,7 +106,7 @@ int sdt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return 0;
 	}
 	
-	dprintf("*** SDT parser: pid=%#x, table_id=%#x, current_sdt=%p, sdt->version_number=%#x, len=%d ***", 
+	TS_INFO("SDT parser: pid=%#x, table_id=%#x, current_sdt=%p, sdt->version_number=%#x, len=%d", 
 			header->pid, sdt->table_id, current_sdt, sdt->version_number, payload_len);
 
 	/* Parse SDT specific bits */

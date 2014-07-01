@@ -674,7 +674,7 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return 0;
 	}
 
-	dprintf("*** AIT parser: pid=%#x, table_id=%#x, current_ait=%p, ait->version_number=%#x, len=%d ***", 
+	TS_INFO("AIT parser: pid=%#x, table_id=%#x, current_ait=%p, ait->version_number=%#x, len=%d", 
 			header->pid, ait->table_id, current_ait, ait->version_number, payload_len);
 
 	/* Parse AIT specific bits */

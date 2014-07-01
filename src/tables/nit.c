@@ -88,7 +88,7 @@ int nit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return 0;
 	}
 	
-	dprintf("*** NIT parser: pid=%#x, table_id=%#x, current_nit=%p, nit->version_number=%#x, len=%d ***", 
+	TS_INFO("NIT parser: pid=%#x, table_id=%#x, current_nit=%p, nit->version_number=%#x, len=%d", 
 			header->pid, nit->table_id, current_nit, nit->version_number, payload_len);
 
 	/* TODO: check payload boundaries */

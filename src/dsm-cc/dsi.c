@@ -195,7 +195,7 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return 0;
 	}
 
-	dprintf("*** DSI parser: pid=%#x, table_id=%#x, dsi->version_number=%#x, transaction_nr=%#x ***", 
+	TS_INFO("DSI parser: pid=%#x, table_id=%#x, dsi->version_number=%#x, transaction_nr=%#x", 
 			header->pid, dsi->table_id, dsi->version_number, msg_header->transaction_id & ~0x80000000);
 
 	/* Create filesystem entries for this table */

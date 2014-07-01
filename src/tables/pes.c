@@ -203,7 +203,7 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 			}
 
 			if (offset > payload_len) {
-				dprintf("Error: offset(%d) > payload_len(%d)", offset, payload_len);
+				TS_ERROR("Video PES offset(%d) > payload_len(%d)", offset, payload_len);
 				return -1;
 			}
 

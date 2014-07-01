@@ -1,9 +1,11 @@
 #ifndef __ts_h
 #define __ts_h
 
-#define TS_WARNING(x...) dprintf("WARNING: " x)
-#define TS_ERROR(x...)   dprintf("ERROR: " x)
-#define TS_INFO(x...)    dprintf("INFO: " x)
+#include "colors.h"
+
+#define TS_WARNING(x...) dprintf(colorYellow    "WARNING: " colorWhite x)
+#define TS_ERROR(x...)   dprintf(colorBoldRed   "ERROR: "   colorWhite x)
+#define TS_INFO(x...)    dprintf(colorBoldGreen "INFO: "    colorWhite x)
 
 #define TS_SYNC_BYTE             0x47
 #define TS_MAX_SECTION_LENGTH    0x03FD

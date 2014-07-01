@@ -201,7 +201,7 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 			hashtable_add(priv->pes_parsers, stream->elementary_stream_pid, pes_parse_video, NULL);
 	} else if (! hashtable_get(priv->pes_parsers, stream->elementary_stream_pid)) {
 		/* Assign this to the PES generic parser */
-		dprintf("Will parse pid %#x / stream_type %#x using a generic PES parser", 
+		TS_INFO("Will parse pid %#x / stream_type %#x using a generic PES parser", 
 				stream->elementary_stream_pid, stream->stream_type_identifier);
 		hashtable_add(priv->psi_parsers, stream->elementary_stream_pid, pes_parse_other, NULL);
 	}
@@ -253,7 +253,7 @@ int pmt_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		return 0;
 	}
 	
-	dprintf("*** PMT parser: pid=%#x, table_id=%#x, current_pmt=%p, pmt->version_number=%#x, len=%d ***", 
+	TS_INFO("PMT parser: pid=%#x, table_id=%#x, current_pmt=%p, pmt->version_number=%#x, len=%d", 
 			header->pid, pmt->table_id, current_pmt, pmt->version_number, payload_len);
 
 	/* Parse PMT specific bits */
