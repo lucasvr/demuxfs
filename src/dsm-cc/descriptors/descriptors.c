@@ -30,12 +30,12 @@
 #include "descriptors.h"
 #include "ts.h"
 
-uint8_t dsmcc_descriptors_parse(const char *payload, uint8_t num_descriptors, 
+uint32_t dsmcc_descriptors_parse(const char *payload, uint8_t num_descriptors, 
 		struct dentry *parent, struct demuxfs_data *priv)
 {
 	int ret;
 	uint8_t n;
-	uint8_t offset = 0;
+	uint32_t offset = 0;
 	for (n=0; n<num_descriptors; ++n) {
 		uint8_t descriptor_tag = payload[offset];
 		uint8_t descriptor_length = payload[offset+1];

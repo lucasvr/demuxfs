@@ -686,7 +686,7 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	CREATE_FILE_NUMBER(version_dentry, ait, common_descriptors_length);
 
 	uint16_t i;
-	uint8_t len = 0;
+	uint32_t len = 0;
 	for (i=10; i<10+ait->common_descriptors_length; i+=len)
 		len = dsmcc_descriptors_parse(&payload[i], 1, version_dentry, priv);
 

@@ -141,8 +141,8 @@ static void dii_create_dentries(struct dentry *parent, struct dii_table *dii, st
 		CREATE_FILE_BIN(parent, dii, private_data_bytes, dii->private_data_length);
 #if 0
 	if (dii->private_data_length) {
-		uint8_t len;
-		uint16_t offset = 0;
+		uint32_t len;
+		uint32_t offset = 0;
 		while (offset < dii->private_data_length) {
 			len = dsmcc_descriptors_parse(&dii->private_data_bytes[offset], 1, parent, priv);
 			offset += len + 2;
