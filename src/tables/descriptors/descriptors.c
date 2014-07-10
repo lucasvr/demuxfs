@@ -41,15 +41,15 @@ uint32_t descriptors_parse(const char *payload, uint8_t num_descriptors,
 		uint8_t descriptor_length = payload[offset+1];
 		struct descriptor *d = descriptors_find(descriptor_tag, priv);
 		if (! d) {
-			TS_WARNING("invalid descriptor tag %#x", descriptor_tag);
+			TS_WARNING("Invalid descriptor tag %#04x", descriptor_tag);
 			offset += 2 + descriptor_length;
 			continue;
 		}
-		dprintf("Calling parser for descriptor %#4x-%s (descriptor %d/%d)", 
+		TS_VERBOSE("Parsing descriptor %#04x-%s (#%d/%d)", 
 				descriptor_tag, d->name, n+1, num_descriptors);
 		ret = d->parser(&payload[offset], descriptor_length, parent, priv);
 		if (ret < 0)
-			TS_WARNING("error parsing descriptor tag %#x: %s", descriptor_tag, 
+			TS_WARNING("Error parsing descriptor tag %#x: %s", descriptor_tag, 
 					strerror(-ret));
 		offset += 2 + descriptor_length;
 	}

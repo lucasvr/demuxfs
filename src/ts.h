@@ -4,8 +4,9 @@
 #include "colors.h"
 
 #define TS_WARNING(x...) dprintf(colorYellow    "WARNING: " colorWhite x)
-#define TS_ERROR(x...)   dprintf(colorBoldRed   "ERROR: "   colorWhite x)
-#define TS_INFO(x...)    dprintf(colorBoldGreen "INFO: "    colorWhite x)
+#define TS_ERROR(x...)   dprintf(colorBoldRed   "ERROR:   " colorWhite x)
+#define TS_INFO(x...)    dprintf(colorBoldGreen "INFO:    " colorWhite x)
+#define TS_VERBOSE(x...) dprintf(colorBrown     "DEBUG:   " colorGray  x)
 
 #define TS_SYNC_BYTE             0x47
 #define TS_MAX_SECTION_LENGTH    0x03FD
