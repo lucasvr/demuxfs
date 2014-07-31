@@ -171,9 +171,6 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	tot->dentry->inode = TS_PACKET_HASH_KEY(header, tot);
 	current_tot = hashtable_get(priv->psi_tables, tot->dentry->inode);
 	
-//	TS_INFO("TOT parser: pid=%#x, table_id=%#x, current_tot=%p, len=%d", 
-//		header->pid, tot->table_id, current_tot, payload_len);
-	
 	if (current_tot) {
 		current_tot->section_length = tot->section_length;
 		current_tot->_utc3_time = tot->_utc3_time;
@@ -187,6 +184,8 @@ int tot_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		tot_create_ut3c_time(tot);
 		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
 	} else {
+        TS_INFO("TOT parser: pid=%#x, table_id=%#x, current_tot=%p, len=%d", 
+                header->pid, tot->table_id, current_tot, payload_len);
 		tot_create_directory(header, tot, priv);
 		descriptors_parse(&payload[10], num_descriptors, tot->dentry, priv);
 		hashtable_add(priv->psi_tables, tot->dentry->inode, tot, (hashtable_free_function_t) tot_free);
