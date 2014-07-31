@@ -4,9 +4,9 @@ noinst_HEADERS = demuxfs.h ts.h snapshot.h fsutils.h hash.h xattr.h fifo.h buffe
 noinst_LTLIBRARIES = libdemuxfs.la
 libdemuxfs_la_SOURCES = demuxfs.c ts.c snapshot.c fsutils.c hash.c xattr.c buffer.c crc32.c
 #if USE_POSIX_FIFOS
-#libdemuxfs_la_SOURCES += fifo_posix.c
+libdemuxfs_la_SOURCES += fifo_posix.c
 #else
-libdemuxfs_la_SOURCES += fifo_generic.c
+#libdemuxfs_la_SOURCES += fifo_generic.c
 #endif
 libdemuxfs_la_DEPENDENCIES = tables/libtables.la 
 libdemuxfs_la_LIBADD = tables/libtables.la 
