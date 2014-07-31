@@ -30,10 +30,26 @@
 #include "fsutils.h"
 #include "xattr.h"
 #include "ts.h"
+#include "descriptors.h"
+
+// http://www.etherguidesystems.com/help/sdos/mpeg/semantics/mpeg-2/alignment_type.aspx
+
+struct data_stream_alignment_descriptor {
+    uint8_t alignment_type;
+};
 
 /* DATA_STREAM_ALIGNMENT_DESCRIPTOR parser */
 int descriptor_0x06_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv)
 {
-    return -ENOSYS;
+	if (! descriptor_is_parseable(parent, payload[0], 3, len))
+		return -ENODATA;
+
+    struct data_stream_alignment_descriptor dsa;
+    dsa.alignment_type = payload[2];
+  
+    TS_WARNING("0x06_parser: DATA_STREAM_ALIGNMENT_DESCRIPTOR parser is not fully implemented");
+    struct dentry *subdir = CREATE_DIRECTORY(parent, "Data_Stream_Alignment_Descriptor");
+    CREATE_FILE_NUMBER(subdir, &dsa, alignment_type);
+    return 0;
 }
 
