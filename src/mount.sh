@@ -59,7 +59,7 @@ function playFromFrontend()
 	local backend=$PWD/backends/.libs/liblinuxdvb.so.0.0.0
 	valgrind_run_gdb \
 	./demuxfs \
-		-o parse_pes=0 \
+		-o parse_pes=1 \
 		-o backend=$backend \
 		-o frequency=$frequency \
 		-f \
