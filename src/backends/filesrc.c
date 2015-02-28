@@ -68,23 +68,40 @@ static int filesrc_parse_opts(void *priv, const char *arg, int key, struct fuse_
 
 static bool search_sync_byte(struct input_parser *p, uint8_t packet_size)
 {
-	int attempts = 5;
-	char data1, data2;
-	long offset = ftell(p->fp);
+	char data, data1 = 0, data2 = 0;
+	struct stat statbuf;
+	int i, attempts = 5;
+	long offset;
+	size_t n;
 
-	while (attempts > 0 && ! feof(p->fp)) {
-		fread(&data1, 1, sizeof(char), p->fp);
-		fseek(p->fp, packet_size-1, SEEK_CUR);
-		fread(&data2, 1, sizeof(char), p->fp);
-		if (data1 != TS_SYNC_BYTE || data2 != TS_SYNC_BYTE) {
-			rewind(p->fp);
-			return false;
+	if (fstat(fileno(p->fp), &statbuf) == 0 && S_ISFIFO(statbuf.st_mode)) {
+		/* Read two full packets */
+		for (i=0; i<((int) packet_size)*2; ++i) {
+			n = fread(&data, 1, sizeof(char), p->fp);
+			if (n <= 0) {
+				fprintf(stderr, "fread(FIFO): %s\n", strerror(errno));
+				return false;
+			}
+			if (i == 0) data1 = data;
+			if (i == packet_size) data2 = data;
 		}
-		fseek(p->fp, -1, SEEK_CUR);
-		attempts--;
+		return data1 == TS_SYNC_BYTE && data2 == TS_SYNC_BYTE;
+	} else {
+		offset = ftell(p->fp);
+		while (attempts > 0 && ! feof(p->fp)) {
+			fread(&data1, 1, sizeof(char), p->fp);
+			fseek(p->fp, packet_size-1, SEEK_CUR);
+			fread(&data2, 1, sizeof(char), p->fp);
+			if (data1 != TS_SYNC_BYTE || data2 != TS_SYNC_BYTE) {
+				rewind(p->fp);
+				return false;
+			}
+			fseek(p->fp, -1, SEEK_CUR);
+			attempts--;
+		}
+		fseek(p->fp, offset, SEEK_SET);
+		return true;
 	}
-	fseek(p->fp, offset, SEEK_SET);
-	return true;
 }
 
 /**
