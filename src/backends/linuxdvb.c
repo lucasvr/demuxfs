@@ -75,7 +75,7 @@ void linuxdvb_usage(void)
 			"    -o frontend_device=FILE  frontend device (default=%s)\n"
 			"    -o demux_device=FILE     demux device (default=%s)\n"
 			"    -o dvr_device=FILE       DVR device (default=%s)\n"
-			"    -o frequency=FREQ        Frequency (default=%d)\n"
+			"    -o frequency=FREQ        Frequency (default=%d -- do not configure frontend)\n"
 			"    -o symbol_rate=RATE      Symbol rate (default=%d)\n"
 			"    -o qpsk_voltage=<13|18>  QPSK voltage (default=%d)\n"
 			"    -o qpsk_tone=<1|0>       QPSK tone (default=%d)\n",
