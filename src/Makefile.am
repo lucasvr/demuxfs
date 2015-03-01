@@ -15,7 +15,7 @@ libdemuxfs_la_LIBADD = tables/libtables.la
 bin_PROGRAMS = demuxfs
 demuxfs_SOURCES = main.c backend.c
 demuxfs_DEPENDENCIES = libdemuxfs.la
-demuxfs_LDADD = libdemuxfs.la
+demuxfs_LDADD = libdemuxfs.la -ldl
 demuxfs_CPPFLAGS = -I${top_srcdir}/src/backends -I${top_srcdir}/src/tables -DLIBDIR="\"@libdir@\""
 
 SUBDIRS = dsm-cc tables backends
