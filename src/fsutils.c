@@ -177,7 +177,8 @@ void fsutils_dispose_node(struct dentry *dentry)
 		free(dentry->name);
 	pthread_mutex_destroy(&dentry->mutex);
 	sem_destroy(&dentry->semaphore);
-	list_del(&dentry->list);
+	if (! list_poisoned(&dentry->list))
+		list_del(&dentry->list);
 	free(dentry);
 }
 
