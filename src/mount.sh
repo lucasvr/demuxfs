@@ -1,12 +1,15 @@
 #!/bin/bash
 
+# This file contains DTV frequencies from broadcasters
+# based in Sao Paulo/SP, Brazil.
+
 function valgrind_run_gdb()
 {
 	VALGRIND_LOGFILE=/tmp/demuxfs-valgrind.log
 	DEMUXFS_LOGFILE=/tmp/demuxfs-run.log
 	VALGRIND_SUPRESSIONS_FILE=supressions.txt
 	
-    [ ! -e $VALGRIND_SUPRESSIONS_FILE ] && touch $VALGRIND_SUPRESSIONS_FILE
+	[ ! -e $VALGRIND_SUPRESSIONS_FILE ] && touch $VALGRIND_SUPRESSIONS_FILE
 	rm -f $VALGRIND_LOGFILE
 	valgrind \
 		--leak-check=full \
@@ -30,23 +33,23 @@ function playFromFrontend()
 		"521142857:Rede 21"
 		"527142857:Band"
 		"533142857:TV Cultura"
-        "545142857:CNT Americana"
+		"545142857:CNT Americana"
 		"557142857:SBT SP"
 		"563142857:Rede TV"
 		"569142857:RIT"
 		"575142857:Ideal TV"
-        "587142857:Top TV"
-        "623142857:Rede Vida"
-        "635142857:TV Aparecida"
-        "647142857:Record News"
-        "671142857:NGT"
-        "683142857:Terra Viva"
-        "719142857:TVZ"
-        "725142857:Rede Brasil de Televisao"
-        "749142857:TV Mackenzie"
-        "755142857:TV Camara"
-        "767142857:TV Brasil"
-        "773142857:TV Justica"
+		"587142857:Top TV"
+		"623142857:Rede Vida"
+		"635142857:TV Aparecida"
+		"647142857:Record News"
+		"671142857:NGT"
+		"683142857:Terra Viva"
+		"719142857:TVZ"
+		"725142857:Rede Brasil de Televisao"
+		"749142857:TV Mackenzie"
+		"755142857:TV Camara"
+		"767142857:TV Brasil"
+		"773142857:TV Justica"
 	)
 
     options=`for i in "${channels_saopaulo[@]}"; do 
