@@ -38,28 +38,33 @@ static int _snapshot_save_to_dentry(struct dentry *dentry)
 	struct snapshot_context *ctx = priv_data->snapshot_ctx;
 	char header[128];
 	char *contents, *ptr;
-    int y, out_size;
+    int y, out_size, ret;
 	int xsize = ctx->c->width;
 	int ysize = ctx->c->height;
 	struct SwsContext *img_convert_ctx;
-	AVFrame *rgb_picture;
+	AVFrame *pic;
 
 	/* Convert the picture from YUV420P to RGB24 */
-    rgb_picture = avcodec_alloc_frame();
-    avpicture_alloc((AVPicture *) rgb_picture, PIX_FMT_RGB24, ctx->c->width, ctx->c->height);
+    pic = av_frame_alloc();
+    ret = av_image_alloc(pic->data, pic->linesize, ctx->c->width, ctx->c->height,
+		AV_PIX_FMT_RGB24, 1);
+	if (ret < 0) {
+		fprintf(stderr, "av_image_alloc: failed with error %d\n", ret);
+		return ret;
+	}
 
     img_convert_ctx = sws_getContext(
 		xsize, ysize, ctx->c->pix_fmt,
-		xsize, ysize, PIX_FMT_RGB24,
+		xsize, ysize, AV_PIX_FMT_RGB24,
 		SWS_FAST_BILINEAR, NULL, NULL, NULL);
 
     sws_scale(
-		img_convert_ctx, 
-		(const uint8_t * const *) ctx->picture->data, 
-		ctx->picture->linesize, 
-		0, ysize, 
-		rgb_picture->data, 
-		rgb_picture->linesize);
+		img_convert_ctx,
+		(const uint8_t * const *) ctx->picture->data,
+		ctx->picture->linesize,
+		0, ysize,
+		pic->data,
+		pic->linesize);
 
 	/* Prepare the PPM header */
 	snprintf(header, sizeof(header), "P6\n%d %d\n%d\n", xsize, ysize, 255);
@@ -75,7 +80,7 @@ static int _snapshot_save_to_dentry(struct dentry *dentry)
 
 	int n = 0;
     for (y=0; y<ysize; ++y) {
-		memcpy(ptr, rgb_picture->data[0] + y * rgb_picture->linesize[0], xsize * 3);
+		memcpy(ptr, pic->data[0] + y * pic->linesize[0], xsize * 3);
 		ptr += xsize * 3;
 		n += xsize * 3;
 	}
@@ -203,7 +208,7 @@ int snapshot_init_video_context(struct dentry *dentry)
 		goto out_free;
 	}
 
-    ctx->picture = avcodec_alloc_frame();
+    ctx->picture = av_frame_alloc();
 
 	return 0;
 
