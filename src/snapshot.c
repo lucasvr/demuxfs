@@ -29,6 +29,7 @@
 #include "demuxfs.h"
 #include "snapshot.h"
 #include "fifo.h"
+#include "ts.h"
 #include "priv.h"
 
 #ifdef USE_FFMPEG
@@ -38,33 +39,46 @@ static int _snapshot_save_to_dentry(struct dentry *dentry)
 	struct snapshot_context *ctx = priv_data->snapshot_ctx;
 	char header[128];
 	char *contents, *ptr;
-    int y, out_size, ret;
+	int y, out_size, ret;
 	int xsize = ctx->c->width;
 	int ysize = ctx->c->height;
 	struct SwsContext *img_convert_ctx;
 	AVFrame *pic;
 
 	/* Convert the picture from YUV420P to RGB24 */
-    pic = av_frame_alloc();
-    ret = av_image_alloc(pic->data, pic->linesize, ctx->c->width, ctx->c->height,
+	pic = av_frame_alloc();
+	if (! pic) {
+		fprintf(stderr, "av_frame_alloc error\n");
+		return -ENOMEM;
+	}
+	ret = av_image_alloc(pic->data, pic->linesize, ctx->c->width, ctx->c->height,
 		AV_PIX_FMT_RGB24, 1);
 	if (ret < 0) {
 		fprintf(stderr, "av_image_alloc: failed with error %d\n", ret);
 		return ret;
 	}
 
-    img_convert_ctx = sws_getContext(
+	img_convert_ctx = sws_getCachedContext(
+		NULL, /* no context to reuse */
 		xsize, ysize, ctx->c->pix_fmt,
 		xsize, ysize, AV_PIX_FMT_RGB24,
 		SWS_FAST_BILINEAR, NULL, NULL, NULL);
+	if (! img_convert_ctx) {
+		fprintf(stderr, "img_convert_ctx: failed to get context\n");
+		return -1;
+	}
 
-    sws_scale(
+	ret = sws_scale(
 		img_convert_ctx,
 		(const uint8_t * const *) ctx->picture->data,
 		ctx->picture->linesize,
 		0, ysize,
 		pic->data,
 		pic->linesize);
+	if (ret < 0) {
+		fprintf(stderr, "sws_scale: failed with error %d\n", ret);
+		return ret;
+	}
 
 	/* Prepare the PPM header */
 	snprintf(header, sizeof(header), "P6\n%d %d\n%d\n", xsize, ysize, 255);
@@ -79,7 +93,7 @@ static int _snapshot_save_to_dentry(struct dentry *dentry)
 	ptr = &contents[strlen(header)];
 
 	int n = 0;
-    for (y=0; y<ysize; ++y) {
+	for (y=0; y<ysize; ++y) {
 		memcpy(ptr, pic->data[0] + y * pic->linesize[0], xsize * 3);
 		ptr += xsize * 3;
 		n += xsize * 3;
@@ -98,13 +112,13 @@ int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv)
 {
 	struct snapshot_priv *priv_data = (struct snapshot_priv *) dentry->priv;
 	struct snapshot_context *ctx = priv_data->snapshot_ctx;
-	int got_picture = 0, i = 0;
-    int ret = -1;
+	int got_picture = 0;
+	int ret = -1;
 
 	if (ctx) {
 		while (av_read_frame(ctx->format_context, &ctx->packet) >= 0) {
 			avcodec_decode_video2(ctx->c, ctx->picture, &got_picture, &ctx->packet);
-			if (got_picture && ++i > 10) {
+			if (got_picture) {
 				/* Store the decoded picture in the dentry memory */
 				ret = _snapshot_save_to_dentry(dentry);
 				break;
@@ -175,7 +189,7 @@ int snapshot_init_video_context(struct dentry *dentry)
 	ctx->format_context = NULL;
 	ret = avformat_open_input(&ctx->format_context, path_to_fifo, ctx->input_format, NULL);
 	if (ret != 0) {
-        dprintf("H.264 input stream not found");
+	    dprintf("H.264 input stream not found");
 		goto out_free;
 	}
 
@@ -187,6 +201,7 @@ int snapshot_init_video_context(struct dentry *dentry)
 
 	for (i=0; i < ctx->format_context->nb_streams; i++)
 		if (ctx->format_context->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO) {
+			TS_INFO("%s: video_stream found at index %d\n", __func__, i);
 			video_stream = i;
 			break;
 		}
@@ -196,11 +211,11 @@ int snapshot_init_video_context(struct dentry *dentry)
 	}
 
 	ctx->c = ctx->format_context->streams[video_stream]->codec;
-    ctx->codec = avcodec_find_decoder(ctx->c->codec_id);
-    if (! ctx->codec) {
+	ctx->codec = avcodec_find_decoder(ctx->c->codec_id);
+	if (! ctx->codec) {
 		dprintf("Could not find H.264 codec");
 		goto out_free;
-    }
+	}
 
 	ret = avcodec_open2(ctx->c, ctx->codec, NULL);
 	if (ret < 0) {
@@ -208,7 +223,7 @@ int snapshot_init_video_context(struct dentry *dentry)
 		goto out_free;
 	}
 
-    ctx->picture = av_frame_alloc();
+	ctx->picture = av_frame_alloc();
 
 	return 0;
 
