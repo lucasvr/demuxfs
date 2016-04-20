@@ -53,7 +53,7 @@ struct buffer *buffer_create(uint16_t pid, size_t size, bool pes_data)
 		buffer->pes_unbounded_data = true;
 	}
 
-	buffer->data = (char *) malloc(sizeof(char) * size);
+	buffer->data = (char *) calloc(size, sizeof(char));
 	if (! buffer->data) {
 		perror("malloc");
 		free(buffer);
