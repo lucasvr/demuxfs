@@ -39,6 +39,8 @@
 #include "dsm-cc/dii.h"
 #include "dsm-cc/ddb.h"
 
+static const char *pes_parse_audio_video_payload(const char *, uint32_t, uint32_t *);
+
 struct pes_header {
 	int      stream_id;
 	uint32_t packet_length;
@@ -140,19 +142,14 @@ static int pes_append_to_fifo(struct dentry *dentry, bool pusi,
 int pes_parse_audio(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
-	struct dentry *pes_dentry;
-
-	pes_dentry = pes_get_dentry(header, FS_PES_FIFO_NAME, priv);
-	if (! pes_dentry)
-		return -ENOENT;
-
-	return pes_append_to_fifo(pes_dentry, false, payload, payload_len);
+	return pes_parse_video(header, payload, payload_len, priv);
 }
 
 int pes_parse_video(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
 	struct dentry *es_dentry, *pes_dentry;
+	struct video_fifo_priv *priv_data;
 
 	if (header->payload_unit_start_indicator && payload_len < 6) {
 		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
@@ -160,9 +157,9 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 	}
 
 	if (priv->options.parse_pes) {
-		struct video_fifo_priv *priv_data;
 		const char *data = payload;
 		uint32_t data_len = payload_len - 4;
+		int stream_type = pes_identify_stream_id(payload[3]);
 
 		es_dentry = pes_get_dentry(header, FS_ES_FIFO_NAME, priv);
 		if (! es_dentry)
@@ -171,59 +168,65 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 		priv_data = (struct video_fifo_priv *) es_dentry->priv;
 
 		if (header->payload_unit_start_indicator) {
-			uint32_t n = 6, offset = 0;
+			uint32_t n = 6;
 
 			/* Flush ES buffer */
 			priv_data->pes_packet_length = CONVERT_TO_16(payload[4], payload[5]);
 			priv_data->pes_packet_parsed_length = 0;
 			priv_data->pes_packet_initialized = true;
 
-			if (IS_H222_PES(payload)) {
-				/* This is a H.222.0 (13818-1) PES packet */
-				/* payload[8] contains the PES header data length */
-				offset = payload[8] + 9;
+			if (stream_type != PES_PROGRAM_STREAM_MAP &&
+				stream_type != PES_PADDING_STREAM &&
+				stream_type != PES_PRIVATE_STREAM_2 &&
+				stream_type != PES_ECM_STREAM &&
+				stream_type != PES_EMM_STREAM &&
+				stream_type != PES_PROGRAM_STREAM_DIRECTORY &&
+				stream_type != PES_DSMCC_STREAM &&
+				stream_type != PES_H222_1_TYPE_E) {
+				/* This is an audio/video packet */
+				data = pes_parse_audio_video_payload(payload, payload_len, &data_len);
+				if (data == NULL)
+					return -1;
+			} else if (stream_type == PES_PROGRAM_STREAM_MAP ||
+				stream_type == PES_PRIVATE_STREAM_2 ||
+				stream_type == PES_ECM_STREAM ||
+				stream_type == PES_EMM_STREAM ||
+				stream_type == PES_PROGRAM_STREAM_DIRECTORY ||
+				stream_type == PES_DSMCC_STREAM ||
+				stream_type == PES_H222_1_TYPE_E) {
+				/* Payload holds packet data bytes alone */
+				data = &payload[n];
+				data_len -= n;
+			} else if (stream_type == PES_PADDING_STREAM) {
+				/* Payload holds padding bytes only */
+				data = NULL;
+				data_len = 0;
 			} else {
-				/* This is a MPEG-1 (11172-1) PES packet */
-				while (n < payload_len && payload[n] == 0xff)
-					/* Skip padding byte */
-					n++;
-				if ((payload[n] & 0xC0) == 0x40)
-					/* Skip buffer scale/size */
-					n += 2;
-				if ((payload[n] & 0xF0) == 0x20)
-					/* Skip PTS */
-					n += 5;
-				else if ((payload[n] & 0xF0) == 0x30)
-					/* Skip PTS/DTS */
-					n += 10;
-				else
-					/* There's nothing we can do */
-					n++;
-				offset = n;
+				TS_WARNING("*** unknown PES block: stream_type=%d (pid %#x) ***", stream_type, header->pid);
+				data = NULL;
+				data_len = 0;
 			}
-
-			if (offset > payload_len) {
-				TS_ERROR("Video PES offset(%d) > payload_len(%d)", offset, payload_len);
-				return -1;
-			}
-
-			data = &payload[offset];
-			data_len = payload_len - offset - 4;
+			priv_data->pes_packet_parsed_length += data_len;
 		} else if (priv_data->pes_packet_initialized) {
 			int cur_size = priv_data->pes_packet_parsed_length;
 			int max_size = priv_data->pes_packet_length;
-			if (max_size != 0) {
+			if (max_size == 0) {
+				/* Unbounded PES packet */
+				data_len = payload_len;
+			} else {
 				/* Not an unbounded PES packet */
 				if ((cur_size + payload_len) >= max_size) {
-					data_len = max_size - payload_len;
+					data_len = max_size > payload_len ? max_size - payload_len : 0;
+					priv_data->pes_packet_parsed_length += data_len;
 					/* XXX: potentially discarding next packet */
 				}
 			}
 		} else if (! priv_data->pes_packet_initialized) {
+			data = NULL;
 			data_len = 0;
 		}
 		
-		if (data_len)
+		if (data && data_len)
 			pes_append_to_fifo(es_dentry, header->payload_unit_start_indicator, data, data_len);
 	}
 
@@ -233,6 +236,180 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 		return -ENOENT;
 	}
 	return pes_append_to_fifo(pes_dentry, header->payload_unit_start_indicator, payload, payload_len);
+}
+
+static const char *pes_parse_audio_video_payload(const char *payload, uint32_t payload_len,
+		uint32_t *data_len)
+{
+	/* Initialize 'n' right before the flags byte:
+	 *
+	 * packet_start_code_prefix  24
+	 * stream_id                  8
+	 * PES_packet_length         16
+	 *
+	 * '10'                       2
+	 * PES_scrambling_control     2
+	 * PES_priority               1
+	 * data_alignment_indicator   1
+	 * copyright                  1
+	 * original_or_copy           1 */
+	int n = 7;
+
+	/* PTS_DTS_flags              2
+	 * ESCR_flag                  1
+	 * ES_rate_flag               1
+	 * DSM_trick_mode_flag        1
+	 * additional_copy_info_flag  1
+	 * PES_CRC_flag               1
+	 * PES_extension_flag         1 */
+	uint8_t pts_dts_flags = (payload[n] & 0xc0) >> 6;
+	uint8_t escr_flag = (payload[n] & 0x20) >> 5;
+	uint8_t es_rate_flag = (payload[n] & 0x10) >> 4;
+	uint8_t dsm_trick_mode_flag = (payload[n] & 0x08) >> 3;
+	uint8_t additional_copy_info_flag = (payload[n] & 0x04) >> 2;
+	uint8_t pes_crc_flag = (payload[n] & 0x02) >> 1;
+	uint8_t pes_extension_flag = (payload[n] & 0x01);
+	n++;
+
+	/* n == 8 */
+	//uint8_t pes_header_data_length = payload[n];
+	n++;
+
+	if (pts_dts_flags == 0x2) {
+		/* '0010'                 4
+		 * PTS[32..30]            3
+		 * marker_bit             1
+		 * PTS[29..15]           15
+		 * marker_bit             1
+		 * PTS[14..0]            15
+		 * marker_bit             1 */
+		n += 5;
+	} else if (pts_dts_flags == 0x3) {
+		/* '0010'                 4
+		 * PTS[32..30]            3
+		 * marker_bit             1
+		 * PTS[29..15]           15
+		 * marker_bit             1
+		 * PTS[14..0]            15
+		 * marker_bit             1
+		 *
+		 * '0001'                 4
+		 * DTS[32..30]            3
+		 * marker_bit             1
+		 * DTS[29..15]           15
+		 * marker_bit             1
+		 * DTS[14..0]            15
+		 * marker_bit             1 */
+		n += 10;
+	}
+	if (escr_flag) {
+		/* reserved               2
+		 * ESCR_base[32..30]      3
+		 * marker_bit             1
+		 * ESCR_base[29..15]     15
+		 * marker_bit             1
+		 * ESCR_base[14..0]      15
+		 * marker_bit             1
+		 * ESCR_extension         9
+		 * marker_bit             1 */
+		n += 6;
+	}
+	if (es_rate_flag) {
+		/* marker_bit             1
+		 * ES_rate               22
+		 * marker_bit             1 */
+		n += 3;
+	}
+	if (dsm_trick_mode_flag) {
+		uint8_t trick_mode_control = (payload[n] & 0xe) >> 1; /* 3 bits */
+		if (trick_mode_control == TRICK_MODE_FAST_FORWARD) {
+			/* field_id             2
+			 * intra_slice_refresh  1
+			 * frequency_truncation 2 */
+			n++;
+		} else if (trick_mode_control == TRICK_MODE_SLOW_MOTION) {
+			/* rep_cntrl            5 */
+			n++;
+		} else if (trick_mode_control == TRICK_MODE_FREEZE_FRAME) {
+			/* field_id             2
+			 * reserved             3 */
+			n++;
+		} else if (trick_mode_control == TRICK_MODE_FAST_REVERSE) {
+			/* field_id             2
+			 * intra_slice_refresh  1
+			 * frequency_truncation 2 */
+			n++;
+		} else if (trick_mode_control == TRICK_MODE_SLOW_REVERSE) {
+			/* rep_cntrl            5 */
+			n++;
+		} else {
+			/* reserved             5 */
+			n++;
+		}
+	}
+	if (additional_copy_info_flag) {
+		/* marker_bit             1
+		 * additional_copy_info   7 */
+		n += 1;
+	}
+	if (pes_crc_flag) {
+		/* previous_pes_packet_crc */
+		n += 2;
+	}
+	if (pes_extension_flag) {
+		uint8_t pes_private_data_flag = (payload[n] & 0x80) >> 7;
+		uint8_t pack_header_field_flag = (payload[n] & 0x40) >> 6;
+		uint8_t program_packet_sequence_counter_flag = (payload[n] & 0x20) >> 5;
+		uint8_t p_std_buffer_flag = (payload[n] & 0x10) >> 4;
+		//uint8_t reserved = (payload[n] & 0x0c) >> 2;
+		uint8_t pes_extension_flag_2 = (payload[n] & 0x3);
+		n++;
+
+		if (pes_private_data_flag) {
+			/* PES_private_data */
+			n += 16;
+		}
+		if (pack_header_field_flag) {
+			uint8_t pack_field_length = payload[n];
+			/* pack_header(); */
+			n += pack_field_length;
+		}
+		if (program_packet_sequence_counter_flag) {
+			/* marker_bit                      1
+			 * program_packet_sequence_counter 7
+			 * marker_bit                      1
+			 * MPEG1_MPEG2_identifier          1
+			 * original_stuff_length           6 */
+			n += 2;
+		}
+		if (p_std_buffer_flag) {
+			/* '01'                2
+			 * P-SDT_buffer_scale  1
+			 * P-SDT_buffer_size  13 */
+			n += 2;
+		}
+		if (pes_extension_flag_2) {
+			/* marker_bit                 1
+			 * PES_extension_field_length 7
+			 * for (i=0; i<PES_extension_field_length; i++)
+			 *   reserved                 8 */
+			uint8_t pes_extension_field_length = payload[n] & 0x7f;
+			n += 1 + pes_extension_field_length;
+		}
+	}
+
+	/* Stuffing bytes */
+	while (payload[n] == 0xff)
+		n++;
+
+	/* PES packet data bytes */
+	if (n > payload_len) {
+		TS_ERROR("PES packet offset(%d) > payload_len(%d). Unbound stream?", n, payload_len);
+		return NULL;
+	}
+
+	*data_len = payload_len - n - 6;
+	return &payload[n];
 }
 
 int pes_parse_other(const struct ts_header *header, const char *payload, uint32_t payload_len,
