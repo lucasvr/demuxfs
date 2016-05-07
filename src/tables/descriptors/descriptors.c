@@ -72,12 +72,11 @@ int descriptors_count(const char *payload, uint16_t info_length)
 	int num = 0, len = (int) info_length;
 	const char *p = payload;
 	while (len > 0) {
-		if (len < 2)
+		int count = len >= 2 ? p[1] + 2 : -1;
+		if (count < 0)
 			return 0;
-		if (len < 2 + p[1])
-			return 0;
-		len -= 2 + p[1];
-		p += 2 + p[1];
+		len -= count;
+		p += count;
 		num++;
 	}
 	return num;
