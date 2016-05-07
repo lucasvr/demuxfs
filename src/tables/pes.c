@@ -104,7 +104,7 @@ static struct dentry *pes_get_dentry(const struct ts_header *header,
 }
 
 static int pes_append_to_fifo(struct dentry *dentry, bool pusi,
-		const char *payload, uint32_t payload_len)
+		const char *payload, uint32_t payload_len, bool is_video_es)
 {
 	struct fifo_priv *priv_data;
 	struct fifo *fifo;
@@ -120,7 +120,7 @@ static int pes_append_to_fifo(struct dentry *dentry, bool pusi,
 	if (fifo_is_open(fifo)) {
 		bool append = true;
 
-		if (fifo_is_flushed(fifo) && !IS_NAL_IDC_REFERENCE(payload)) {
+		if (fifo_is_flushed(fifo) && is_video_es && !IS_NAL_IDC_REFERENCE(payload)) {
 			/* Skip delta frames before start feeding the FIFO */
 			append = false;
 		}
@@ -149,7 +149,9 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 		struct demuxfs_data *priv)
 {
 	struct dentry *es_dentry, *pes_dentry;
-	struct video_fifo_priv *priv_data;
+	struct av_fifo_priv *priv_data;
+	bool is_video = false;
+	bool is_audio = false;
 
 	if (header->payload_unit_start_indicator && payload_len < 6) {
 		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
@@ -159,21 +161,26 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 	if (priv->options.parse_pes) {
 		const char *data = payload;
 		uint32_t data_len = payload_len - 4;
-		int stream_type = pes_identify_stream_id(payload[3]);
 
 		es_dentry = pes_get_dentry(header, FS_ES_FIFO_NAME, priv);
-		if (! es_dentry)
+		if (! es_dentry) {
+			TS_WARNING("failed to get ES dentry");
 			return -ENOENT;
+		}
 
-		priv_data = (struct video_fifo_priv *) es_dentry->priv;
+		priv_data = (struct av_fifo_priv *) es_dentry->priv;
 
 		if (header->payload_unit_start_indicator) {
+			int stream_type = pes_identify_stream_id(payload[3]);
 			uint32_t n = 6;
 
 			/* Flush ES buffer */
 			priv_data->pes_packet_length = CONVERT_TO_16(payload[4], payload[5]);
 			priv_data->pes_packet_parsed_length = 0;
 			priv_data->pes_packet_initialized = true;
+
+			is_video = stream_type == PES_VIDEO_STREAM;
+			is_audio = stream_type == PES_AUDIO_STREAM;
 
 			if (stream_type != PES_PROGRAM_STREAM_MAP &&
 				stream_type != PES_PADDING_STREAM &&
@@ -185,8 +192,10 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 				stream_type != PES_H222_1_TYPE_E) {
 				/* This is an audio/video packet */
 				data = pes_parse_audio_video_payload(payload, payload_len, &data_len);
-				if (data == NULL)
+				if (data == NULL) {
+					TS_WARNING("failed to parse PES audio/video payload");
 					return -1;
+				}
 			} else if (stream_type == PES_PROGRAM_STREAM_MAP ||
 				stream_type == PES_PRIVATE_STREAM_2 ||
 				stream_type == PES_ECM_STREAM ||
@@ -213,21 +222,15 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 			if (max_size == 0) {
 				/* Unbounded PES packet */
 				data_len = payload_len;
-			} else {
-				/* Not an unbounded PES packet */
-				if ((cur_size + payload_len) >= max_size) {
-					data_len = max_size > payload_len ? max_size - payload_len : 0;
-					priv_data->pes_packet_parsed_length += data_len;
-					/* XXX: potentially discarding next packet */
-				}
 			}
 		} else if (! priv_data->pes_packet_initialized) {
 			data = NULL;
 			data_len = 0;
 		}
-		
+
 		if (data && data_len)
-			pes_append_to_fifo(es_dentry, header->payload_unit_start_indicator, data, data_len);
+			pes_append_to_fifo(es_dentry, header->payload_unit_start_indicator,
+				data, data_len, is_video);
 	}
 
 	pes_dentry = pes_get_dentry(header, FS_PES_FIFO_NAME, priv);
@@ -235,7 +238,8 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 		dprintf("dentry = NULL");
 		return -ENOENT;
 	}
-	return pes_append_to_fifo(pes_dentry, header->payload_unit_start_indicator, payload, payload_len);
+	return pes_append_to_fifo(pes_dentry, header->payload_unit_start_indicator,
+		payload, payload_len, false);
 }
 
 static const char *pes_parse_audio_video_payload(const char *payload, uint32_t payload_len,
@@ -408,7 +412,7 @@ static const char *pes_parse_audio_video_payload(const char *payload, uint32_t p
 		return NULL;
 	}
 
-	*data_len = payload_len - n - 6;
+	*data_len = payload_len - n;
 	return &payload[n];
 }
 

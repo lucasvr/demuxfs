@@ -28,6 +28,7 @@
  */
 #include "demuxfs.h"
 #include "fifo.h"
+#include "ts.h"
 
 struct fifo {
 	pthread_mutex_t mutex;

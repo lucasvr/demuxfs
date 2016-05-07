@@ -151,16 +151,16 @@ void fsutils_dispose_node(struct dentry *dentry)
 				free(priv);
 				break;
 			}
-			case OBJ_TYPE_FIFO:
-			case OBJ_TYPE_AUDIO_FIFO: {
+			case OBJ_TYPE_FIFO: {
 				struct fifo_priv *priv = dentry->priv;
 				if (priv->fifo)
 					fifo_destroy(priv->fifo);
 				free(priv);
 				break;
 			}
+			case OBJ_TYPE_AUDIO_FIFO:
 			case OBJ_TYPE_VIDEO_FIFO: {
-				struct video_fifo_priv *priv = (struct video_fifo_priv *) dentry->priv;
+				struct av_fifo_priv *priv = (struct av_fifo_priv *) dentry->priv;
 				if (priv->fifo)
 					fifo_destroy(priv->fifo);
 				free(priv);

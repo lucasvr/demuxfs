@@ -234,8 +234,8 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 		_dentry->name = strdup(fname); \
 	 		_dentry->mode = fifo_get_type() | 0777; \
 	 		_dentry->obj_type = ftype; \
-	 		if (ftype == OBJ_TYPE_VIDEO_FIFO) { \
-	 			struct video_fifo_priv *_priv = (struct video_fifo_priv *) calloc(1, sizeof(struct video_fifo_priv)); \
+	 		if (ftype == OBJ_TYPE_VIDEO_FIFO || ftype == OBJ_TYPE_AUDIO_FIFO) { \
+	 			struct av_fifo_priv *_priv = (struct av_fifo_priv *) calloc(1, sizeof(struct av_fifo_priv)); \
 	 			_priv->fifo = _fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
 	 			_dentry->priv = _priv; \
 	 		} else { \

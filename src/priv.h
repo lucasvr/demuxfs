@@ -5,7 +5,7 @@ struct fifo_priv {
 	struct fifo *fifo;
 };
 
-struct video_fifo_priv {
+struct av_fifo_priv {
 	struct fifo *fifo; /* This needs to come first */
 	bool pes_packet_initialized;
 	uint32_t pes_packet_length;

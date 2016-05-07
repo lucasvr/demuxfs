@@ -188,7 +188,8 @@ bool buffer_is_unbounded(struct buffer *buffer)
 		stream_id = buffer->data[3];
 		stream_type = pes_identify_stream_id(stream_id);
 		packet_length = CONVERT_TO_16(buffer->data[4], buffer->data[5]);
-		if (packet_length == 0 && stream_type == PES_VIDEO_STREAM) {
+		if ((stream_type == PES_VIDEO_STREAM || stream_type == PES_AUDIO_STREAM) &&
+			packet_length == 0) {
 			buffer->pes_unbounded_data = true;
 			return buffer->pes_unbounded_data;
 		} else if (packet_length == 0) {
