@@ -192,14 +192,18 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 
 		if (ret == 0) {
 			pthread_mutex_lock(&dentry->mutex);
-			read_size = ((dentry->size - offset) > size) ? size : dentry->size - offset;
-			memcpy(buf, &dentry->contents[offset], read_size);
+			if (offset < dentry->size) {
+				read_size = ((dentry->size - offset) > size) ? size : dentry->size - offset;
+				memcpy(buf, &dentry->contents[offset], read_size);
+			}
 			pthread_mutex_unlock(&dentry->mutex);
 		}
 	} else if (dentry->contents) {
 		pthread_mutex_lock(&dentry->mutex);
-		read_size = ((dentry->size - offset) > size) ? size : dentry->size - offset;
-		memcpy(buf, &dentry->contents[offset], read_size);
+		if (offset < dentry->size) {
+			read_size = ((dentry->size - offset) > size) ? size : dentry->size - offset;
+			memcpy(buf, &dentry->contents[offset], read_size);
+		}
 		pthread_mutex_unlock(&dentry->mutex);
 	}
 	return read_size;

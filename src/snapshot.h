@@ -1,6 +1,10 @@
 #ifndef __snapshot_h
 #define __snapshot_h
 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #ifdef USE_FFMPEG
 
 #include <libavcodec/avcodec.h>
@@ -10,12 +14,12 @@
 #include <libavutil/mathematics.h>
 
 struct snapshot_context {
-    AVCodec *codec;
-    AVCodecContext *c;
+	AVCodec *codec;
+	AVCodecContext *c;
 	AVInputFormat *input_format;
 	AVFormatContext *format_context;
 	AVPacket packet;
-    AVFrame *picture;
+	AVFrame *picture;
 };
 
 /**

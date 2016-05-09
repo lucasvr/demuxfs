@@ -28,11 +28,118 @@
  */
 #include "demuxfs.h"
 #include "snapshot.h"
+#include "fsutils.h"
 #include "fifo.h"
 #include "ts.h"
 #include "priv.h"
 
 #ifdef USE_FFMPEG
+int snapshot_init_video_context(struct dentry *dentry)
+{
+	(void) dentry;
+	return 0;
+}
+
+void snapshot_destroy_video_context(struct dentry *dentry)
+{
+	if (dentry->contents) {
+		free(dentry->contents);
+		dentry->contents = NULL;
+	}
+	dentry->size = 0xffffff;
+}
+
+int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv)
+{
+	char *cmd[] = {
+		"ffmpeg",
+		"-i", NULL,
+		"-qscale", "0",
+		"-vframes", "1",
+		"-f", "gif",
+		"pipe:1",
+		NULL
+	};
+	/* Hopefully this will be large enough */
+	int video_frame_max_size = 1920 * 1080 * 4;
+	int video_frame_size = 0;
+	int ret = 0;
+	char *video_frame;
+	int pipe_fds[2];
+	pid_t pid;
+
+	struct snapshot_priv *priv_data = (struct snapshot_priv *) dentry->priv;
+	struct fifo_priv *fifo_priv = (struct fifo_priv *) priv_data->borrowed_es_dentry->priv;
+	struct fifo *fifo = fifo_priv ? fifo_priv->fifo : NULL;
+	const char *path_to_fifo = fifo_get_path(fifo);
+	if (! path_to_fifo) {
+		dprintf("failed to get path to FIFO");
+		return -ENOENT;
+	}
+	cmd[2] = (char *) path_to_fifo;
+
+	if (pipe(pipe_fds) < 0) {
+		perror("pipe");
+		return -errno;
+	}
+
+	pid = fork();
+	if (pid < 0) {
+		perror("fork");
+		return -errno;
+	} else if (pid == 0) {
+		/* stdout -> PIPE writer end */
+		close(STDOUT_FILENO);
+		close(STDERR_FILENO);
+		dup(pipe_fds[1]);
+		close(pipe_fds[0]);
+		close(pipe_fds[1]);
+
+		execvp(cmd[0], cmd);
+		exit(1); /* should never be reached */
+	} else if (pid > 0) {
+		/* stdin -> PIPE reader end */
+		close(STDIN_FILENO);
+		dup(pipe_fds[0]);
+		close(pipe_fds[0]);
+		close(pipe_fds[1]);
+
+		video_frame = (char *) malloc(video_frame_max_size);
+		if (! video_frame) {
+			perror("malloc");
+			return -ENOMEM;
+		}
+		TS_INFO("Reading GIF from FFMPEG pipe");
+		while (true) {
+			size_t max = video_frame_max_size - video_frame_size;
+			ssize_t n = read(0, &video_frame[video_frame_size], max);
+			if (n <= 0) {
+				TS_INFO("read: %d", n);
+				break;
+			}
+			video_frame_size += n;
+		}
+		kill(pid, SIGKILL);
+		waitpid(pid, NULL, 0);
+		close(STDIN_FILENO);
+
+		if (video_frame_size > 0) {
+			if (dentry->contents)
+				free(dentry->contents);
+			dentry->contents = video_frame;
+			dentry->size = video_frame_size;
+		} else {
+			free(video_frame);
+			ret = -1;
+		}
+		TS_INFO("Read %d bytes from FFMPEG pipe", video_frame_size);
+	}
+	return ret;
+}
+
+#endif /* USE_FFMPEG */
+
+#if 0
 static int _snapshot_save_to_dentry(struct dentry *dentry)
 {
 	struct snapshot_priv *priv_data = (struct snapshot_priv *) dentry->priv;
@@ -232,4 +339,4 @@ out_free:
 	snapshot_destroy_video_context(dentry);
 	return -ENXIO;
 }
-#endif /* USE_FFMPEG */
+#endif /* 0 */

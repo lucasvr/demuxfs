@@ -27,7 +27,7 @@
 #define FS_BROKEN_SYMLINK_NAME          "BrokenSymlink"
 #define FS_UNNAMED_APPLICATION_NAME     "UnnamedApplication"
 
-#define FS_VIDEO_SNAPSHOT_NAME          "snapshot.ppm"
+#define FS_VIDEO_SNAPSHOT_NAME          "snapshot.gif"
 #define FS_STREAMS_NAME                 "Streams"
 #define FS_AUDIO_STREAMS_NAME           "AudioStreams"
 #define FS_VIDEO_STREAMS_NAME           "VideoStreams"
