@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448"
+   height="1052.3622"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   viewBox="0 0 744.09448 1052.3622"
+   sodipodi:docname="example-getfattr.svg">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.98994949"
+     inkscape:cx="165.93876"
+     inkscape:cy="861.50583"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1258"
+     inkscape:window-height="755"
+     inkscape:window-x="1670"
+     inkscape:window-y="154"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#f9f9f9;fill-opacity:1;stroke:none;stroke-width:0.80000001;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect3041"
+       width="498.00522"
+       height="338.40109"
+       x="44.009445"
+       y="62.204002"
+       ry="17.172594" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:12.5px;line-height:125%;font-family:Sans;-inkscape-font-specification:Lode;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="69.63559"
+       y="87.331062"
+       id="text2985"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="87.331062"
+         id="tspan2989"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"><tspan
+   style="fill:#008080"
+   id="tspan3017">/Mount/DemuxFS]</tspan> l PAT/Current</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="102.95606"
+         id="tspan2991"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas">31/12 21:00 r-xr-xr-x          0 <tspan
+   style="fill:#0000ff"
+   id="tspan3083">Programs</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="118.58106"
+         id="tspan2995"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas">31/12 21:00 r-xr-xr-x          0 <tspan
+   style="fill:#0000ff"
+   id="tspan3085">tableHeader</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="134.20605"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4033" /><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="149.83105"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4035"><tspan
+   style="fill:#008080"
+   id="tspan4041">/Mount/DemuxFS]</tspan> l PAT/Current/tableHeader</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="165.45605"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4037">31/12 21:00 r--r--r--          4 current_next_indicator</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="181.08105"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4039">31/12 21:00 r--r--r--          5 identifier</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="196.70605"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4043">31/12 21:00 r--r--r--          4 last_section_number</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="212.33105"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4045">31/12 21:00 r--r--r--          4 section_length</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="227.95605"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4047">31/12 21:00 r--r--r--          4 section_number</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="243.58105"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4049">31/12 21:00 r--r--r--          4 section_syntax_indicator</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="259.20605"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4051">31/12 21:00 r--r--r--          4 table_id</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="274.83105"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4053">31/12 21:00 r--r--r--          4 version_number</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="290.45605"
+         id="tspan2993"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas" /><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="306.08105"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4055"><tspan
+   style="fill:#008080"
+   id="tspan4067">/Mount/DemuxFS]</tspan> getfattr -d -m - PAT/Current/tableHeader/table_id</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="321.70605"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4057"># file: PAT/Current/tableHeader/table_id</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="337.33105"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4059">system.format=&quot;number&quot;</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="352.95605"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4061" /><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="368.58105"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4063"><tspan
+   style="fill:#008080"
+   id="tspan4069">/Mount/DemuxFS]</tspan> cat PAT/Current/tableHeader/table_id</tspan><tspan
+         sodipodi:role="line"
+         x="69.63559"
+         y="384.20605"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4065">0x02</tspan></text>
+  </g>
+</svg>

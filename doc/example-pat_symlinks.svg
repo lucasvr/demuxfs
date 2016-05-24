@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448"
+   height="1052.3622"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   viewBox="0 0 744.09448 1052.3622"
+   sodipodi:docname="example-pat_symlinks.svg">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.2013889"
+     inkscape:cx="381.20606"
+     inkscape:cy="895.76442"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1372"
+     inkscape:window-height="764"
+     inkscape:window-x="1669"
+     inkscape:window-y="62"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#f9f9f9;fill-opacity:1;stroke:none;stroke-width:0.80000001;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect3041"
+       width="507.24487"
+       height="196.33162"
+       x="43.436558"
+       y="63.42284"
+       ry="17.172594" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:12.5px;line-height:125%;font-family:Sans;-inkscape-font-specification:Lode;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="69.996002"
+       y="86.600861"
+       id="text2985"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="86.600861"
+         id="tspan2989"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"><tspan
+   style="fill:#008080"
+   id="tspan3017">/Mount/DemuxFS]</tspan> l PAT/Current/Programs</tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="102.22586"
+         id="tspan2991"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas">31/12 21:00 rwxrwxrwx          0 <tspan
+   style="fill:#00cdcd;fill-opacity:1"
+   id="tspan3087">0x00</tspan> -&gt; <tspan
+   style="fill:#0000ff"
+   id="tspan3083">../../../NIT/Current</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="117.85086"
+         id="tspan2995"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas">31/12 21:00 r-xr-xr-x          0 <tspan
+   style="fill:#00cdcd;fill-opacity:0.80392157"
+   id="tspan4716">0x20</tspan> -&gt; <tspan
+   style="fill:#0000ff"
+   id="tspan4174">../../../PMT/0x20/Current</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="133.47586"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4770" /><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="149.10086"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4772"><tspan
+   style="fill:#008080"
+   id="tspan4794">/Mount/DemuxFS]</tspan> l PMT/0x20/Current</tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="164.72586"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4774">31/12 21:00 r-xr-xr-x          0 <tspan
+   style="fill:#0000ff"
+   id="tspan4786">AudioStreams</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="180.35086"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4776">31/12 21:00 r-xr-xr-x          0 <tspan
+   style="fill:#0000ff"
+   id="tspan4788">PARENTAL_RATING_0</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="195.97586"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4778">31/12 21:00 r-xr-xr-x          0 <tspan
+   style="fill:#0000ff"
+   id="tspan4790">VideoStreams</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="211.60086"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4780">31/12 21:00 r-xr-xr-x         33 <tspan
+   style="fill:#0000ff"
+   id="tspan4792">tableHeader</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="227.22586"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4782">31/12 21:00 r--r--r--          6 pcr_pid</tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="242.85086"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas"
+         id="tspan4784">31/12 21:00 r--r--r--          4 program_information_length</tspan><tspan
+         sodipodi:role="line"
+         x="69.996002"
+         y="258.47586"
+         id="tspan2993"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Consolas;-inkscape-font-specification:Consolas" /></text>
+  </g>
+</svg>
