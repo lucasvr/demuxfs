@@ -67,13 +67,13 @@ In the MPEG-2 TS (transport stream), the PAT table announces the identification 
 
 <img src="http://lucasvr.github.io/demuxfs/example-pat_symlinks.svg"/>
 
-**AudioStreams** and **VideoStreams** may hold more than one subdirectory each, as in programs with multiple camera angles or audio tracks. In that case, symbolic links named ```Primary``` and ```Secondary``` will designate the primary and secondary stream ids that applications are expected to use by default. Directories with all capital letters (such as **PARENTAL_RATING_0**) represent table descriptors featured in the transport stream.
+```AudioStreams``` and ```VideoStreams``` may hold more than one subdirectory each, as in programs with multiple camera angles or audio tracks. In that case, symbolic links named ```Primary``` and ```Secondary``` will designate the primary and secondary stream ids that applications are expected to use by default. Directories with all capital letters (such as ```PARENTAL_RATING_0```) represent table descriptors featured in the transport stream.
 
 ### [Packetized] Elementary Streams
 
 Packetized elementary streams are data packets that include a header and a payload (often an audio, video, or caption stream). Elementary streams are the actual payload. Both are presented in DemuxFS as FIFO files. That is, one can inspect them with e.g., ```hexdump``` or reproduce them with e.g., ```ffplay``` and ```mplayer```.
 
-DemuxFS also generates a preview of the video frame being currently received (or parsed) on-the-fly. When ```snapshot.gif``` is opened by an application, DemuxFS internally feeds [ffmpeg](https://ffmpeg.org) with the elementary stream data and copies the rendered frame back to that application.
+DemuxFS also generates a preview of the video frame being currently received (or parsed) on-the-fly. When ```snapshot.gif``` is opened by an application, DemuxFS internally feeds [FFmpeg](https://ffmpeg.org) with the elementary stream data and copies the rendered frame back to that application.
 
 This is how the contents of a H.264 video stream program look like:
 
@@ -83,6 +83,6 @@ Note that you need to invoke DemuxFS with ```-o parse_pes=1``` to enable still p
 
 ### Data and object carousel
 
-DemuxFS also handles the protocol stack of DSM-CC, which implements data and object carousels. All related tables (AIT, DII, DSI, and DDB) are exported to the filesystem. Besides, the actual data blocks are decoded and exported to the filesystem as regular files and directories. By doing so, users can inspect the contents of interactive applications and firmware updates. The decoded data is stored in the mount point's **DSM-CC** directory.
+DemuxFS also handles the protocol stack of DSM-CC, which implements data and object carousels. All related tables (AIT, DII, DSI, and DDB) are exported to the filesystem. Besides, the actual data blocks are decoded and exported to the filesystem as regular files and directories. By doing so, users can inspect the contents of interactive applications and firmware updates. The decoded data is stored in the mount point's ```DSM-CC``` directory.
 
 <img src="http://lucasvr.github.io/demuxfs/example-dsmcc.svg"/>
