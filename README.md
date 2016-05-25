@@ -4,7 +4,7 @@
 
 DemuxFS is a live filesystem that aids on the analysis of transport streams in digital TV systems. At the root of the filesystem, directories are created for each table in the transport stream, such as PMT, PAT, NIT, SDTT, and EIT. Inside these directories, virtual files reflect the many properties of these tables.
 
-Packetized Elementary Streams (PES), which hold audio, video and data, are represented in DemuxFS as FIFOs. Throughout FIFOs, users can playback specific audio and video streams and inspect the contents of closed-caption streams. DemuxFS also handles the protocol stack of DSM-CC, allowing for the seamless inspection of interactive applications.
+Packetized Elementary Streams (PES), which hold audio, video and data, are represented in DemuxFS as FIFOs. Through FIFOs, users can playback specific audio and video streams and inspect the contents of closed-caption streams. DemuxFS also handles the protocol stack of DSM-CC, allowing for the seamless inspection of interactive applications.
 
 DemuxFS supports the SBTVD, ISDB, DVB and ATSC standards.
 
