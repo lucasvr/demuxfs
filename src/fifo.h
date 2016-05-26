@@ -6,11 +6,9 @@ struct fifo;
 /**
  * fifo_init - Initializes a new FIFO
  *
- * @max_elements: how many elements to keep in the FIFO at most
- *
  * Returns a pointer to the newly allocated FIFO or NULL on error.
  */
-struct fifo *fifo_init(uint32_t max_elements);
+struct fifo *fifo_init();
 
 /**
  * fifo_destroy - Destroys a FIFO and all resources allocated by it.
@@ -18,14 +16,6 @@ struct fifo *fifo_init(uint32_t max_elements);
  * @fifo: the FIFO.
  */
 void fifo_destroy(struct fifo *fifo);
-
-/**
- * fifo_set_max_elements - Updates the FIFO maximum number of elements
- *
- * @fifo: the FIFO.
- * @max_elements: how many elements to keep in the FIFO at most.
- */
-void fifo_set_max_elements(struct fifo *fifo, uint32_t max_elements);
 
 /**
  * fifo_get_default_size - Returns the default size for when creating a new dentry.
@@ -58,22 +48,6 @@ int fifo_set_path(struct fifo *fifo, char *path);
 const char *fifo_get_path(struct fifo *fifo);
 
 /**
- * fifo_open - Open a FIFO.
- *
- * @fifo: the FIFO.
- *
- * Returns 0 on success or -EBUSY if the FIFO is already open.
- */
-int fifo_open(struct fifo *fifo);
-
-/**
- * fifo_close - Close a FIFO.
- *
- * @fifo: the FIFO.
- */
-void fifo_close(struct fifo *fifo);
-
-/**
  * fifo_flush - Removes remaining elements stored in a FIFO
  *
  * @fifo: the FIFO.
@@ -88,38 +62,6 @@ void fifo_flush(struct fifo *fifo);
  * Returns true if the FIFO is open or false if it's not.
  */
 bool fifo_is_open(struct fifo *fifo);
-
-/**
- * fifo_is_empty - Tells if a FIFO is empty
- *
- * @fifo: the FIFO.
- *
- * Returns true if the FIFO is empty or false if it's not.
- */
-bool fifo_is_empty(struct fifo *fifo);
-
-/**
- * fifo_is_flushed - Tells if a FIFO is flushed, which means that
- * the reader didn't receive any data since the FIFO was opened.
- *
- * @fifo: the FIFO.
- *
- * Returns true if the FIFO is flushed or false if it's not.
- */
-bool fifo_is_flushed(struct fifo *fifo);
-
-/**
- * fifo_read - Consumes data from a FIFO
- *
- * @fifo: the FIFO we want to read from
- * @buf: buffer where the FIFO data will be copied to
- * @size: @buf size
- *
- * Returns the number of data read, or 0 if no data is
- * available. The caller is responsible from calling this
- * function as many times as required to fulfill its buffer.
- */
-size_t fifo_read(struct fifo *fifo, char *buf, size_t size);
 
 /**
  * fifo_append - appends data to the FIFO.

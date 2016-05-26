@@ -14,7 +14,6 @@
 #include <stddef.h>
 #include <limits.h>
 #include <termios.h>
-#include <semaphore.h>
 #include <sys/types.h>
 #include <sys/xattr.h>
 
@@ -46,7 +45,7 @@ struct xattr {
 	char *name;
 	/* Extended attribute value */
 	char *value;
-	size_t size;
+	ssize_t size;
 	/* Should name+value be freed, putname is set to true */
 	bool putname;
 	/* Private */
@@ -66,7 +65,6 @@ enum {
 #define DEMUXFS_IS_FILE(d)       (d->obj_type == OBJ_TYPE_FILE)
 #define DEMUXFS_IS_DIR(d)        (d->obj_type == OBJ_TYPE_DIR)
 #define DEMUXFS_IS_SYMLINK(d)    (d->obj_type == OBJ_TYPE_SYMLINK)
-#define DEMUXFS_IS_FIFO(d)       ((d->obj_type & OBJ_TYPE_FIFO) == OBJ_TYPE_FIFO)
 #define DEMUXFS_IS_AUDIO_FIFO(d) (d->obj_type == OBJ_TYPE_AUDIO_FIFO)
 #define DEMUXFS_IS_VIDEO_FIFO(d) (d->obj_type == OBJ_TYPE_VIDEO_FIFO)
 #define DEMUXFS_IS_SNAPSHOT(d)   (d->obj_type == OBJ_TYPE_SNAPSHOT)
@@ -88,13 +86,12 @@ struct dentry {
 	uint32_t refcount;
 	/* File contents */
 	char *contents;
-	size_t size;
+	ssize_t size;
 
 	/* Extended attributes */
 	struct list_head xattrs;
 	/* Protection for concurrent access */
 	pthread_mutex_t mutex;
-	sem_t semaphore;
 	/* Backpointer to parent */
 	struct dentry *parent;
 	/* List of children dentries, if any */
@@ -116,13 +113,6 @@ struct dentry {
 
 /* This definition imposes the maximum size of the hash tables */
 #define DEMUXFS_MAX_PIDS 256
-
-/* 
- * Maximum number of TS packets to queue in a FIFO. 
- * The default value allows a single FIFO consume up
- * to 30MB when a process starts reading from it.
- */
-#define MAX_TS_PACKETS_IN_A_FIFO 512
 
 enum transmission_type {
 	SBTVD_STANDARD,

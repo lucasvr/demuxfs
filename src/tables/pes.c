@@ -106,32 +106,30 @@ static struct dentry *pes_get_dentry(const struct ts_header *header,
 static int pes_append_to_fifo(struct dentry *dentry, bool pusi,
 		const char *payload, uint32_t payload_len, bool is_video_es)
 {
-	struct fifo_priv *priv_data;
-	struct fifo *fifo;
+	struct fifo_priv *priv_data = dentry ? (struct fifo_priv *) dentry->priv : NULL;
+	struct fifo *fifo = priv_data ? priv_data->fifo : NULL;
 	int ret = 0;
 
-	if (! dentry || payload_len == 0)
+	if (! fifo || payload_len == 0)
 		return 0;
-	
-	priv_data = (struct fifo_priv *) dentry->priv;
-	fifo = priv_data->fifo;
 
 	/* Do not feed the FIFO if no process wants to read from it */
 	if (fifo_is_open(fifo)) {
 		bool append = true;
 
-		if (fifo_is_flushed(fifo) && is_video_es && !IS_NAL_IDC_REFERENCE(payload)) {
-			/* Skip delta frames before start feeding the FIFO */
-			append = false;
+		if (is_video_es) {
+			/* Skip delta frames before feeding the FIFO for the first time */
+			const char *nal = payload;
+			while (payload_len && !IS_NAL_IDC_REFERENCE(nal)) {
+				nal++;
+				payload_len--;
+			}
+			append = payload_len > 0;
+			payload = nal;
 		}
 		
-		if (append) {
+		if (append)
 			ret = fifo_append(fifo, payload, payload_len);
-			/* Awake reader, if any */
-			pthread_mutex_lock(&dentry->mutex);
-			sem_post(&dentry->semaphore);
-			pthread_mutex_unlock(&dentry->mutex);
-		}
 	}
 
 	if (ret < 0)
@@ -152,6 +150,8 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 	struct av_fifo_priv *priv_data;
 	bool is_video = false;
 	bool is_audio = false;
+
+	(void) is_audio;
 
 	if (header->payload_unit_start_indicator && payload_len < 6) {
 		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
@@ -223,6 +223,7 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 				/* Unbounded PES packet */
 				data_len = payload_len;
 			}
+			(void) cur_size;
 		} else if (! priv_data->pes_packet_initialized) {
 			data = NULL;
 			data_len = 0;

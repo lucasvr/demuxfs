@@ -92,17 +92,6 @@ fi
 AM_CONDITIONAL(USE_FFMPEG, test "${ffmpeg_found}" = "yes")
 
 dnl
-dnl Verify native support for FIFOs
-dnl
-mkfifo_found=
-AC_CHECK_LIB([c], [mkfifo], [mkfifo_found=yes], AC_MSG_RESULT([Will emulate FIFOs.]))
-if test ! -z "${mkfifo_found}"
-then
-	CFLAGS="${CFLAGS} -DUSE_POSIX_FIFOS"
-fi
-AM_CONDITIONAL(USE_POSIX_FIFOS, test "${mkfifo_found}" = "yes")
-
-dnl
 dnl Select backend. Available options are "filesrc"  and "linuxdvb".
 dnl
 validbackend=false

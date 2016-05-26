@@ -14,9 +14,6 @@
 #define XATTR_FORMAT_STRING_AND_NUMBER  "string [number]"
 #define XATTR_FORMAT_NUMBER_ARRAY       "number [<new_line>number]"
 
-/* Attribute name */
-#define XATTR_FIFO_SIZE                 "user.fifo_size"
-
 struct xattr *xattr_get(struct dentry *dentry, const char *name);
 bool xattr_exists(struct dentry *dentry, const char *name);
 int xattr_add(struct dentry *dentry, const char *name, const char *value, size_t size, bool putname);

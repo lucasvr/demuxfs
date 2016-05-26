@@ -49,7 +49,7 @@ void snapshot_destroy_video_context(struct dentry *dentry)
 	dentry->size = 0xffffff;
 }
 
-int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv)
+static int _snapshot_save_video_frame(struct fifo *fifo, struct dentry *dentry, struct demuxfs_data *priv)
 {
 	char *cmd[] = {
 		"ffmpeg",
@@ -63,14 +63,10 @@ int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv)
 	/* Hopefully this will be large enough */
 	int video_frame_max_size = 1920 * 1080 * 4;
 	int video_frame_size = 0;
-	int ret = 0;
 	char *video_frame;
 	int pipe_fds[2];
 	pid_t pid;
 
-	struct snapshot_priv *priv_data = (struct snapshot_priv *) dentry->priv;
-	struct fifo_priv *fifo_priv = (struct fifo_priv *) priv_data->borrowed_es_dentry->priv;
-	struct fifo *fifo = fifo_priv ? fifo_priv->fifo : NULL;
 	const char *path_to_fifo = fifo_get_path(fifo);
 	if (! path_to_fifo) {
 		dprintf("failed to get path to FIFO");
@@ -90,7 +86,7 @@ int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv)
 	} else if (pid == 0) {
 		/* stdout -> PIPE writer end */
 		close(STDOUT_FILENO);
-		close(STDERR_FILENO);
+		//close(STDERR_FILENO);
 		dup(pipe_fds[1]);
 		close(pipe_fds[0]);
 		close(pipe_fds[1]);
@@ -114,7 +110,8 @@ int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv)
 			size_t max = video_frame_max_size - video_frame_size;
 			ssize_t n = read(0, &video_frame[video_frame_size], max);
 			if (n <= 0) {
-				TS_INFO("read: %d", n);
+				if (video_frame_size == 0)
+					video_frame_size = n;
 				break;
 			}
 			video_frame_size += n;
@@ -130,9 +127,29 @@ int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv)
 			dentry->size = video_frame_size;
 		} else {
 			free(video_frame);
-			ret = -1;
 		}
 		TS_INFO("Read %d bytes from FFMPEG pipe", video_frame_size);
+	}
+	return video_frame_size;
+}
+
+int snapshot_save_video_frame(struct dentry *dentry, struct demuxfs_data *priv)
+{
+	struct snapshot_priv *priv_data = (struct snapshot_priv *) dentry->priv;
+	struct fifo_priv *fifo_priv = (struct fifo_priv *) priv_data->borrowed_es_dentry->priv;
+	struct fifo *fifo = fifo_priv ? fifo_priv->fifo : NULL;
+
+	const int max_attempts = 2;
+	int i, ret = -1;
+
+	if (fifo) {
+		for (i=0; i<max_attempts; ++i) {
+			ret = _snapshot_save_video_frame(fifo, dentry, priv);
+			if (ret > 0)
+				break;
+			ret = -1;
+			sleep(1);
+		}
 	}
 	return ret;
 }

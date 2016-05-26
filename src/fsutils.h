@@ -72,7 +72,6 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	INIT_LIST_HEAD(&(_dentry)->children); \
 	INIT_LIST_HEAD(&(_dentry)->xattrs); \
 	pthread_mutex_init(&(_dentry)->mutex, NULL); \
-	sem_init(&(_dentry)->semaphore, 0, 0); \
 
 #define CREATE_COMMON(_parent,_dentry) \
 	INITIALIZE_DENTRY_UNLINKED(_dentry); \
@@ -236,16 +235,14 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 		_dentry->obj_type = ftype; \
 	 		if (ftype == OBJ_TYPE_VIDEO_FIFO || ftype == OBJ_TYPE_AUDIO_FIFO) { \
 	 			struct av_fifo_priv *_priv = (struct av_fifo_priv *) calloc(1, sizeof(struct av_fifo_priv)); \
-	 			_priv->fifo = _fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
+	 			_priv->fifo = _fifo = (struct fifo *) fifo_init(); \
 	 			_dentry->priv = _priv; \
 	 		} else { \
 	 			struct fifo_priv *_priv = (struct fifo_priv *) calloc(1, sizeof(struct fifo_priv)); \
-	 			_priv->fifo = _fifo = (struct fifo *) fifo_init(MAX_TS_PACKETS_IN_A_FIFO); \
+	 			_priv->fifo = _fifo = (struct fifo *) fifo_init(); \
 	 			_dentry->priv = _priv; \
 	 		} \
-	 		sprintf(_fifo_size, "%d", MAX_TS_PACKETS_IN_A_FIFO); \
 	 		CREATE_COMMON((parent),_dentry); \
-			xattr_add(_dentry, XATTR_FIFO_SIZE, _fifo_size, strlen(_fifo_size), true); \
 	 		fifo_set_path(_fifo, fsutils_realpath(_dentry, _fifo_path, sizeof(_fifo_path), priv)); \
 	 	} \
 	 	_dentry; \

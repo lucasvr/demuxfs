@@ -87,34 +87,8 @@ static int demuxfs_open(const char *path, struct fuse_file_info *fi)
 		return -ENOENT;
 
 	pthread_mutex_lock(&dentry->mutex);
-	if (DEMUXFS_IS_FIFO(dentry)) {
-		struct fifo_priv *fifo_priv = (struct fifo_priv *) dentry->priv;
-		struct fifo *fifo = fifo_priv->fifo;
-
-		/* 
-		 * Mimic a FIFO. This is a special file which gets filled up periodically
-		 * by the PES parsers and consumed on read. Tell FUSE as such. Also, we
-		 * only support one reader at a time.
-		 */
-		ret = fifo_open(fifo);
-		if (ret < 0)
-			goto out;
-
-		/* Make sure the FIFO is flushed */
-		fifo_flush(fifo);
-		fi->direct_io = 1;
-#if FUSE_USE_VERSION >= 29
-		fi->nonseekable = 1;
-#endif
-	} else if (DEMUXFS_IS_SNAPSHOT(dentry)) {
-		/* Make sure the FIFO is flushed */
-		struct snapshot_priv *snapshot_priv = (struct snapshot_priv *) dentry->priv;
-		struct fifo_priv *fifo_priv = snapshot_priv->borrowed_es_dentry->priv;
-		fifo_flush(fifo_priv->fifo);
-	}
 	dentry->refcount++;
 	fi->fh = DENTRY_TO_FILEHANDLE(dentry);
-out:
 	pthread_mutex_unlock(&dentry->mutex);
 	return ret;
 }
@@ -129,37 +103,10 @@ static int demuxfs_release(const char *path, struct fuse_file_info *fi)
 	struct dentry *dentry = FILEHANDLE_TO_DENTRY(fi->fh);
 	pthread_mutex_lock(&dentry->mutex);
 	dentry->refcount--;
-	if (DEMUXFS_IS_FIFO(dentry)) {
-		struct fifo_priv *fifo_priv = (struct fifo_priv *) dentry->priv;
-		fifo_close(fifo_priv->fifo);
-	} else if (DEMUXFS_IS_SNAPSHOT(dentry)) {
-		struct snapshot_priv *snapshot_priv = (struct snapshot_priv *) dentry->priv;
-		struct fifo_priv *fifo_priv = snapshot_priv->borrowed_es_dentry->priv;
+	if (DEMUXFS_IS_SNAPSHOT(dentry))
 		snapshot_destroy_video_context(dentry);
-		fifo_flush(fifo_priv->fifo);
-	}
 	pthread_mutex_unlock(&dentry->mutex);
 	return 0;
-}
-
-static int _demuxfs_read_from_fifo(struct dentry *dentry, char *buf, size_t size)
-{
-	struct fifo_priv *priv = (struct fifo_priv *) dentry->priv;
-	size_t n;
-	int ret;
-
-	pthread_mutex_lock(&dentry->mutex);
-	while (fifo_is_empty(priv->fifo)) {
-		pthread_mutex_unlock(&dentry->mutex);
-		ret = sem_wait(&dentry->semaphore);
-		if (ret < 0 && errno == EINTR)
-			return -EINTR;
-		pthread_mutex_lock(&dentry->mutex);
-	}
-	pthread_mutex_unlock(&dentry->mutex);
-
-	n = fifo_read(priv->fifo, buf, size);
-	return n;
 }
 
 static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset, 
@@ -167,41 +114,35 @@ static int demuxfs_read(const char *path, char *buf, size_t size, off_t offset,
 {
 	struct demuxfs_data *priv = fuse_get_context()->private_data;
 	struct dentry *dentry = FILEHANDLE_TO_DENTRY(fi->fh);
-	size_t read_size = 0;
+	ssize_t read_size = 0;
 	int ret = 0;
 
 	if (! dentry)
 		return -ENOENT;
 
-	if (DEMUXFS_IS_FIFO(dentry)) {
-		while (read_size < size) {
-			ret = _demuxfs_read_from_fifo(dentry, buf+read_size, size-read_size);
-			if (ret == -EINTR)
-				return 0;
-			read_size += ret;
-		}
-	} else if (DEMUXFS_IS_SNAPSHOT(dentry)) {
+	if (DEMUXFS_IS_SNAPSHOT(dentry)) {
+		pthread_mutex_lock(&dentry->mutex);
 		if (! dentry->contents) {
 			/* Initialize software decoder context */
 			ret = snapshot_init_video_context(dentry);
-			if (ret < 0)
+			if (ret < 0) {
+				pthread_mutex_unlock(&dentry->mutex);
 				return ret;
+			}
 			/* Request FFmpeg to decode a video frame out of the ES dentry lended to us */
 			ret = snapshot_save_video_frame(dentry, priv);
 		}
-
-		if (ret == 0) {
-			pthread_mutex_lock(&dentry->mutex);
-			if (offset < dentry->size) {
-				read_size = ((dentry->size - offset) > size) ? size : dentry->size - offset;
-				memcpy(buf, &dentry->contents[offset], read_size);
-			}
-			pthread_mutex_unlock(&dentry->mutex);
+		if (ret == 0 && (ssize_t) offset < dentry->size) {
+			read_size = ((dentry->size - (ssize_t) offset) > (ssize_t) size)
+				? size : dentry->size - (ssize_t) offset;
+			memcpy(buf, &dentry->contents[offset], read_size);
 		}
-	} else if (dentry->contents) {
+		pthread_mutex_unlock(&dentry->mutex);
+	} else if (dentry->contents && dentry->size != 0xffffff) {
 		pthread_mutex_lock(&dentry->mutex);
 		if (offset < dentry->size) {
-			read_size = ((dentry->size - offset) > size) ? size : dentry->size - offset;
+			read_size = ((dentry->size - (ssize_t) offset) > (ssize_t) size)
+				? size : dentry->size - (ssize_t) offset;
 			memcpy(buf, &dentry->contents[offset], read_size);
 		}
 		pthread_mutex_unlock(&dentry->mutex);
@@ -283,10 +224,6 @@ static int demuxfs_setxattr(const char *path, const char *name, const char *valu
 	pthread_mutex_lock(&dentry->mutex);
 	xattr_remove(dentry, name);
 	ret = xattr_add(dentry, name, value, size, true);
-	if (ret == 0 && DEMUXFS_IS_FIFO(dentry) && !strcmp(name, XATTR_FIFO_SIZE)) {
-		struct fifo_priv *fifo_priv = (struct fifo_priv *) dentry->priv;
-		fifo_set_max_elements(fifo_priv->fifo, atoi(value));
-	}
 	pthread_mutex_unlock(&dentry->mutex);
 	return ret;
 }
