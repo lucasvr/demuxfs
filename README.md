@@ -1,5 +1,5 @@
 <p align="center">
-<img src="http://demuxfs.sourceforge.net/demuxfs.png"/>
+<img src="http://lucasvr.github.io/demuxfs/demuxfs.svg"/>
 </p>
 
 DemuxFS is a live filesystem that aids on the analysis of transport streams in digital TV systems. At the root of the filesystem, directories are created for each table in the transport stream, such as PMT, PAT, NIT, SDTT, and EIT. Inside these directories, virtual files reflect the many properties of these tables.
