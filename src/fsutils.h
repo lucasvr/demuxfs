@@ -224,7 +224,7 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 
 #define CREATE_FIFO(parent,ftype,fname,priv) \
 	({ \
-	 	char _fifo_size[128], _fifo_path[PATH_MAX]; \
+	 	char _fifo_path[PATH_MAX]; \
 	 	struct dentry *_dentry = fsutils_get_child(parent, fname); \
 	 	struct fifo *_fifo; \
 	 	if (! _dentry) { \
