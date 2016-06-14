@@ -104,7 +104,7 @@ static struct dentry *pes_get_dentry(const struct ts_header *header,
 }
 
 static int pes_append_to_fifo(struct dentry *dentry, bool pusi,
-		const char *payload, uint32_t payload_len, bool is_video_es)
+		const char *payload, uint32_t payload_len, int es_stream_type)
 {
 	struct fifo_priv *priv_data = dentry ? (struct fifo_priv *) dentry->priv : NULL;
 	struct fifo *fifo = priv_data ? priv_data->fifo : NULL;
@@ -115,17 +115,24 @@ static int pes_append_to_fifo(struct dentry *dentry, bool pusi,
 
 	/* Do not feed the FIFO if no process wants to read from it */
 	if (fifo_is_open(fifo)) {
+		const char *ptr = payload;
 		bool append = true;
 
-		if (is_video_es) {
-			/* Skip delta frames before feeding the FIFO for the first time */
-			const char *nal = payload;
-			while (payload_len && !IS_NAL_IDC_REFERENCE(nal)) {
-				nal++;
+		/* Skip delta frames before feeding the FIFO for the first time */
+		if (es_stream_type == ES_VIDEO_STREAM) {
+			while (payload_len && !IS_NAL_IDC_REFERENCE(ptr)) {
+				ptr++;
 				payload_len--;
 			}
 			append = payload_len > 0;
-			payload = nal;
+			payload = ptr;
+		} else if (es_stream_type == ES_AUDIO_STREAM) {
+			while (payload_len && !IS_AAC_LATM_SYNCWORD(ptr)) {
+				ptr++;
+				payload_len--;
+			}
+			append = payload_len > 0;
+			payload = ptr;
 		}
 		
 		if (append)
@@ -140,7 +147,61 @@ static int pes_append_to_fifo(struct dentry *dentry, bool pusi,
 int pes_parse_audio(const struct ts_header *header, const char *payload, uint32_t payload_len,
 		struct demuxfs_data *priv)
 {
-	return pes_parse_video(header, payload, payload_len, priv);
+	struct dentry *es_dentry, *pes_dentry;
+	struct av_fifo_priv *priv_data;
+	bool is_audio = true;
+
+	if (header->payload_unit_start_indicator && payload_len < 6) {
+		TS_WARNING("cannot parse PES header: payload holds less than 6 bytes (%d)", payload_len);
+		return -1;
+	}
+
+	if (priv->options.parse_pes) {
+		const char *data = payload;
+		uint32_t data_len = payload_len - 4;
+
+		es_dentry = pes_get_dentry(header, FS_ES_FIFO_NAME, priv);
+		if (! es_dentry) {
+			TS_WARNING("failed to get ES dentry");
+			return -ENOENT;
+		}
+		priv_data = (struct av_fifo_priv *) es_dentry->priv;
+
+		if (header->payload_unit_start_indicator) {
+			int stream_type = pes_identify_stream_id(payload[3]);
+			is_audio = stream_type == PES_AUDIO_STREAM;
+
+			/* Flush ES buffer */
+			priv_data->pes_packet_length = CONVERT_TO_16(payload[4], payload[5]);
+			priv_data->pes_packet_parsed_length = 0;
+			priv_data->pes_packet_initialized = true;
+			data = pes_parse_audio_video_payload(payload, payload_len, &data_len);
+			if (data == NULL) {
+				TS_WARNING("failed to parse PES audio/video payload");
+				return -1;
+			}
+			priv_data->pes_packet_parsed_length += data_len;
+		} else if (priv_data->pes_packet_initialized) {
+			if (priv_data->pes_packet_length == 0) {
+				/* Unbounded PES packet */
+				data_len = payload_len;
+			}
+		} else if (! priv_data->pes_packet_initialized) {
+			data_len = payload_len;
+		}
+
+		if (data && data_len)
+			pes_append_to_fifo(es_dentry, header->payload_unit_start_indicator,
+				data, data_len, is_audio ? ES_AUDIO_STREAM : ES_OTHER_STREAM);
+	}
+
+	pes_dentry = pes_get_dentry(header, FS_PES_FIFO_NAME, priv);
+	if (! pes_dentry) {
+		dprintf("dentry = NULL");
+		return -ENOENT;
+	}
+	return pes_append_to_fifo(pes_dentry, header->payload_unit_start_indicator,
+		payload, payload_len, ES_OTHER_STREAM);
 }
 
 int pes_parse_video(const struct ts_header *header, const char *payload, uint32_t payload_len,
@@ -149,12 +210,9 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 	struct dentry *es_dentry, *pes_dentry;
 	struct av_fifo_priv *priv_data;
 	bool is_video = false;
-	bool is_audio = false;
-
-	(void) is_audio;
 
 	if (header->payload_unit_start_indicator && payload_len < 6) {
-		TS_WARNING("cannot parse PES header: contents is smaller than 6 bytes (%d)", payload_len);
+		TS_WARNING("cannot parse PES header: payload holds less than 6 bytes (%d)", payload_len);
 		return -1;
 	}
 
@@ -180,7 +238,6 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 			priv_data->pes_packet_initialized = true;
 
 			is_video = stream_type == PES_VIDEO_STREAM;
-			is_audio = stream_type == PES_AUDIO_STREAM;
 
 			if (stream_type != PES_PROGRAM_STREAM_MAP &&
 				stream_type != PES_PADDING_STREAM &&
@@ -217,13 +274,10 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 			}
 			priv_data->pes_packet_parsed_length += data_len;
 		} else if (priv_data->pes_packet_initialized) {
-			int cur_size = priv_data->pes_packet_parsed_length;
-			int max_size = priv_data->pes_packet_length;
-			if (max_size == 0) {
+			if (priv_data->pes_packet_length == 0) {
 				/* Unbounded PES packet */
 				data_len = payload_len;
 			}
-			(void) cur_size;
 		} else if (! priv_data->pes_packet_initialized) {
 			data = NULL;
 			data_len = 0;
@@ -231,7 +285,7 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 
 		if (data && data_len)
 			pes_append_to_fifo(es_dentry, header->payload_unit_start_indicator,
-				data, data_len, is_video);
+				data, data_len, is_video ? ES_VIDEO_STREAM : ES_OTHER_STREAM);
 	}
 
 	pes_dentry = pes_get_dentry(header, FS_PES_FIFO_NAME, priv);
@@ -240,7 +294,7 @@ int pes_parse_video(const struct ts_header *header, const char *payload, uint32_
 		return -ENOENT;
 	}
 	return pes_append_to_fifo(pes_dentry, header->payload_unit_start_indicator,
-		payload, payload_len, false);
+		payload, payload_len, ES_OTHER_STREAM);
 }
 
 static const char *pes_parse_audio_video_payload(const char *payload, uint32_t payload_len,

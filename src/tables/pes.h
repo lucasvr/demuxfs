@@ -14,6 +14,9 @@
 #define IS_NAL_IDC_REFERENCE(s) \
 	(s[0] == 0x00 && s[1] == 0x00 && s[2] == 0x00 && s[3] == 0x01 && s[4] != 0x09)
 
+#define IS_AAC_LATM_SYNCWORD(s) \
+	(s[0] == 0x56 && (s[1] & 0xE0) == 0xE0)
+
 #define IS_H222_PES(s) ((s[6] & 0xC0) == 0x80)
 
 enum {
@@ -46,6 +49,12 @@ enum {
 	PES_RESERVED_DATA_STREAM,
 	PES_PROGRAM_STREAM_DIRECTORY,
 	PES_UNKNOWN_STREAM
+};
+
+enum {
+	ES_VIDEO_STREAM,
+	ES_AUDIO_STREAM,
+	ES_OTHER_STREAM
 };
 
 int pes_identify_stream_id(uint8_t stream_id);

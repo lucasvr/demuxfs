@@ -323,30 +323,35 @@ int ts_parse_packet(const struct ts_header *header, const char *payload, struct 
 			is_new_packet = true;
 		}
 	} else if (ts_is_pes_packet(header->pid, priv)) {
-		uint16_t size;
 		bool pusi = header->payload_unit_start_indicator;
-		
-		buffer = hashtable_get(priv->packet_buffer, header->pid);
-		if (! buffer) {
-			if (! pusi || (payload_end - payload_start <= 6))
-				return 0;
-			size = CONVERT_TO_16(payload_start[4], payload_start[5]);
-			buffer = buffer_create(header->pid, size, true);
+		parse_function = (parse_function_t) hashtable_get(priv->pes_parsers, header->pid);
+
+		if ((pusi && payload_end - payload_start <= 6) || ! parse_function)
+			return 0;
+		else if (pusi) {
+			uint16_t size = CONVERT_TO_16(payload_start[4], payload_start[5]);
+			buffer = hashtable_get(priv->packet_buffer, header->pid);
+			if (! buffer) {
+				buffer = buffer_create(header->pid, size, true);
+				if (! buffer)
+					return 0;
+				hashtable_add(priv->packet_buffer, header->pid, buffer, NULL);
+			}
+			buffer_reset_size(buffer);
+			buffer_append(buffer, payload_start, payload_end - payload_start + 1);
+		} else {
+			buffer = hashtable_get(priv->packet_buffer, header->pid);
 			if (! buffer)
 				return 0;
-			buffer->continuity_counter = header->continuity_counter;
-			hashtable_add(priv->packet_buffer, header->pid, buffer, NULL);
-		} else if (!continuity_counter_is_ok(header, buffer, false, priv) ||
-			(buffer_get_current_size(buffer) == 0 && !buffer_is_unbounded(buffer) && 
-			 (!pusi || (payload_end - payload_start <= 6)))) {
-			return 0;
+			if (! continuity_counter_is_ok(header, buffer, false, priv))
+				return 0;
+			if (buffer_get_current_size(buffer) == 0 && !buffer_is_unbounded(buffer))
+				return 0;
+			buffer_append(buffer, payload_start, payload_end - payload_start + 1);
 		}
-
-		buffer_append(buffer, payload_start, payload_end - payload_start + 1);
 		if (buffer_contains_full_pes_section(buffer)) {
 			/* Invoke the PES parser for this packet */
-			if ((parse_function = (parse_function_t) hashtable_get(priv->pes_parsers, header->pid)))
-				ret = parse_function(header, buffer->data, buffer->current_size, priv);
+			ret = parse_function(header, buffer->data, buffer->current_size, priv);
 			buffer_reset_size(buffer);
 		}
 	}
