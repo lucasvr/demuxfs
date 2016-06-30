@@ -117,6 +117,13 @@ then
 	CFLAGS="${CFLAGS} -DUSE_LINUXDVB"
 	use_linuxdvb=true
 	validbackend=true
+
+	AC_MSG_CHECKING([LinuxDVB API])
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM([[#include <linux/dvb/frontend.h>]],[[int x = SYS_DVBC_ANNEX_A;]])],
+		[AC_MSG_RESULT(up-to-date)],
+		[AC_MSG_RESULT(too old to be true!); use_linuxdvb=false]
+	)
 fi
 
 AM_CONDITIONAL(USE_FILESRC, test "${use_filesrc}" = "true")
