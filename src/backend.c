@@ -24,14 +24,14 @@ struct backend_ops *backend_load(const char *backend_name, void **backend_handle
 		return NULL;
 	}
 
-	if (stat(backend_name, &statbuf) < 0)
-		snprintf(backend, sizeof(backend), "%s/demuxfs/backends/lib%s.so", LIBDIR, backend_name);
-	else
+	if (backend_name[0] == '/' || stat(backend_name, &statbuf) == 0)
 		snprintf(backend, sizeof(backend), "%s", backend_name);
+	else
+		snprintf(backend, sizeof(backend), "%s/demuxfs/backends/lib%s.so", LIBDIR, backend_name);
 	
 	*backend_handle = dlopen(backend, RTLD_LAZY);
 	if (! *backend_handle) {
-		fprintf(stderr, "Failed to load backend '%s': %s\n", backend, dlerror());
+		fprintf(stderr, "Failed to load backend: %s\n", dlerror());
 		return NULL;
 	}
 
