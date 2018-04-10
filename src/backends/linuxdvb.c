@@ -140,7 +140,8 @@ static void linuxdvb_get_frontend_status(int status, char *buf, size_t size)
 	if (status & FE_HAS_CARRIER) {
 		count = snprintf(ptr, n, "HAS_CARRIER,");
 		ptr += count, n -= count;
-	if (status & FE_HAS_VITERBI)
+	}
+	if (status & FE_HAS_VITERBI) {
 		count = snprintf(ptr, n, "HAS_VITERBI,");
 		ptr += count, n -= count;
 	}
