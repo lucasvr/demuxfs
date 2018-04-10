@@ -336,7 +336,7 @@ int descriptor_0x54_parser(const char *payload, int len, struct dentry *parent, 
 		struct formatted_descriptor f;
 		char *genre = NULL, *subgenre = NULL;
 
-		memset(&f, sizeof(f), 0);
+		memset(&f, 0, sizeof(f));
 
 		f._content_nibble_level_1 = (payload[i] >> 4) & 0x0f;
 		f._content_nibble_level_2 = payload[i] & 0x0f;
