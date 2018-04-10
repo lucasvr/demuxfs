@@ -115,7 +115,7 @@ static void tot_create_ut3c_time(struct tot_table *tot)
 	}
 
 	tot->utc3_time[strlen(tot->utc3_time)-1] = '\0';
-	snprintf(raw_str, sizeof(raw_str), " [%#0llx]", tot->_utc3_time);
+	snprintf(raw_str, sizeof(raw_str), " [%#0zx]", tot->_utc3_time);
 	strcat(tot->utc3_time, raw_str);
 
 	CREATE_FILE_STRING(tot->dentry, tot, utc3_time, XATTR_FORMAT_STRING_AND_NUMBER);

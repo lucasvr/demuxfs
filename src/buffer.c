@@ -38,7 +38,7 @@ struct buffer *buffer_create(uint16_t pid, size_t size, bool pes_data)
 	struct buffer *buffer;
 
 	if (size > MAX_SECTION_SIZE && ! pes_data) {
-		dprintf("*** size (%d) > hard limit (%d)", size, size);
+		dprintf("*** size (%zd) > hard limit (%d)", size, MAX_SECTION_SIZE);
 		return NULL;
 	}
 
@@ -148,7 +148,7 @@ bool buffer_contains_full_psi_section(struct buffer *buffer)
 	section_length = CONVERT_TO_16(buffer->data[1], buffer->data[2]) & 0x0fff;
 	if (buffer->current_size < (section_length + 3)) {
 		if ((section_length + 3) > MAX_SECTION_SIZE) {
-			dprintf("Bad section packet: curr_size=%d max_size=%d section_length=%d [pid %#x table_id %#x]",
+			dprintf("Bad section packet: curr_size=%zd max_size=%zd section_length=%d [pid %#x table_id %#x]",
 					buffer->current_size, buffer->max_size, section_length, buffer->pid, buffer->data[0]);
 			buffer_reset_size(buffer);
 		}

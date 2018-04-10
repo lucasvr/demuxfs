@@ -111,7 +111,7 @@ static void _fsutils_dump_tree(struct dentry *dentry, int spaces)
 	if (! dentry)
 		return;
 	if (spaces == 0) {
-		fprintf(stderr, "%s [%s] inode=%#llx\n", 
+		fprintf(stderr, "%s [%s] inode=%#jx\n",
 				dentry->name ? dentry->name : "(null)", 
 				dentry->mode & S_IFDIR ? "dir" : 
 				dentry->mode & S_IFREG ? "file" : "symlink",
@@ -122,7 +122,7 @@ static void _fsutils_dump_tree(struct dentry *dentry, int spaces)
 	list_for_each_entry(ptr, &dentry->children, list) {
 		for (i=0; i<spaces; ++i)
 			fprintf(stderr, " ");
-		fprintf(stderr, "%s [%s] inode=%#llx\n", 
+		fprintf(stderr, "%s [%s] inode=%#jx\n",
 				ptr->name ? ptr->name : "(null)", 
 				ptr->mode & S_IFDIR ? "dir" : 
 				ptr->mode & S_IFREG ? "file" : "symlink",
@@ -259,7 +259,7 @@ struct dentry * fsutils_get_child(struct dentry *dentry, const char *name)
  */
 struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 {
-	char *start, *end, *ptr;
+	char *start, *end;
 	char path[strlen(cpath)+1];
 	struct dentry *prev = root;
 	struct dentry *cached = NULL;
@@ -279,7 +279,6 @@ struct dentry * fsutils_get_dentry(struct dentry *root, const char *cpath)
 	}
 
 	while (start) {
-		ptr = start;
 		start = strstr(start, "/");
 		if (! start)
 			break;

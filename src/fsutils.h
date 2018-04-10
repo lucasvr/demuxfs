@@ -132,14 +132,14 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	 	if (_dentry) { \
 	 		pthread_mutex_lock(&_dentry->mutex); \
 	 		free(_dentry->contents); \
-			asprintf(&_dentry->contents, "%#04llx", member64); \
+			asprintf(&_dentry->contents, "%#04zx", member64); \
 			_dentry->parent->size -= _dentry->size; \
 			_dentry->size = strlen(_dentry->contents); \
 			_dentry->parent->size += _dentry->size; \
 	 		pthread_mutex_unlock(&_dentry->mutex); \
 	 	} else { \
 			_dentry = (struct dentry *) calloc(1, sizeof(struct dentry)); \
-			asprintf(&_dentry->contents, "%#04llx", member64); \
+			asprintf(&_dentry->contents, "%#04zx", member64); \
 			_dentry->name = strdup(#member); \
 			_dentry->size = strlen(_dentry->contents); \
 			_dentry->mode = S_IFREG | 0444; \

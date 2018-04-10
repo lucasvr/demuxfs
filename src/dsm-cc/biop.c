@@ -181,7 +181,7 @@ static int biop_parse_descriptor(struct biop_binding *binding, const char *buf, 
 		case 0x81: /* Time stamp */
 			binding->_timestamp = CONVERT_TO_64(buf[j+2], buf[j+3], buf[j+4],
 				buf[j+5], buf[j+6], buf[j+7], buf[j+8], buf[j+9]);
-			dprintf("time_stamp='%#llx'", binding->_timestamp);
+			dprintf("time_stamp='%#zx'", binding->_timestamp);
 			break;
 		default:
 			dprintf("Unsupported descriptor tag '%#x'", descriptor_tag);
@@ -298,7 +298,7 @@ static int biop_parse_directory_message(struct biop_directory_message *msg,
 					j += 8;
 
 					if (binding->content_size & 0xffffffff00000000)
-						TS_WARNING("binding %d has invalid content size: %#llx",
+						TS_WARNING("binding %d has invalid content size: %#zx",
 							i+1, binding->content_size);
 					if (binding->child_object_info_length < 8)
 						TS_WARNING("binding->child_object_info_length < 8 (%d)", 
@@ -605,7 +605,7 @@ static int biop_update_file_dentry(struct dentry *root,
 		}
 	}
 	if (dentry->size != msg->message_body.content_length) {
-		dprintf("'%s': directory object said size=%d, file object says %d (contents=%p, inode=%#llx)",
+		dprintf("'%s': directory object said size=%zd, file object says %d (contents=%p, inode=%#zx)",
 		dentry->name, dentry->size, msg->message_body.content_length, dentry->contents, dentry->inode);
 		if (! dentry->size) {
 			/* 
@@ -648,7 +648,7 @@ static int biop_create_children_dentries(struct dentry *root,
 		struct dentry *entry = NULL, *tmp_entry;
 
 		if (binding->name.kind_data == 0x66696c00) {
-			dprintf("--> creating file '%s' of size '%lld' and inode '%#llx' and parent '%#llx' (%s)", 
+			dprintf("--> creating file '%s' of size '%zd' and inode '%#jx' and parent '%#jx' (%s)",
 					name->id_byte, binding->content_size, binding->_inode, parent_inode,
 					found_parent ? "found" : "not found");
 			/* 
@@ -666,7 +666,7 @@ static int biop_create_children_dentries(struct dentry *root,
 				}
 			}
 		} else {
-			dprintf("--> creating directory '%s' with inode '%#llx' and parent '%#llx' (%s)", 
+			dprintf("--> creating directory '%s' with inode '%#jx' and parent '%#jx' (%s)",
 					name->id_byte, binding->_inode, parent_inode,
 					found_parent ? "found" : "not found");
 
@@ -705,7 +705,7 @@ void biop_reparent_orphaned_dentries(struct dentry *root, struct dentry *stepfat
 		ino_t real_parent_inode;
 		
 		if (! entry->priv) {
-			dprintf("oops, orphaned entry '%s' (%#llx) doesn't contain private data",
+			dprintf("oops, orphaned entry '%s' (%#jx) doesn't contain private data",
 				entry->name, entry->inode);
 			fsutils_dispose_node(entry);
 			continue;
@@ -719,7 +719,7 @@ void biop_reparent_orphaned_dentries(struct dentry *root, struct dentry *stepfat
 		}
 
 		if (! real_parent) {
-			dprintf("'%s' is definitely orphaned for its parent '%#llx' is missing", 
+			dprintf("'%s' is definitely orphaned for its parent '%#jx' is missing",
 					entry->name, real_parent_inode);
 			fsutils_dispose_node(entry);
 			has_orphaned_entries = true;
@@ -783,7 +783,7 @@ int biop_create_filesystem_dentries(struct dentry *parent, struct dentry *stepfa
 			biop_free_file_message(&file_msg);
 
 		} else {
-			dprintf("Parser for object kind '0x%02x%02x%02x%02x' not implemented", 
+			dprintf("Parser for object kind '0x%02x%02x%02x%02x' not implemented",
 				object_kind[0], object_kind[1], object_kind[2], object_kind[3]);
 			break;
 		}

@@ -54,7 +54,7 @@ void psi_dump_header(struct psi_common_header *header)
 {
 	dprintf("table_id=%#x\nsection_syntax_indicator=%d\nsection_length=%d\n"
 			"identifier=%d\nversion_number=%d\ncurrent_next_indicator=%d\nsection_number=%d\n"
-			"last_section_number=%d\n__inode=%#llx\n__name=%s",
+			"last_section_number=%d\n__inode=%#jx\n__name=%s",
 			header->table_id, header->section_syntax_indicator, header->section_length,
 			header->identifier, header->version_number, header->current_next_indicator, 
 			header->section_number,	header->last_section_number, 

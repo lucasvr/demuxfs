@@ -182,7 +182,7 @@ static bool dii_module_complete(struct dii_table *dii, int module, struct dentry
 	}
 
 	if (mod_dentry->size != mod->module_size)
-		TS_WARNING("%s has size %d but it was expected to have %d", mod_dir, mod_dentry->size, mod->module_size);
+		TS_WARNING("%s has size %zd but it was expected to have %d", mod_dir, mod_dentry->size, mod->module_size);
 
 	return true;
 }

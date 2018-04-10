@@ -114,7 +114,7 @@ bool hashtable_add(struct hash_table *table, ino_t key, void *data, hashtable_fr
 			table->items[index] = item;
 			return true;
 		} else if (item->key == key) {
-			dprintf("overwriting previous contents (key=%#llx)", key);
+			dprintf("overwriting previous contents (key=%#jx)", key);
 			item->key = key;
 			item->data = data;
 			item->free_function = free_function;
