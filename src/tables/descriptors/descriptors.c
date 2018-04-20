@@ -143,9 +143,16 @@ struct descriptor *descriptors_init(struct demuxfs_data *priv)
 	ADD_DESCRIPTOR("Muxcode_Descriptor",                       0x21, priv);
 	ADD_DESCRIPTOR("FMX_Buffer_Size_Descriptor",               0x22, priv);
 	ADD_DESCRIPTOR("Multiplex_Buffer_Descriptor",              0x23, priv);
+	/* TS descriptors and their tag values, defined by ISO/IEC 13818-1 */
+	ADD_DESCRIPTOR("Content_Labeling_Descriptor",              0x24, priv);
+	ADD_DESCRIPTOR("Metadata_Pointer_Descriptor",              0x25, priv);
+	ADD_DESCRIPTOR("Metadata_Descriptor",                      0x26, priv);
+	ADD_DESCRIPTOR("Metadata_STD_Descriptor",                  0x27, priv);
 	/* ITU-T Rec. H.222.0 | ISO/IEC 13818-1 Reserved */
 	ADD_DESCRIPTOR("AVC_Video_Descriptor",                     0x28, priv);
 	ADD_DESCRIPTOR("AVC_Timing_and_HDR_Descriptor",            0x2a, priv);
+	ADD_DESCRIPTOR("MPEG-2_AAC_Audio_Descriptor",              0x2b, priv);
+	ADD_DESCRIPTOR("FlexMuxTiming_Descriptor",                 0x2c, priv);
 	/* SBTVD */
 	ADD_DESCRIPTOR("Network_Name_Descriptor",                  0x40, priv);
 	ADD_DESCRIPTOR("Service_List_Descriptor",                  0x41, priv);

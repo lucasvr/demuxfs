@@ -48,8 +48,14 @@ int descriptor_0x20_parser(const char *payload, int len, struct dentry *parent, 
 int descriptor_0x21_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int descriptor_0x22_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int descriptor_0x23_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
+int descriptor_0x24_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
+int descriptor_0x25_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
+int descriptor_0x26_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
+int descriptor_0x27_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int descriptor_0x28_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int descriptor_0x2a_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
+int descriptor_0x2b_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
+int descriptor_0x2c_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int descriptor_0x40_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int descriptor_0x41_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);
 int descriptor_0x42_parser(const char *payload, int len, struct dentry *parent, struct demuxfs_data *priv);

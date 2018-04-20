@@ -30,8 +30,14 @@ parsers = \
     parser_0x21.c \
     parser_0x22.c \
     parser_0x23.c \
+    parser_0x24.c \
+    parser_0x25.c \
+    parser_0x26.c \
+    parser_0x27.c \
     parser_0x28.c \
     parser_0x2a.c \
+    parser_0x2b.c \
+    parser_0x2c.c \
     parser_0x40.c \
     parser_0x41.c \
     parser_0x42.c \
