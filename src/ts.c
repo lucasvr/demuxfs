@@ -1,5 +1,5 @@
 /* 
- * Copyright (c) 2008-2010, Lucas C. Villa Real <lucasvr@gobolinux.org>
+ * Copyright (c) 2008-2018, Lucas C. Villa Real <lucasvr@gobolinux.org>
  * Copyright (c) 2008, Iuri Gomes Diniz <iuridiniz@gmail.com>
  * All rights reserved.
  * 

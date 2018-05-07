@@ -1,5 +1,5 @@
 /* 
- * Copyright (c) 2010, Rogerio P. Nunes <rogerio@organia.com.br>
+ * Copyright (c) 2010-2018, Rogerio P. Nunes <rogerio@organia.com.br>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
