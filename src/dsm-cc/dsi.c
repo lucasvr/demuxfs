@@ -106,8 +106,8 @@ static void dsi_create_dentries(struct dentry *parent, struct dsi_table *dsi, st
 void dsi_create_dii_symlink(const struct ts_header *header, struct dsi_table *dsi, 
 		struct demuxfs_data *priv)
 {
-	struct iop_ior *ior = dsi->service_gateway_info->iop_ior;
-	struct biop_profile_body *pb = ior->tagged_profiles->profile_body;
+	struct iop_ior *ior = dsi && dsi->service_gateway_info ? dsi->service_gateway_info->iop_ior : NULL;
+	struct biop_profile_body *pb = ior && ior->tagged_profiles ? ior->tagged_profiles->profile_body : NULL;
 	struct dsmcc_tap *tap = pb && pb->connbinder.tap_count ? &pb->connbinder.taps[0] : NULL;
 	char search_dir[PATH_MAX], target[PATH_MAX], subdir[PATH_MAX];
 
