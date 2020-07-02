@@ -274,7 +274,7 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 				// GroupCompatibility()
 				len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
-						&payload[j+8], j+8);
+						&payload[j+8], 0);
 				dsmcc_create_compatibility_descriptor_dentries(&group_info->group_compatibility,
 						group_dentry);
 				j += 8 + len;
