@@ -323,7 +323,8 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/** DSM-CC Message Header */
 	struct dsmcc_message_header *msg_header = &dii->dsmcc_message_header;
-	int j = dsmcc_parse_message_header(msg_header, payload, 8);
+	int len = dsmcc_parse_message_header(msg_header, &payload[8]);
+	int j = 8 + len;
 	
 	/* Check whether we should keep processing this packet or not */
 	if (msg_header->protocol_discriminator != 0x11 || msg_header->_dsmcc_type != 0x03) {
@@ -371,7 +372,8 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/** DSM-CC Compatibility Descriptor */
 	struct dsmcc_compatibility_descriptor *cd = &dii->compatibility_descriptor;
-	j = dsmcc_parse_compatibility_descriptors(cd, payload, j+16);
+	len = dsmcc_parse_compatibility_descriptors(cd, &payload[j+16]);
+	j += 16 + len;
 	
 	/** DII bits */
 	dii->number_of_modules = CONVERT_TO_16(payload[j], payload[j+1]);

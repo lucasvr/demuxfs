@@ -130,45 +130,49 @@ void dsmcc_free_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 }
 
 int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd,
-		const char *payload, int index)
+		const char *payload)
 {
-	int i = index;
+	int i = 0;
 
 	cd->compatibility_descriptor_length = CONVERT_TO_16(payload[i], payload[i+1]);
 	if (cd->compatibility_descriptor_length < 2) {
 		cd->descriptor_count = 0;
 		return i + 2 + cd->compatibility_descriptor_length;
 	}
-	
 	cd->descriptor_count = CONVERT_TO_16(payload[i+2], payload[i+3]);
+
 	i += 4;
 	if (cd->descriptor_count)
 		cd->descriptors = calloc(cd->descriptor_count, sizeof(struct dsmcc_descriptor_entry));
 	for (uint16_t n=0; n<cd->descriptor_count; ++n) {
-		cd->descriptors[n].descriptor_type = payload[i];
-		cd->descriptors[n].descriptor_length = payload[i+1];
-		cd->descriptors[n].specifier_type = payload[i+2];
-		cd->descriptors[n].specifier_data[0] = payload[i+3];
-		cd->descriptors[n].specifier_data[1] = payload[i+4];
-		cd->descriptors[n].specifier_data[2] = payload[i+5];
-		cd->descriptors[n].model = CONVERT_TO_16(payload[i+6], payload[i+7]);
-		cd->descriptors[n].version = CONVERT_TO_16(payload[i+8], payload[i+9]);
-		cd->descriptors[n].sub_descriptor_count = payload[i+10];
-		if (cd->descriptors[n].sub_descriptor_count)
-			cd->descriptors[n].sub_descriptors = calloc(cd->descriptors[n].sub_descriptor_count, 
+		struct dsmcc_descriptor_entry *desc = &cd->descriptors[n];
+		desc->descriptor_type = payload[i];
+		desc->descriptor_length = payload[i+1];
+		if (desc->descriptor_type > 0x03)
+			TS_WARNING("use of reserved descriptor type %#x", desc->descriptor_type);
+
+		desc->specifier_type = payload[i+2];
+		desc->specifier_data[0] = payload[i+3];
+		desc->specifier_data[1] = payload[i+4];
+		desc->specifier_data[2] = payload[i+5];
+		desc->model = CONVERT_TO_16(payload[i+6], payload[i+7]);
+		desc->version = CONVERT_TO_16(payload[i+8], payload[i+9]);
+		desc->sub_descriptor_count = payload[i+10];
+		if (desc->sub_descriptor_count)
+			desc->sub_descriptors = calloc(desc->sub_descriptor_count, 
 					sizeof(struct dsmcc_sub_descriptor));
 		
 		i += 11;
-		for (uint8_t k=0; k<cd->descriptors[n].sub_descriptor_count; ++k) {
-			struct dsmcc_sub_descriptor *sub = &cd->descriptors[n].sub_descriptors[k];
+		for (uint8_t k=0; k<desc->sub_descriptor_count; ++k) {
+			struct dsmcc_sub_descriptor *sub = &desc->sub_descriptors[k];
 			sub->sub_descriptor_type = payload[i];
 			sub->sub_descriptor_length = payload[i+1];
 			i += 2;
-			if (sub->sub_descriptor_length)
+			if (sub->sub_descriptor_length) {
 				sub->additional_information = malloc(sub->sub_descriptor_length);
-			for (uint8_t l=0; l<sub->sub_descriptor_length; ++l) {
-				sub->additional_information[l] = payload[i+2+l];
-				i++;
+				for (uint8_t l=0; l<sub->sub_descriptor_length; ++l)
+					sub->additional_information[l] = payload[i+l];
+				i += sub->sub_descriptor_length;
 			}
 		}
 	}
@@ -182,10 +186,9 @@ void dsmcc_free_message_header(struct dsmcc_message_header *msg_header)
 		free(adaptation_header->adaptation_data_bytes);
 }
 
-int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, 
-		const char *payload, int index)
+int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, const char *payload)
 {
-	int i = index;
+	int i = 0;
 	msg_header->protocol_discriminator = payload[i];
 	msg_header->_dsmcc_type = payload[i+1];
 	msg_header->_message_id = CONVERT_TO_16(payload[i+2], payload[i+3]);
@@ -213,9 +216,9 @@ void dsmcc_free_download_data_header(struct dsmcc_download_data_header *data_hea
 }
 
 int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_header,
-		const char *payload, int index)
+		const char *payload)
 {
-	int i = index;
+	int i = 0;
 	data_header->protocol_discriminator = payload[i];
 	data_header->_dsmcc_type = payload[i+1];
 	data_header->_message_id = CONVERT_TO_16(payload[i+2], payload[i+3]);

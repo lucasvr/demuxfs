@@ -172,7 +172,8 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/** DSM-CC Message Header */
 	struct dsmcc_message_header *msg_header = &dsi->dsmcc_message_header;
-	int j = dsmcc_parse_message_header(msg_header, payload, 8);
+	int len = dsmcc_parse_message_header(msg_header, &payload[8]);
+	int j = 8 + len;
 	
 	/** 
 	 * At this point we know for sure that this is a DSI table.
@@ -264,7 +265,6 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 				struct dentry *group_dentry = CREATE_DIRECTORY(gii_dentry, "GroupInfo_%02d", i+1);
 				struct dsi_group_info *group_info = &gii->dsi_group_info[i];
 				int len;
-
 				group_info->group_id = CONVERT_TO_32(payload[j], payload[j+1],
 						payload[j+2], payload[j+3]);
 				group_info->group_size = CONVERT_TO_32(payload[j+4], payload[j+5],
@@ -274,7 +274,7 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 				// GroupCompatibility()
 				len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
-						&payload[j+8], 0);
+						&payload[j+8]);
 				dsmcc_create_compatibility_descriptor_dentries(&group_info->group_compatibility,
 						group_dentry);
 				j += 8 + len;
@@ -331,7 +331,6 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		}
 		j += 2 + sgi->user_info_length;
 	}
-
 	if (current_dsi) {
 		fsutils_migrate_children(current_dsi->dentry, dsi->dentry);
 		hashtable_del(priv->psi_tables, current_dsi->dentry->inode);

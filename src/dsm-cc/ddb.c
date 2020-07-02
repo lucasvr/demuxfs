@@ -126,7 +126,8 @@ int ddb_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/** DSM-CC Download Data Header */
 	struct dsmcc_download_data_header *data_header = &ddb->dsmcc_download_data_header;
-	int j = dsmcc_parse_download_data_header(data_header, payload, 8);
+	int len = dsmcc_parse_download_data_header(data_header, &payload[8]);
+	int j = 8 + len;
 	
 	if (data_header->_dsmcc_type != 0x03 ||
 		data_header->_message_id != 0x1003) {
