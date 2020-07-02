@@ -119,11 +119,11 @@ static void pmt_populate_stream_dir(struct pmt_stream *stream, const char *descr
 		streams_name = FS_AUDIO_STREAMS_NAME;
 	}
 
-	parent = CREATE_DIRECTORY(version_dentry, streams_name);
+	parent = CREATE_DIRECTORY(version_dentry, "%s", streams_name);
 
 	/* Create a directory with this stream's PID number in /PMT/<pid>/Current/<streams_name>/ */
 	sprintf(dirname, "%#04x", stream->elementary_stream_pid);
-	*subdir = CREATE_DIRECTORY(parent, dirname);
+	*subdir = CREATE_DIRECTORY(parent, "%s", dirname);
 
 	/* Create a 'Primary' symlink pointing to <streams_name> if it happens to be the primary component */
 	if (is_primary)
