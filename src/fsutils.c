@@ -340,7 +340,7 @@ struct dentry * fsutils_create_version_dir(struct dentry *parent, int version)
 	struct dentry *current;
 
 	snprintf(version_dir, sizeof(version_dir), "Version_%d", version);
-	child = CREATE_DIRECTORY(parent, version_dir);
+	child = CREATE_DIRECTORY(parent, "%s", version_dir);
 	
 	/* Update the 'Current' symlink if it exists or create a new symlink if it doesn't */
 	current = fsutils_get_child(parent, FS_CURRENT_NAME);

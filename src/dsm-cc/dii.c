@@ -243,7 +243,7 @@ int dii_create_filesystem(const struct ts_header *header, struct dii_table *dii,
 				sprintf(buf, "/Application_Name_Descriptor/Application_Name_01/application_name");
 				ait_dentry = fsutils_get_dentry(ait_dentry, buf);
 				if (ait_dentry) {
-					app_dentry = CREATE_DIRECTORY(dsmcc_dentry, ait_dentry->contents);
+					app_dentry = CREATE_DIRECTORY(dsmcc_dentry, "%s", ait_dentry->contents);
 					break;
 				}
 			}

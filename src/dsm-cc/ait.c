@@ -310,7 +310,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 								struct dentry *url_dentry;
 
 								sprintf(url_dirname, "URL_%02d", url_number++);
-								url_dentry = CREATE_DIRECTORY(subdir, url_dirname);
+								url_dentry = CREATE_DIRECTORY(subdir, "%s", url_dirname);
 
 								desc.ip.URL_length = payload[i++];
 								CREATE_FILE_NUMBER(url_dentry, &desc.ip, URL_length);
@@ -543,7 +543,7 @@ static void ait_parse_descriptor(uint8_t tag, uint8_t len, const char *payload,
 					struct dentry *label_dentry;
 
 					sprintf(label_name, "Label_%02d", label_number++);
-					label_dentry = CREATE_DIRECTORY(dentry, label_name);
+					label_dentry = CREATE_DIRECTORY(dentry, "%s", label_name);
 
 					desc.label_length = payload[i++];
 					CREATE_FILE_NUMBER(label_dentry, &desc, label_length);

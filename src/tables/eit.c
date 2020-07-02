@@ -182,7 +182,7 @@ int eit_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		eit_convert_from_mjd_time(this_event->start_time);
 
 		sprintf(event_dirname, "Event_%02d", event_nr++);
-		event_dentry = CREATE_DIRECTORY(version_dentry, event_dirname);
+		event_dentry = CREATE_DIRECTORY(version_dentry, "%s", event_dirname);
 		CREATE_FILE_NUMBER(event_dentry, this_event, event_id);
 		CREATE_FILE_NUMBER(event_dentry, this_event, start_time);
 		CREATE_FILE_NUMBER(event_dentry, this_event, duration);
