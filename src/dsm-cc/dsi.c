@@ -259,13 +259,10 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		j += 2;
 
 		if (gii->number_of_groups) {
-			uint16_t i;
 			gii->dsi_group_info = calloc(gii->number_of_groups, sizeof(struct dsi_group_info));
-			for (i=0; i<gii->number_of_groups; ++i) {
+			for (uint16_t i=0; i<gii->number_of_groups; ++i) {
 				struct dentry *group_dentry = CREATE_DIRECTORY(gii_dentry, "GroupInfo_%02d", i+1);
 				struct dsi_group_info *group_info = &gii->dsi_group_info[i];
-				int len;
-				TS_INFO("parsing group %d/%d", i+1, gii->number_of_groups);
 				group_info->group_id = CONVERT_TO_32(payload[j], payload[j+1],
 						payload[j+2], payload[j+3]);
 				group_info->group_size = CONVERT_TO_32(payload[j+4], payload[j+5],
@@ -274,12 +271,21 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 				CREATE_FILE_NUMBER(group_dentry, group_info, group_size);
 
 				// GroupCompatibility()
-				len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
+				int len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
 						&payload[j+8]);
-				TS_INFO("parsing group %d/%d: id=%d, size=%d, len=%d", i+1, gii->number_of_groups, group_info->group_id, group_info->group_size, len);
+				j += 8 + len;
+
 				dsmcc_create_compatibility_descriptor_dentries(&group_info->group_compatibility,
 						group_dentry);
-				j += 8 + len;
+
+				group_info->group_info_length = CONVERT_TO_16(payload[j], payload[j+1]);
+				if (group_info->group_info_length) {
+					group_info->group_info_bytes = malloc(group_info->group_info_length);
+					memcpy(group_info->group_info_bytes, &payload[j+2], group_info->group_info_length);
+				}
+				CREATE_FILE_NUMBER(group_dentry, group_info, group_info_length);
+				CREATE_FILE_BIN(group_dentry, group_info, group_info_bytes, group_info->group_info_length);
+				j += 2 + group_info->group_info_length;
 			}
 		}
 
