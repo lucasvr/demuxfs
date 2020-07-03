@@ -685,6 +685,11 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	ait->common_descriptors_length = CONVERT_TO_16(payload[8], payload[9]) & 0x0fff;
 	CREATE_FILE_NUMBER(version_dentry, ait, common_descriptors_length);
 
+	if (ait->common_descriptors_length > payload_len - 8) {
+		TS_WARNING("common_descriptors_length is too big (%d)", ait->common_descriptors_length);
+		return 0;
+	}
+
 	uint16_t i;
 	uint32_t len = 0;
 	for (i=10; i<10+ait->common_descriptors_length; i+=len)

@@ -265,6 +265,7 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 				struct dentry *group_dentry = CREATE_DIRECTORY(gii_dentry, "GroupInfo_%02d", i+1);
 				struct dsi_group_info *group_info = &gii->dsi_group_info[i];
 				int len;
+				TS_INFO("parsing group %d/%d", i+1, gii->number_of_groups);
 				group_info->group_id = CONVERT_TO_32(payload[j], payload[j+1],
 						payload[j+2], payload[j+3]);
 				group_info->group_size = CONVERT_TO_32(payload[j+4], payload[j+5],
@@ -275,6 +276,7 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 				// GroupCompatibility()
 				len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
 						&payload[j+8]);
+				TS_INFO("parsing group %d/%d: id=%d, size=%d, len=%d", i+1, gii->number_of_groups, group_info->group_id, group_info->group_size, len);
 				dsmcc_create_compatibility_descriptor_dentries(&group_info->group_compatibility,
 						group_dentry);
 				j += 8 + len;
@@ -313,14 +315,17 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		}
 		j += 1 + sgi->download_taps_count;
 
-		sgi->service_context_list_count = payload[j];
+		sgi->service_context_list_count = payload[j++];
 		CREATE_FILE_NUMBER(sgi_dentry, sgi, service_context_list_count);
 		if (sgi->service_context_list_count) {
-			sgi->service_context_list = calloc(sgi->service_context_list_count, sizeof(char));
-			memcpy(sgi->service_context_list, &payload[j+1], sgi->service_context_list_count);
-			CREATE_FILE_BIN(sgi_dentry, sgi, service_context_list, sgi->service_context_list_count);
+			/* Parse context id  and data length */
+			uint32_t context_id = CONVERT_TO_16(payload[j], payload[j+1]);
+			uint8_t context_data_length = payload[j+2];
+		//	sgi->service_context_list = calloc(context_data_length, sizeof(char));
+		//	memcpy(sgi->service_context_list, &payload[j+3], context_data_length);
+		//	CREATE_FILE_BIN(sgi_dentry, sgi, service_context_list, sgi->service_context_list_count);
+			j += 2 + context_data_length;
 		}
-		j += 1 + sgi->service_context_list_count;
 		
 		sgi->user_info_length = CONVERT_TO_16(payload[j], payload[j+1]);
 		CREATE_FILE_NUMBER(sgi_dentry, sgi, user_info_length);

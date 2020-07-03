@@ -202,8 +202,9 @@ int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, const ch
 		struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
 		adaptation_header->adaptation_type = payload[i++];
 		adaptation_header->adaptation_data_bytes = malloc(msg_header->adaptation_length);
-		for (uint16_t j=0; j<msg_header->adaptation_length; ++j, ++i)
+		for (uint16_t j=0; j<msg_header->adaptation_length; ++j)
 			adaptation_header->adaptation_data_bytes[j] = payload[i+j];
+		i += msg_header->adaptation_length;
 	}
 	return i;
 }
@@ -232,8 +233,9 @@ int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_hea
 		struct dsmcc_adaptation_header *adaptation_header = &data_header->dsmcc_adaptation_header;
 		adaptation_header->adaptation_type = payload[i++];
 		adaptation_header->adaptation_data_bytes = malloc(data_header->adaptation_length);
-		for (uint16_t j=0; j<data_header->adaptation_length; ++j, ++i)
+		for (uint16_t j=0; j<data_header->adaptation_length; ++j)
 			adaptation_header->adaptation_data_bytes[j] = payload[i+j];
+		i += data_header->adaptation_length;
 	}
 	return i;
 }
