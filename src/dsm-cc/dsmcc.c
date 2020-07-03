@@ -136,8 +136,10 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 
 	cd->compatibility_descriptor_length = CONVERT_TO_16(payload[i], payload[i+1]);
 	if (cd->compatibility_descriptor_length < 2) {
+		if (cd->compatibility_descriptor_length != 0)
+			TS_WARNING("bogus compatibility descriptor length (%d)", cd->compatibility_descriptor_length);
 		cd->descriptor_count = 0;
-		return i + 2 + cd->compatibility_descriptor_length;
+		return 2 + cd->compatibility_descriptor_length;
 	}
 	cd->descriptor_count = CONVERT_TO_16(payload[i+2], payload[i+3]);
 
@@ -167,13 +169,11 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 			struct dsmcc_sub_descriptor *sub = &desc->sub_descriptors[k];
 			sub->sub_descriptor_type = payload[i];
 			sub->sub_descriptor_length = payload[i+1];
-			i += 2;
 			if (sub->sub_descriptor_length) {
 				sub->additional_information = malloc(sub->sub_descriptor_length);
-				for (uint8_t l=0; l<sub->sub_descriptor_length; ++l)
-					sub->additional_information[l] = payload[i+l];
-				i += sub->sub_descriptor_length;
+				memcpy(sub->additional_information, &payload[i+2], sub->sub_descriptor_length);
 			}
+			i += 2 + sub->sub_descriptor_length;
 		}
 	}
 	return i;
