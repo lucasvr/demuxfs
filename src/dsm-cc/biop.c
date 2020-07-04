@@ -607,21 +607,14 @@ static int biop_update_file_dentry(struct dentry *root,
 	if (dentry->size != msg->message_body.content_length) {
 		dprintf("'%s': directory object said size=%zd, file object says %d (contents=%p, inode=%#zx)",
 		dentry->name, dentry->size, msg->message_body.content_length, dentry->contents, dentry->inode);
-		if (! dentry->size) {
-			/* 
-			 * The directory message didn't specify file size or had binding->child_object_info_length=0, 
-			 * so we need to set that now.
-			 */
-			if (dentry->contents) {
-				dprintf("warning: object key repeats for more than one object!");
-			} else {
-				dentry->contents = malloc(msg->message_body.content_length);
-				dentry->size = msg->message_body.content_length;
-			}
+
+		if (! dentry->size && dentry->contents) {
+			dprintf("warning: object key repeats for more than one object!");
+			return 0;
 		}
 	}
 
-	memcpy(dentry->contents, msg->message_body.contents, dentry->size);
+	UPDATE_COMMON(dentry, msg->message_body.contents, msg->message_body.content_length);
 	return 0;
 }
 
@@ -661,7 +654,7 @@ static int biop_create_children_dentries(struct dentry *root,
 				tmp_entry = entry;
 				entry = CREATE_SIMPLE_FILE(parent, name->id_byte, binding->content_size, binding->_inode);
 				if (tmp_entry) {
-					memcpy(entry->contents, tmp_entry->contents, tmp_entry->size);
+					UPDATE_COMMON(entry, tmp_entry->contents, tmp_entry->size);
 					fsutils_dispose_node(tmp_entry);
 				}
 			}
