@@ -303,7 +303,7 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 				// GroupCompatibility()
 				len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
-						&payload[j+8]);
+						&payload[j+8], payload_len-j-8);
 				j += 8 + len;
 				if (j - first_j > max_len) {
 					TS_WARNING("malformed group data exceeds payload size");

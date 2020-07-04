@@ -130,7 +130,7 @@ void dsmcc_free_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 }
 
 int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd,
-		const char *payload)
+		const char *payload, int payload_len)
 {
 	int i = 0;
 
@@ -141,6 +141,7 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 		cd->descriptor_count = 0;
 		return 2 + cd->compatibility_descriptor_length;
 	}
+
 	cd->descriptor_count = CONVERT_TO_16(payload[i+2], payload[i+3]);
 
 	i += 4;
@@ -152,6 +153,10 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 		desc->descriptor_length = payload[i+1];
 		if (desc->descriptor_type > 0x03)
 			TS_WARNING("use of reserved descriptor type %#x", desc->descriptor_type);
+		if (i + 2 + desc->descriptor_length > cd->compatibility_descriptor_length - 2) {
+			TS_WARNING("invalid descriptor length");
+			return 2 + cd->compatibility_descriptor_length;
+		}
 
 		desc->specifier_type = payload[i+2];
 		desc->specifier_data[0] = payload[i+3];
@@ -169,6 +174,10 @@ int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor 
 			struct dsmcc_sub_descriptor *sub = &desc->sub_descriptors[k];
 			sub->sub_descriptor_type = payload[i];
 			sub->sub_descriptor_length = payload[i+1];
+			if (sub->sub_descriptor_length > payload_len) {
+				TS_WARNING("invalid sub descriptor length");
+				return 2 + cd->compatibility_descriptor_length;
+			}
 			if (sub->sub_descriptor_length) {
 				sub->additional_information = malloc(sub->sub_descriptor_length);
 				memcpy(sub->additional_information, &payload[i+2], sub->sub_descriptor_length);
@@ -202,8 +211,7 @@ int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, const ch
 		struct dsmcc_adaptation_header *adaptation_header = &msg_header->dsmcc_adaptation_header;
 		adaptation_header->adaptation_type = payload[i++];
 		adaptation_header->adaptation_data_bytes = malloc(msg_header->adaptation_length);
-		for (uint16_t j=0; j<msg_header->adaptation_length; ++j)
-			adaptation_header->adaptation_data_bytes[j] = payload[i+j];
+		memcpy(adaptation_header->adaptation_data_bytes, &payload[i], msg_header->adaptation_length);
 		i += msg_header->adaptation_length;
 	}
 	return i;
@@ -229,12 +237,14 @@ int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_hea
 	data_header->message_length = CONVERT_TO_16(payload[i+10], payload[i+11]);
 	i += 12;
 
+	if (data_header->adaptation_length % 4)
+		TS_WARNING("adaptation length is not a multiple of 4 (%d)", data_header->adaptation_length);
+
 	if (data_header->adaptation_length) {
 		struct dsmcc_adaptation_header *adaptation_header = &data_header->dsmcc_adaptation_header;
 		adaptation_header->adaptation_type = payload[i++];
 		adaptation_header->adaptation_data_bytes = malloc(data_header->adaptation_length);
-		for (uint16_t j=0; j<data_header->adaptation_length; ++j)
-			adaptation_header->adaptation_data_bytes[j] = payload[i+j];
+		memcpy(adaptation_header->adaptation_data_bytes, &payload[i], data_header->adaptation_length);
 		i += data_header->adaptation_length;
 	}
 	return i;

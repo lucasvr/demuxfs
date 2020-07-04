@@ -66,7 +66,7 @@ void dsmcc_create_message_header_dentries(struct dsmcc_message_header *msg_heade
 void dsmcc_create_compatibility_descriptor_dentries(struct dsmcc_compatibility_descriptor *cd, struct dentry *parent);
 int dsmcc_parse_message_header(struct dsmcc_message_header *msg_header, const char *payload);
 int dsmcc_parse_download_data_header(struct dsmcc_download_data_header *data_header, const char *payload);
-int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd, const char *payload);
+int dsmcc_parse_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd, const char *payload, int payload_len);
 int dsmcc_parse(const struct ts_header *header, const char *payload, uint32_t payload_len, struct demuxfs_data *priv);
 void dsmcc_free_compatibility_descriptors(struct dsmcc_compatibility_descriptor *cd);
 void dsmcc_free_message_header(struct dsmcc_message_header *msg_header);

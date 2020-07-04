@@ -372,7 +372,7 @@ int dii_parse(const struct ts_header *header, const char *payload, uint32_t payl
 
 	/** DSM-CC Compatibility Descriptor */
 	struct dsmcc_compatibility_descriptor *cd = &dii->compatibility_descriptor;
-	len = dsmcc_parse_compatibility_descriptors(cd, &payload[j+16]);
+	len = dsmcc_parse_compatibility_descriptors(cd, &payload[j+16], payload_len-j-16);
 	j += 16 + len;
 	
 	/** DII bits */
