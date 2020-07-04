@@ -207,11 +207,15 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	/** Parse DSI bits */
 
 	/* server_id must contain 20 entries filled up with 0xff */
+	char template[20];
+	memset(template, 0xff, sizeof(template));
 	memcpy(dsi->server_id, &payload[j], 20);
+	if (memcmp(template, dsi->server_id, sizeof(template)))
+		TS_WARNING("server_id is not filled up with 0xff");
 	CREATE_FILE_BIN(version_dentry, dsi, server_id, 20);
 	j += 20;
 
-	/** DSM-CC Compatibility Descriptor. There must be no entries in this loop. */
+	/** DSM-CC Compatibility Descriptor. Its length must be zero. */
 	struct dsmcc_compatibility_descriptor *cd = &dsi->compatibility_descriptor;
 	cd->compatibility_descriptor_length = CONVERT_TO_16(payload[j], payload[j+1]);
 	if (cd->compatibility_descriptor_length)
@@ -237,17 +241,34 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	 * For Data Carousels it holds a GroupInfoByte structure followed by
 	 * DSM-CC Carousel Descriptors.
 	 * For Object Carousels it holds a BIOP::ServiceGatewayInformation.
-	 * 
-	 * We use the same trick employed by DVBSnoop here: we look for a
-	 * BIOP U-U object type_id "srg\0" and "DSM:" strings to know how
-	 * to parse the private data.
 	 */
+	uint32_t known_ids[] = {
+		0x73747200 /* "str" :BIOP stream  */,
+		0x73746500 /* "ste": DSM-CC stream event */,
+		0x73726700 /* "srg": DSM-CC service gateway */,
+		0x66696C00 /* "fil": DSM-CC file object */,
+		0x64697200 /* "dir": DSM-CC directory object */,
+		0
+	};
 
-	/* Prefetch only */
-	uint32_t idx = j + 4;
-	uint32_t type_id = CONVERT_TO_32(payload[idx], payload[idx+1], payload[idx+2], payload[idx+3]);
+	/* Look ahead to identify the type_id */
+	bool is_data_carousel = true;
+	if (dsi->private_data_length >= 8) {
+		uint32_t idx = j + 4;
+		uint32_t type_id = CONVERT_TO_32(payload[idx], payload[idx+1], payload[idx+2], payload[idx+3]);
+		for (int n=0; known_ids[n]; ++n)
+			if (type_id == known_ids[n]) {
+				is_data_carousel = false;
+				break;
+			}
+		TS_INFO("%#0x is %sa data carousel", type_id, is_data_carousel ? "" : "NOT ");
+	}
 
-	if (type_id != 0x73726700 && type_id != 0x53443a4d) {
+	if (is_data_carousel) {
+		/* Keep track of malformed data leading to out-of-bound accesses */
+		int max_len = payload_len - j;
+		int first_j = j;
+
 		/* Data Carousel: GroupInfoByte + DSM-CC CarouselDescriptors */
 		struct dentry *gii_dentry = CREATE_DIRECTORY(version_dentry, FS_DSMCC_GROUP_INFO_INDICATION_DIRNAME);
 		struct dsi_group_info_indication *gii;
@@ -255,12 +276,22 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		dsi->group_info_indication = calloc(1, sizeof(struct dsi_group_info_indication));
 		gii = dsi->group_info_indication;
 		gii->number_of_groups = CONVERT_TO_16(payload[j], payload[j+1]);
+		if (gii->number_of_groups * 8 + 2 > max_len) {
+			TS_WARNING("malformed group data exceeds payload size");
+			return 0;
+		}
+
 		CREATE_FILE_NUMBER(gii_dentry, gii, number_of_groups);
 		j += 2;
 
 		if (gii->number_of_groups) {
 			gii->dsi_group_info = calloc(gii->number_of_groups, sizeof(struct dsi_group_info));
 			for (uint16_t i=0; i<gii->number_of_groups; ++i) {
+				if (j >= max_len) {
+					TS_WARNING("malformed group data exceeds payload size");
+					return 0;
+				}
+
 				struct dentry *group_dentry = CREATE_DIRECTORY(gii_dentry, "GroupInfo_%02d", i+1);
 				struct dsi_group_info *group_info = &gii->dsi_group_info[i];
 				group_info->group_id = CONVERT_TO_32(payload[j], payload[j+1],
@@ -271,9 +302,13 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 				CREATE_FILE_NUMBER(group_dentry, group_info, group_size);
 
 				// GroupCompatibility()
-				int len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
+				len = dsmcc_parse_compatibility_descriptors(&group_info->group_compatibility,
 						&payload[j+8]);
 				j += 8 + len;
+				if (j - first_j > max_len) {
+					TS_WARNING("malformed group data exceeds payload size");
+					return 0;
+				}
 
 				dsmcc_create_compatibility_descriptor_dentries(&group_info->group_compatibility,
 						group_dentry);
@@ -290,7 +325,6 @@ int dsi_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		}
 
 		gii->private_data_length = CONVERT_TO_16(payload[j], payload[j+1]);
-		dprintf("private_data_length=%d", gii->private_data_length);
 
 		// XXX: CarouselDescriptors
 	
