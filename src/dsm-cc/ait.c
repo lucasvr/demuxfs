@@ -694,9 +694,17 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 	uint32_t len = 0;
 	for (i=10; i<10+ait->common_descriptors_length; i+=len)
 		len = dsmcc_descriptors_parse(&payload[i], 1, version_dentry, priv);
+	if (i > payload_len) {
+		TS_WARNING("going out of bounds after processing descriptors");
+		return 0;
+	}
 
 	ait->reserved_5 = payload[i] >> 4;
 	ait->application_loop_length = CONVERT_TO_16(payload[i], payload[i+1]) & 0x0fff;
+	if (ait->application_loop_length > payload_len) {
+		TS_WARNING("bogus application loop length (%d)", ait->application_loop_length);
+		return 0;
+	}
 	CREATE_FILE_NUMBER(version_dentry, ait, application_loop_length);
 	i += 2;
 
@@ -708,6 +716,10 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 		application_descriptors_loop_len = CONVERT_TO_16(payload[n], payload[n+1]) & 0x0fff;
 		n += 2 + application_descriptors_loop_len;
 		ait->_ait_data_entries++;
+	}
+	if (n > payload_len) {
+		TS_WARNING("going out of bounds after computing application loop length");
+		return 0;
 	}
 
 	/* Allocate and parse application entries */
@@ -740,6 +752,10 @@ int ait_parse(const struct ts_header *header, const char *payload, uint32_t payl
 				uint8_t descriptor_len = payload[i+n+1];
 				ait_parse_descriptor(descriptor_tag, descriptor_len, &payload[i+n], app_dentry, priv);
 				n += 2 + descriptor_len;
+			}
+			if (n > data->application_descriptors_loop_length) {
+				TS_WARNING("bogus descriptor length found");
+				return 0;
 			}
 			i += n;
 		}
