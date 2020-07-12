@@ -239,8 +239,7 @@ int dii_create_filesystem(const struct ts_header *header, struct dii_table *dii,
 				if (! ait_dentry)
 					break;
 
-				/* TODO: what if there's more than one application name? */
-				sprintf(buf, "/Application_Name_Descriptor/Application_Name_01/application_name");
+				sprintf(buf, "/Application_Name_Descriptor/Application_Name_%02d/application_name", i);
 				ait_dentry = fsutils_get_dentry(ait_dentry, buf);
 				if (ait_dentry) {
 					app_dentry = CREATE_DIRECTORY(dsmcc_dentry, "%s", ait_dentry->contents);
