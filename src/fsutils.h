@@ -74,11 +74,19 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 	pthread_mutex_init(&(_dentry)->mutex, NULL); \
 
 #define CREATE_COMMON(_parent,_dentry) \
-	INITIALIZE_DENTRY_UNLINKED(_dentry); \
-	if ((_dentry)->obj_type != OBJ_TYPE_FIFO) \
-		_parent->size += (_dentry)->size; \
-	(_dentry)->parent = _parent; \
-	list_add_tail(&(_dentry)->list, &((_parent)->children));
+	do { \
+		INITIALIZE_DENTRY_UNLINKED(_dentry); \
+		struct dentry *tmp = fsutils_get_child(_parent, (_dentry)->name); \
+		if (tmp) { \
+			free(_dentry); \
+			_dentry = tmp; \
+		} else { \
+			if ((_dentry)->obj_type != OBJ_TYPE_FIFO) \
+				_parent->size += (_dentry)->size; \
+			(_dentry)->parent = _parent; \
+			list_add_tail(&(_dentry)->list, &((_parent)->children)); \
+		} \
+	} while (0)
 
 #define UPDATE_COMMON(_dentry,_new_contents,_new_size) \
  	pthread_mutex_lock(&_dentry->mutex); \
@@ -120,7 +128,8 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 			_dentry->mode = S_IFREG | 0444; \
 	 		_dentry->obj_type = OBJ_TYPE_FILE; \
 			CREATE_COMMON((parent),_dentry); \
-			xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false); \
+			if (! xattr_exists(_dentry, XATTR_FORMAT)) \
+				xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false); \
 	 	} \
 	 	_dentry; \
 	})
@@ -145,7 +154,8 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 			_dentry->mode = S_IFREG | 0444; \
 	 		_dentry->obj_type = OBJ_TYPE_FILE; \
 			CREATE_COMMON((_parent),_dentry); \
-			xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_NUMBER, strlen(XATTR_FORMAT_NUMBER), false); \
+			if (! xattr_exists(_dentry, XATTR_FORMAT)) \
+				xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_NUMBER, strlen(XATTR_FORMAT_NUMBER), false); \
 	 	} \
 	 	_dentry; \
 	})
@@ -163,7 +173,8 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 			_dentry->mode = S_IFREG | 0444; \
 	 		_dentry->obj_type = OBJ_TYPE_FILE; \
 			CREATE_COMMON((_parent),_dentry); \
-			xattr_add(_dentry, XATTR_FORMAT, fmt, strlen(fmt), false); \
+			if (! xattr_exists(_dentry, XATTR_FORMAT)) \
+				xattr_add(_dentry, XATTR_FORMAT, fmt, strlen(fmt), false); \
 	 	} \
 	 	_dentry; \
 	})
@@ -181,7 +192,8 @@ void fsutils_migrate_children(struct dentry *source, struct dentry *target);
 			_dentry->mode = S_IFREG | 0444; \
 	 		_dentry->obj_type = OBJ_TYPE_FILE; \
 			CREATE_COMMON((_parent),_dentry); \
-			xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false); \
+			if (! xattr_exists(_dentry, XATTR_FORMAT)) \
+				xattr_add(_dentry, XATTR_FORMAT, XATTR_FORMAT_BIN, strlen(XATTR_FORMAT_BIN), false); \
 	 	} else { \
 	 		UPDATE_NAME(_dentry,_name); \
 	 		UPDATE_PARENT(_dentry,_parent); \
